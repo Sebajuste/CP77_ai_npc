@@ -15,5 +15,8 @@ tools/*/obj/
 __pycache__/
 *.pyc
 
+# Prompts rendus par tools/prompt : reproductibles depuis fixtures/ + corpus.json
+tools/prompt/out/
+
 # Outillage d'agent et permissions locales
 .claude/

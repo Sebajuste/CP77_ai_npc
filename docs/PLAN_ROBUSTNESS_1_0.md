@@ -71,7 +71,7 @@ started as a side effect of it:
 
 - ~~`AiNpcTests.reds` is 3 098 SLOC and 113 functions in one file.~~ **Fait le 2026-08-29** :
   les assertions sont reparties en treize fichiers par sujet sous
-  `src\r6\scripts\ai_npc\tests\`, et `package.ps1 -Config Release` laisse tomber le dossier
+  `src\r6\scripts\ai_npc\tests\`, et `package.ps1 -Release` laisse tomber le dossier
   au lieu d'une liste de noms -- un fichier de test ajoute ne peut plus partir chez le joueur.
 - The `AiNpcMemory.reds` cluster holds 6 of the 20 most complex functions and is the only
   place where complexity and nesting rise together. It is also the code with the best test

@@ -231,19 +231,30 @@ func AiNpcContactIsInPlay(contactId: String) -> Bool {
 // Relic, cleared in q306. Before it, V has no number to write to, which is also the root of
 // the bug this whole pass came from -- the old sheet was answering from the main menu.
 //
-// The two inner stretches are the ones the expansion writes her out of. Hansen holds her from
-// the end of Spider and the Fly until V reaches her on the mezzanine of the Black Sapphire,
-// and the game sends V nothing at all across that whole span. Then q305 is the branch where V
-// gave her up: MaxTac's convoy, the bunker, the border. What speaks to V under Cynosure is
-// what the Blackwall left of her, and it is not reachable by text.
+// The two inner stretches are the ones the expansion writes her out of.
+//
+// THE FIRST DOES NOT LINE UP WITH A QUEST, which is why it is a fact about a machine and not
+// about a phase. She is on comms for the whole of Spider and the Fly -- the Expo, the subway,
+// the lock she brute-forces -- right up to the moment she takes the Chimera and it is taken
+// off her: "Chimera... argh... losing... control!", and then nothing. `q302_tank_risen` is
+// that machine standing up. Cutting on `q302_active` instead, as this rule first did, went
+// silent while she still had half a quest of guidance left to give.
+//
+// She comes back when V walks into the Black Sapphire and she starts steering from inside it.
+// Two facts release her, whichever lands first: the third stretch of q303 going active, and V
+// finding her at the party. The second is certain, the first is read off the numbering, and
+// an OR means a wrong guess about the numbering cannot leave her silent through a quest she
+// spends texting.
+//
+// Then q305 is the branch where V gave her up: MaxTac's convoy, the bunker, the border. What
+// speaks to V under Cynosure is what the Blackwall left of her, and it does not take texts.
 func AiNpcSongbirdIsInPlay(quests: ref<QuestsSystem>) -> Bool {
     if quests.GetFact(n"ep1_songbird_known") <= 0 {
         return false;
     }
-    if quests.GetFact(n"q302_active") > 0 {
-        return false;
-    }
-    if quests.GetFact(n"q303_active") > 0 && quests.GetFact(n"q303_found_somi_paradise") <= 0 {
+    if quests.GetFact(n"q302_tank_risen") > 0
+        && quests.GetFact(n"q303_3_active") <= 0
+        && quests.GetFact(n"q303_found_somi_paradise") <= 0 {
         return false;
     }
     return quests.GetFact(n"q305_active") <= 0;

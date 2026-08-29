@@ -913,11 +913,11 @@ Then launch the game: it compiles the scripts and runs the self-tests, and
 ## Packaging
 
 ```powershell
-powershell -File tools\package.ps1                  # release: what goes on Nexus
-powershell -File tools\package.ps1 -Config Debug    # debug: the self-tests come with it
+powershell -File tools\package.ps1             # debug: the self-tests come with it
+powershell -File tools\package.ps1 -Release    # release: what goes on Nexus
 ```
 
-**Two configurations, and the difference is one folder.** A release build drops
+**Two builds, and the difference is one folder.** A `-Release` build drops
 `src\r6\scripts\ai_npc\tests\` -- roughly 5000 lines of assertions the player never reads,
 compiled at every game start. The folder is the unit rather than a list of file names, so a
 test file added tomorrow cannot reach a player because nobody extended the list. It carries its

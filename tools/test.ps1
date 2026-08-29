@@ -15,7 +15,7 @@ Write-Output "== compile-check =="
 & "$PSScriptRoot\compile-check.ps1" -GameDir $GameDir
 if ($LASTEXITCODE -ne 0) { $failed++ }
 
-# The shape that ships. package.ps1 -Config Release drops the whole r6\scripts\ai_npc\tests\
+# The shape that ships. package.ps1 -Release drops the whole r6\scripts\ai_npc\tests\
 # folder -- the assertions and the marker module that says they are there -- which
 # flips the @if seam in AiNpcSelfTest.reds to its no-op branch. That is a shape the run above
 # never compiles, and a branch nobody compiles is a branch that rots into a compile error in

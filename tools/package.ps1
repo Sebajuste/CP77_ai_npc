@@ -5,22 +5,23 @@
 #   ai_npc-<version>.zip   versioned, for archiving and for uploading to Nexus
 #   ai_npc.zip             stable name, for installing into Vortex (see the note below)
 #
-# Usage: powershell -File tools\package.ps1 [-Config Release|Debug] [-Version 0.7.0]
+# Usage: powershell -File tools\package.ps1 [-Release] [-Version 0.7.0]
 #                                            [-SkipPlugin] [-NoStableCopy]
 #
 # The version comes from AiNpcVersion() in the sources; -Version only asserts it.
 #
 # TWO BUILDS, and the difference is one folder:
 #
-#   Release  ai_npc-<version>.zip         what goes on Nexus. The self-tests are dropped:
-#                                         the whole r6\scripts\ai_npc\tests\ folder.
-#   Debug    ai_npc-<version>-debug.zip   what gets tested here. Tests run at startup and
-#                                         write r6\storages\AiNpc\test-results.json, which
-#                                         is what tools\test.ps1 reads.
+#   -Release  ai_npc-<version>.zip         what goes on Nexus. The self-tests are dropped:
+#                                          the whole r6\scripts\ai_npc\tests\ folder.
+#   default   ai_npc-<version>-debug.zip   what gets tested here. Tests run at startup and
+#                                          write r6\storages\AiNpc\test-results.json, which
+#                                          is what tools\test.ps1 reads.
 #
-# Release is the default, deliberately: the build that leaves this machine is the one that
-# must not need a flag to be correct. Forgetting -Config Debug costs a rebuild; forgetting a
-# hypothetical -Release would put 5000 lines of assertions on Nexus.
+# THE NAME IS THE GUARD, not the default. A build made without -Release is called -debug and
+# cannot be mistaken for the upload a week later; and the finished zip is re-opened and
+# refused if what it carries disagrees with what its name claims, in both directions. That is
+# what makes the switch safe, and it is the shape the other mods here use.
 #
 # Nothing else changes between the two. AiNpcSelfTest.reds ships in both builds and asks
 # @if(ModuleExists("AiNpc.TestSuite")) which one it is in, so dropping the folder is a
@@ -32,8 +33,7 @@
 # report "0 tests" -- which reads exactly like a mod that never started.
 
 param(
-    [ValidateSet("Release", "Debug")]
-    [string]$Config = "Release",
+    [switch]$Release,
     [string]$Version = "",
     [switch]$SkipPlugin,
     [switch]$NoStableCopy
@@ -81,7 +81,7 @@ $Version = $sourceVersion
 # The configuration is in the file name, not only in the console output that scrolled away.
 # A zip on disk has to be able to say what it is a week later, when it is about to be
 # uploaded: "ai_npc-0.7.0.zip" is the release, anything with -debug is not.
-$suffix  = if ($Config -eq "Debug") { "-debug" } else { "" }
+$suffix  = if ($Release) { "" } else { "-debug" }
 $stage   = Join-Path $env:TEMP "ai_npc-package-$Version$suffix"
 $zipPath = Join-Path $distDir "ai_npc-$Version$suffix.zip"
 
@@ -113,7 +113,7 @@ Copy-Item (Join-Path $srcDir "r6") $stage -Recurse -Force
 # to every player. The two checks below are what a list gave for free and a folder does not --
 # that the folder is there at all, and that the marker module went with it.
 $testDir = Join-Path $stage "r6\scripts\ai_npc\tests"
-if ($Config -eq "Release") {
+if ($Release) {
     if (-not (Test-Path $testDir)) {
         throw "The self-tests are not where the release build expects them ($testDir). The folder moved or was renamed - find it before shipping, because the check below can only prove a folder is absent, not that the tests are."
     }
@@ -371,21 +371,21 @@ if ($missing.Count -gt 0) {
 # Both directions, because both failures are silent. A release that still carries the tests
 # ships scaffolding to players; a debug build without them reports "0 tests" from
 # tools\test.ps1, which reads exactly like a mod that never started.
-foreach ($name in $testFiles) {
-    $entry = "r6/scripts/ai_npc/$name"
-    if ($Config -eq "Release" -and ($names -contains $entry)) {
-        throw "Release build still contains $entry."
-    }
-    if ($Config -eq "Debug" -and ($names -notcontains $entry)) {
-        throw "Debug build is missing $entry - the self-tests would never run and test.ps1 would report nothing."
-    }
+$shippedTests = @($names | Where-Object { $_.StartsWith("r6/scripts/ai_npc/tests/") })
+if ($Release -and $shippedTests.Count -gt 0) {
+    throw ("-Release built an archive that still carries " + $shippedTests.Count + " test file(s): " +
+        ($shippedTests -join ", ") + ".")
+}
+if (-not $Release -and $shippedTests.Count -eq 0) {
+    throw "A debug archive with no tests in it - the tests folder is missing from src\, or it was not copied. test.ps1 would report nothing, which reads exactly like a mod that never started."
 }
 
 Remove-Item $stageKeep -Recurse -Force
 
 $size = [math]::Round((Get-Item $zipPath).Length / 1KB, 1)
-Write-Output "Built $zipPath ($size KB)   [$Config]"
-if ($Config -eq "Release") {
+$kind = if ($Release) { "Release" } else { "Debug" }
+Write-Output "Built $zipPath ($size KB)   [$kind]"
+if ($Release) {
     Write-Output "  (self-tests dropped - this is the build to upload)"
 } else {
     Write-Output "  (self-tests included - do NOT upload this one; run tools\test.ps1 after a game launch)"
@@ -412,5 +412,5 @@ if ($SkipPlugin) { Write-Output "  (scripts only - no RED4ext plugin)" }
 if (-not $NoStableCopy) {
     $stablePath = Join-Path $distDir "ai_npc.zip"
     Copy-Item $zipPath $stablePath -Force
-    Write-Output "Built $stablePath ($size KB)   [$Config - install this one in Vortex -> Replace]"
+    Write-Output "Built $stablePath ($size KB)   [$kind - install this one in Vortex -> Replace]"
 }

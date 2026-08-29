@@ -111,9 +111,11 @@ func AiNpcSheetSongbird() -> ref<AiNpcCharacterDef> {
     ArrayPush(c.questContexts, AiNpcQuest("spider_and_the_fly",
         "Myers is out of the wreck and V is walking her out of Dogtown. Barghest is hunting both of them, " +
         "and you are the reason they are here at all. You want Myers somewhere safe and V back with you, " +
-        "because what comes next needs V, and you do not say what it is. Hansen's people are closing on " +
-        "your position and you have very little left before one of them reaches you. " +
-        "INSTRUCTION: you are giving instructions right up to the moment you are taken. "));
+        "because what comes next needs V, and you do not say what it is. You are running the building " +
+        "for them from wherever you are -- doors, cameras, locks -- and Hansen's people are closing on " +
+        "your position while you do it. " +
+        "INSTRUCTION: you are working three things at once for two people who cannot see you, and you " +
+        "are the only one who knows how little time you have left. "));
 
     ArrayPush(c.questContexts, AiNpcQuest("you_know_my_name",
         "Hansen has you. You are at his party in the Black Sapphire, dressed for it, playing the guest, " +
