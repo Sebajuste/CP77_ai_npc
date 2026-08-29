@@ -536,7 +536,7 @@ first when a character does not behave the way its file says.**
 an AI voice either by dropping a `characters.<mod>.json` file — which creates **no
 compile-time dependency on ai_npc**, so it is simply ignored when ai_npc is absent — or, when
 the contact needs live game state, by subclassing `AiNpcContactProvider` and calling
-`AiNpcRegisterContact`.
+`AiNpcOpenClient("your_mod_id").RegisterCharacter(...)`.
 
 Registration is dynamic: nothing needs to exist at launch, a provider can be registered and
 unregistered mid-session, and the phone picks the change up the next time its contact list

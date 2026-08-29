@@ -14,6 +14,7 @@ repeat them.
 | I want to | Read |
 |---|---|
 | give one of my contacts an AI voice, or extend a vanilla one | `docs/API.md` |
+| know why the API refuses what it refuses | `docs/API_DESIGN.md` |
 | know what a file does | the file map in `README.md` |
 | understand the chat surfaces and their rules | `docs/VIEW_ARCHITECTURE.md` |
 | understand what a character remembers | `docs/MEMORY.md` |
