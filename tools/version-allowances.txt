@@ -1,0 +1,32 @@
+# Version-shaped strings that are NOT this mod's version -- see tools\lint.ps1 rule N+9.
+#
+# One line per allowance: <version> <repo-relative path> -- <why it is not the mod's version>
+#
+# Anything matching x.y.z under src\, fomod\, plugin\ or a .cpmodproj is either AiNpcVersion()
+# or a line here. A fourth place to state the version therefore cannot appear quietly: the
+# rule fails on a literal it has never been told about, which is the whole point of the file.
+#
+# The reason is not decoration. A number nobody can explain is a number nobody dares change.
+
+0.6.0 plugin/Plugin.cpp -- the RED4ext plugin's own version, reported to RED4ext and printed
+      in its log. Deliberately independent of the mod's: the DLL and the scripts do not move
+      together, and a player pasting a RED4ext log should see which DLL they have.
+
+0.7.1 fomod/ModuleConfig.xml -- RedHttpClient, the oldest release that carries the transport
+      this lane needs. A requirement stated to the player, not a version of anything here.
+0.7.1 src/AI NPC - read me.txt -- the same RedHttpClient requirement, for a player who reads
+      the archive instead of the installer.
+0.7.1 src/r6/scripts/ai_npc/AiNpcLlm.reds -- the same requirement, quoted inside the
+      diagnostic the mod shows when the transport is unreachable.
+
+2.1.241 plugin/ClaudeCli.cpp -- the Claude Code build the CLI lane's behaviour was measured
+      on. A dated measurement, and the date is what makes it readable later.
+2.1.241 plugin/test/TestHost.cpp -- the same measurement, restated where the fake host
+      reproduces it.
+
+1.0.0 src/r6/scripts/ai_npc/AiNpcModSettings.reds -- prose. The comment argues about what
+      must be settled before a 1.0.0 release; it states no version of anything.
+
+127.0.0 src/r6/scripts/ai_npc/tests/AiNpcTestTransport.reds -- not a version at all. The
+      first three octets of 127.0.0.1, the loopback address a transport failure is asserted
+      against.

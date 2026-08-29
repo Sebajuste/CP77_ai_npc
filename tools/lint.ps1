@@ -1494,6 +1494,90 @@ if (-not (Test-Path $budgetFile)) {
     }
 }
 
+# --- N+9. The mod states its version once -------------------------------------------------
+# Three places carried three different numbers before this rule existed: AiNpcVersion() said
+# 0.9.5, ai_npc.cpmodproj said 1.0.0, and nothing compared them. None of the three is wrong on
+# its own -- that is exactly why nobody noticed.
+#
+# AiNpcVersion() is the source: it reaches the log line at startup, the journal header a player
+# pastes into a bug report, and the name of the zip. Everything else agrees with it or explains
+# itself in tools\version-allowances.txt.
+#
+# The sweep is the half that matters. Checking the two known carriers would be a list, and a
+# list is what nobody extends -- so every x.y.z under src\, fomod\, plugin\ and the .cpmodproj
+# has to be either the mod's version or an allowance stated with its reason. A fourth carrier
+# added tomorrow fails on its first run, naming the file.
+#
+# The plugin's RED4EXT_V1_SEMVER is written (0, 6, 0), not 0.6.0, so it is read on its own and
+# normalised before matching. It is an allowance and not an equality: it is the DLL's version,
+# and the DLL does not move with the scripts.
+$versionSource = Join-Path $modSrc "AiNpcVersion.reds"
+$versionMatch  = [regex]::Match((Read-Code $versionSource), '(?s)func AiNpcVersion\(\)[^\{]*\{\s*return\s*"([^"]+)"')
+if (-not $versionMatch.Success) {
+    Report-Fail "the mod states its version once" "AiNpcVersion() not found in $versionSource - nothing to compare against."
+} else {
+    $modVersion = $versionMatch.Groups[1].Value
+
+    # <version> <path> -- <reason>, continuation lines indented. Only the first line carries a
+    # pair; the rest is the reason, and the reason is required.
+    $allowPath = Join-Path $PSScriptRoot "version-allowances.txt"
+    $allowed = @{}
+    foreach ($line in [System.IO.File]::ReadAllLines($allowPath)) {
+        if ($line -match '^\s*#' -or $line.Trim() -eq "" -or $line -match '^\s') { continue }
+        $m = [regex]::Match($line, '^(\S+)\s+(\S.*?)\s+--\s+\S')
+        if (-not $m.Success) {
+            Report-Fail "the mod states its version once" "version-allowances.txt: cannot read `"$line`" - expected '<version> <path> -- <reason>'."
+            break
+        }
+        $allowed["$($m.Groups[1].Value)|$($m.Groups[2].Value)"] = $true
+    }
+
+    $carriers = @()
+    $carriers += Get-ChildItem (Join-Path $root "src") -Recurse -File
+    $carriers += Get-ChildItem (Join-Path $root "fomod") -Recurse -File
+    $carriers += Get-ChildItem (Join-Path $root "plugin") -Recurse -File -Exclude "build"
+    $carriers = $carriers | Where-Object {
+        $_.Extension -in @(".reds", ".lua", ".xml", ".txt", ".cpp", ".hpp", ".json", ".ps1")
+    }
+    # ai_npc.cpmodproj is deliberately NOT swept: the equality check below owns it, and one
+    # fact reported by two rules reads like two defects.
+
+    $undeclared = @()
+    foreach ($f in $carriers) {
+        $rel = $f.FullName.Substring($root.Path.Length + 1).Replace("\", "/")
+        $text = [System.IO.File]::ReadAllText($f.FullName)
+
+        # (0, 6, 0) -> 0.6.0, so the plugin's own version is seen by the same sweep.
+        $semver = [regex]::Match($text, 'RED4EXT_V1_SEMVER\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)')
+        $found = @()
+        if ($semver.Success) {
+            $found += "$($semver.Groups[1].Value).$($semver.Groups[2].Value).$($semver.Groups[3].Value)"
+        }
+        foreach ($m in [regex]::Matches($text, '(?<![\d.])\d+\.\d+\.\d+(?![\d.])')) { $found += $m.Value }
+
+        foreach ($v in ($found | Sort-Object -Unique)) {
+            if ($v -eq $modVersion) { }
+            elseif ($allowed.ContainsKey("$v|$rel")) { }
+            else { $undeclared += "$rel states $v, and the mod is $modVersion" }
+        }
+    }
+
+    # The one place that must AGREE rather than be allowed: WolvenKit reads it, and a mod whose
+    # project file and whose log disagree is a mod nobody can support.
+    $projPath = Join-Path $root "ai_npc.cpmodproj"
+    $projVersion = ([xml](Get-Content $projPath -Raw)).CP77Mod.Version
+    if ($projVersion -ne $modVersion) {
+        $undeclared += "ai_npc.cpmodproj <Version> is $projVersion, and AiNpcVersion() is $modVersion"
+    }
+
+    if ($undeclared.Count -gt 0) {
+        Report-Fail "the mod states its version once" `
+            (($undeclared -join "`n") + "`nEdit it with tools\set-version.ps1, or state why it differs in tools\version-allowances.txt.")
+    } else {
+        Report-Pass "the mod states its version once ($modVersion, ai_npc.cpmodproj agrees, $($carriers.Count) file(s) swept, $($allowed.Count) allowance(s))"
+    }
+}
+
 Write-Output ""
 if ($script:failures -gt 0) {
     Write-Output "$($script:failures) check(s) failed."

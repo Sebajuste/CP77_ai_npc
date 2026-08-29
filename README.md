@@ -633,6 +633,8 @@ tools/
   deploy.ps1              type-checks, then copies src/ into the Vortex staging folder and the game
   package.ps1             builds a distributable zip in dist/ (runs build-archive.ps1 first)
   build-archive.ps1       packs src\archive\ into src\archive\pc\mod\ai_npc.archive
+  set-version.ps1         writes the version in the two places that state it; run with no
+                          argument it prints them. lint.ps1 is what refuses a disagreement
   make-icon.py            draws the AGENT LINK icon and the Nexus image into docs/branding/
   inkatlas/, archive/     the two C# helpers those two use (WolvenKit 8.20 DLLs, dotnet 8)
   prompt/                 rebuilds offline the exact prompt the mod sends, and compares it
