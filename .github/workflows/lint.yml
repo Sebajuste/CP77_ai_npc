@@ -1,0 +1,28 @@
+# The only check in this repository a machine without Cyberpunk 2077 can run.
+#
+# WHAT A GREEN RUN HERE DOES NOT MEAN: that the mod compiles. compile-check.ps1 needs scc.exe
+# and the vanilla .redscripts bundle out of a game install, and the self-tests need a launched
+# game -- neither exists on a runner, and neither ever will. The job is named for what it
+# actually proves so that a green badge cannot be read as more than it is.
+#
+# It runs on develop and on pull requests, never on main: main only receives merges that have
+# already been through both.
+name: lint
+
+on:
+  push:
+    branches: [develop]
+  pull_request:
+
+jobs:
+  offline-text-checks:
+    name: offline text checks (does not prove it compiles)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Windows PowerShell 5.1, the shell these scripts are written and tested against.
+      # pwsh would be a second, untested environment for no gain.
+      - name: tools/lint.ps1
+        shell: powershell
+        run: .\tools\lint.ps1

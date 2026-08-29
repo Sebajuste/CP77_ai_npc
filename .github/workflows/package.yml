@@ -1,0 +1,55 @@
+# Builds the Nexus zip on every merge into main.
+#
+# Under gitflow, main receives develop only once develop has been validated and tested, so a
+# push here means "this is a release" and the job's whole purpose is to hand back the file that
+# gets uploaded. It builds nothing that has not already been checked: it re-runs the linter
+# first, because a release must not ship a state the cheapest check refuses.
+#
+# WHAT THIS JOB CANNOT DO: prove the mod compiles or runs. That needs a game install and a
+# launch, and it stays the user's step -- see docs\ARCHITECTURE.md, "What only a launch can
+# prove". The artifact is a candidate, not a verdict.
+#
+# -SkipArchive is not a shortcut. tools\archive references the DLLs of a local WolvenKit 8.20
+# install, which is not redistributed and not on NuGet, so no runner can repack the icon
+# archive. The committed src\archive\pc\mod\ai_npc.archive is shipped instead, and the packager
+# throws if it is missing rather than letting a zip without an icon travel. Rebuilding it stays
+# a hand gesture on a machine with WolvenKit, which is what it already was: it only changes
+# when the drawing changes.
+name: package
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  release-zip:
+    name: release zip (not a proof that it runs)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # vendor\RED4ext.SDK -- headers the plugin compiles against.
+          submodules: recursive
+
+      - name: tools/lint.ps1
+        shell: powershell
+        run: .\tools\lint.ps1
+
+      # cl.exe through vcvars64.bat, no CMake. windows-latest carries the C++ toolset and
+      # vswhere, which is all plugin\build.ps1 looks for.
+      - name: plugin/build.ps1
+        shell: powershell
+        run: .\plugin\build.ps1
+
+      # -NoStableCopy: dist\ai_npc.zip exists for installing into Vortex by hand. What leaves
+      # this job is the versioned name, so an upload a week later cannot be mistaken for it.
+      - name: tools/package.ps1 -Release
+        shell: powershell
+        run: .\tools\package.ps1 -Release -SkipArchive -NoStableCopy
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ai_npc-release-zip
+          path: dist/*.zip
+          if-no-files-found: error
