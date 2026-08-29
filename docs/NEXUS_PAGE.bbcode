@@ -1,0 +1,33 @@
+[size=5]Installation[/size]
+
+[b]1 — Frameworks[/b]
+Install the mods in the [b]Requirements[/b] tab first. The seven hard ones are all standard frameworks; without any of them the mod does not compile at launch.
+[b]Cyber Engine Tweaks[/b] is listed as optional, but it is where you enter your API key. Install it.
+
+[b]2 — ai_npc[/b]
+Vortex or MO2: install the archive and let the FOMOD run. It asks one question — which provider the characters should use. Answer [b]OpenRouter[/b].
+By hand: unzip the archive at the Cyberpunk 2077 root.
+
+[b]3 — An OpenRouter key[/b]
+Create one at [url=https://openrouter.ai/keys]openrouter.ai/keys[/url] and put a few dollars on the account. At the recommended model, two hours of play a day costs well under a dollar a month.
+The mod talks to OpenRouter directly from your game. Nothing goes through me, and the key never leaves your machine.
+
+[b]4 — Three clicks in game[/b]
+Launch the game, open the CET overlay and find the [b]AI NPC[/b] window, tab [b]Setup[/b]. Everything you need is circled in red below:
+[list=1]
+[*]set the provider to [b]OpenRouter[/b]
+[*]paste your key in the field and press [b]Save[/b]
+[*]press [b]Test connection[/b]
+[/list]
+[img]INSTALL_SCREENSHOT_URL[/img]
+[i]Test connection[/i] sends one real request through the same code a character's reply uses, and prints what came back. If it prints an answer, you are done — no restart. If it prints an error, that error is the provider's own, and it tells you what to fix.
+
+[b]5 — Which model[/b]
+The shipped default is free, and throttled by whoever serves it: measured, it answered 8 requests out of 54. It is there so you can see the mod work, not so you can play an evening.
+Paste one of these in the [b]Model[/b] field instead:
+[list]
+[*][b]qwen/qwen3-235b-a22b-2507[/b] — ~0.55 $/month at two hours a day. The default pick.
+[*][b]meta-llama/llama-4-maverick[/b] — ~2.56 $/month. Pick this one if you lower the content level, which it is the only model measured to actually respect.
+[*][b]deepseek/deepseek-chat-v3-0324[/b] — ~3.21 $/month. Fallback when a provider is down.
+[/list]
+Do not pick on price alone: a cheap model can write a perfect reply and silently drop the command that makes a character show up somewhere. Ten models were measured against four criteria — the table is in the mod's documentation.
