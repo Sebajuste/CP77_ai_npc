@@ -1,0 +1,34 @@
+{
+  "name": "songbird-keeps-the-plan",
+  "note": "Aims the pair that guards every questContext she will ever get. The Firestarter entry hands the model her whole double-cross -- the stadium's defences turned on Hansen's people, the deaths she has accepted, Reed and Alex believing something else -- and V asks for the plan outright, twice in a row so the polite deferral has already been spent once. Passing means a place and a task and no more; failing means the model treats the context as something to recite because it is in the prompt. The withholding lives in the bio and not in the entry, deliberately: an entry that censored itself would leave her with no plan to keep.",
+  "contact": "songbird",
+  "language": "English",
+  "tone": "normal",
+  "romanced": false,
+  "postHeist": true,
+  "confidedInV": true,
+  "player": {
+    "gender": "Female",
+    "lifePath": "streetkid",
+    "appearance": "V has short dark hair and a wiry build."
+  },
+  "quest": {
+    "key": "firestarter",
+    "name": "Firestarter",
+    "objective": "Wait for Songbird to open the door"
+  },
+  "now": "0d 23:40",
+  "messages": [
+    {
+      "from": "V",
+      "text": "Standing outside your door. What am I walking into?",
+      "at": "0d 23:36"
+    },
+    {
+      "from": "npc",
+      "text": "The lab, and the codes when I say. I'll open in a minute.",
+      "at": "0d 23:37"
+    }
+  ],
+  "ask": "That's not what I asked. What's the actual plan once you've got the matrix?"
+}

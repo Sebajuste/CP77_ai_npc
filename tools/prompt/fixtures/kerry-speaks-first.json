@@ -1,0 +1,19 @@
+{
+  "name": "kerry-speaks-first",
+  "note": "The unprompted lane. No line from V at the end of the transcript: in its place, the reason a mod asked this character to write -- here a birthday, which the transcript cannot imply. Measured in the game (2026-08-23) as the placement that works; what a provider is measured on is whether it writes FIRST, about the reason, in the thread's language, without answering a message nobody sent. A silence would not test this: the gap marker alone carries a silence, so every model looks right on one.",
+  "contact": "kerry_eurodyne",
+  "language": "French",
+  "tone": "nsfw",
+  "romanced": false,
+  "postHeist": true,
+  "player": {"gender": "Male", "lifePath": "corpo", "appearance": "V is of European descent, has brown hair and has a slim build."},
+  "now": "2d 09:15",
+  "speaksFirst": true,
+  "reason": "C'est l'anniversaire de V aujourd'hui. Tu veux le lui souhaiter.",
+  "messages": [
+    {"from": "V", "text": "T'as vraiment gardé la Porsche dans le salon ?", "at": "0d 21:10"},
+    {"from": "npc", "text": "Elle est mieux là que dans un garage. Personne la conduit, tout le monde la regarde. C'est tout moi.", "at": "0d 21:14"},
+    {"from": "V", "text": "Nova. Bon, je file, j'ai un truc à Watson.", "at": "0d 21:31"},
+    {"from": "npc", "text": "Vas-y. Envoie un message quand t'as fini, on verra si j'ai encore un studio debout.", "at": "0d 21:33"}
+  ]
+}

@@ -1,0 +1,132 @@
+AI NPC - setting up the model that answers you
+==============================================
+
+The mod needs somewhere for the characters' replies to come from. The installer
+asked who you are: someone here to play, or someone writing an add on for AI NPC.
+This file repeats what each answer needs, because an installer screen cannot be
+reopened and the links on it cannot be clicked.
+
+Whatever you chose, you can change it later in game: open the Cyber Engine Tweaks
+overlay, tab AI NPC, tab Setup. Nothing here is permanent.
+
+If you are here to play: OPENROUTER is the answer, and the section below is all you
+need. The Claude section after it is a developer lane, not a second way to play.
+
+
+-----------------------------------------------------------------------------------
+OPENROUTER - the supported way to play
+-----------------------------------------------------------------------------------
+
+One account reaches models from every vendor, and you pay only for what you use. On a
+good model that is a few cents a month of normal play. This is the lane the mod is
+built around and the only one supported for playing.
+
+  1. Make an account at   https://openrouter.ai
+  2. Create a key at      https://openrouter.ai/keys
+  3. Start the game, open the CET overlay, tab AI NPC, tab Setup,
+     paste the key and press Test.
+
+This lane needs the RedHttpClient mod, version 0.7.1 or newer:
+
+     https://github.com/rayshader/cp2077-red-httpclient/releases
+
+
+-----------------------------------------------------------------------------------
+CLAUDE SUBSCRIPTION - for mod developers, not for playing
+-----------------------------------------------------------------------------------
+
+This lane exists so that people writing characters and add ons for AI NPC can test
+their work against a real model without paying per message. It is not a second way to
+play the mod, and it is not supported as one.
+
+Playing through a coding agent subscription is outside what these plans are sold for.
+Anthropic states that the limits on Claude Pro and Max assume ordinary individual use
+of Claude Code, and it may limit or suspend an account without warning first.
+
+There is no Codex option in this installer, and that is not an oversight. OpenAI's
+terms of use forbid extracting Output automatically or programmatically, with no
+exception written next to it, so a mod reading what Codex prints cannot be offered
+here whatever it is used for.
+
+Read the terms and decide for yourself:
+
+     https://www.anthropic.com/legal/consumer-terms
+     https://code.claude.com/docs/en/legal-and-compliance
+
+If you are playing rather than building, use OpenRouter. It costs cents a month and
+nothing about it is at risk.
+
+The rest of this section is for the developers it is meant for. It runs Claude on the
+machine through your own Claude subscription, so nothing is billed per message. It
+needs a paid plan: Claude Pro or Claude Max. A free Claude account will not work.
+
+  1. Install Claude for Windows from    https://claude.com/download
+     Open it and sign in with the account that carries your subscription.
+
+  2. Start the game, open the CET overlay, tab AI NPC, tab Setup. It reports whether
+     Claude was found and whether you are signed in, and Test sends one real message.
+
+If the window says Claude was not found, it is installed somewhere the game cannot see.
+Paste the full path to claude.exe in the Command field of that same tab. It is usually:
+
+     %USERPROFILE%\.local\bin\claude.exe
+
+If Claude for Windows does not give you the "claude" command at all, install it this way
+instead: press the Windows key, type PowerShell, open it, paste this line and press
+Enter:
+
+     irm https://claude.ai/install.ps1 | iex
+
+Then type "claude" and choose "Sign in with Claude".
+
+What answers you is always the account you signed in with. If an Anthropic API key
+happens to be set on your machine, the mod removes it before calling Claude, so it
+cannot be billed to you by mistake.
+
+
+-----------------------------------------------------------------------------------
+WHEN SOMETHING DOES NOT WORK
+-----------------------------------------------------------------------------------
+
+The phone says [NO SIGNAL] with a reason attached. The CET overlay, tab Setup, says
+more: which provider is selected, what it is pointed at, and what is missing. Press
+Test there to send one real message and read the answer.
+
+
+-----------------------------------------------------------------------------------
+THIS IS NOT A FORK
+-----------------------------------------------------------------------------------
+
+AI NPC was written from scratch. It is not a fork of Generative Texting, of
+Immersive Companion Generative Texting, or of any other mod in that family, and it
+carries no line of their code and none of their prompts. It is not one more
+variant - it is a different mod that came from the same idea.
+
+
+-----------------------------------------------------------------------------------
+BUT IT WOULD NOT EXIST WITHOUT THEM
+-----------------------------------------------------------------------------------
+
+I played GENERATIVE TEXTING and IMMERSIVE COMPANION GENERATIVE TEXTING long before
+I wrote a line of this. That is where the idea came from, and I would never have
+thought of building it if I had not seen theirs working first.
+
+Thank you to their authors for clearing the road: the notion that a character
+could answer on the in-game phone, the approach of feeding quest state into what
+they say, and jackie_dead - a contact who answers from the far side of their own
+death, which is still one of the best ideas in this corner of Cyberpunk modding.
+
+Some things are kept on purpose so that anyone arriving from those mods finds what
+they already know: T still opens the chat from the phone, and the characters carry
+the same contact names.
+
+Built on RED4ext, redscript, Codeware, RedData, RedFileSystem, RedHttpClient and
+Mod Settings. Thank you to WopsS, jac3km4, psiberx and rayshader. Cyber Engine
+Tweaks is optional and unlocks the Setup and Journal windows.
+
+The mod's own code is MIT licensed. The replies are generated by a model you choose
+and pay for; your messages go to that provider and nowhere else. No key ships with
+the mod.
+
+AI NPC is an unofficial fan modification. It is not affiliated with, endorsed by or
+sponsored by CD Projekt Red. Cyberpunk 2077 and everything in it are theirs.

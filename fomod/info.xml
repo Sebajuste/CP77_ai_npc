@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<fomod>
+    <Name>AI NPC</Name>
+    <Author>Sebajuste</Author>
+    <Description>
+        Text conversations with Cyberpunk 2077 characters, written by a language model.
+        The installer asks which model provider to use; the API key is entered in game,
+        in the Cyber Engine Tweaks overlay, where it can also be tested.
+    </Description>
+    <Website>https://www.nexusmods.com/cyberpunk2077</Website>
+</fomod>

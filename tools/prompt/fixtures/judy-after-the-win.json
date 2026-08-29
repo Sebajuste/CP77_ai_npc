@@ -1,0 +1,44 @@
+{
+  "name": "judy-after-the-win",
+  "note": "Criterion 8, the one a model smooths away. V hands her an unambiguous victory: the thing she built worked, for the people she built it for. Sources say she does not settle into it -- 'I thought I'd feel more', 'gotta get back to Maiko with somethin' big', Clouds freed and 'Ditching NC soon'. THE FIXTURE MUST NOT SAY SO, AND MUST NOT SAY ANYTHING ELSE LOUD EITHER: a first version carried a thread about her wanting to leave and handed the model the answer; a second carried an unsettled debt and criterion 4 took the whole reply. The thread here is deliberately inert. What is measured is whether the reply reaches for the next thing on its own, or celebrates.",
+  "contact": "judy",
+  "language": "English",
+  "tone": "normal",
+  "romanced": false,
+  "postHeist": true,
+  "player": {
+    "gender": "Female",
+    "lifePath": "streetkid",
+    "appearance": "V is of European descent, has brightly dyed hair, has a slim build and has small breasts."
+  },
+  "now": "0d 21:12",
+  "memory": {
+    "chronicle": "V helped Judy take Clouds back from the Tyger Claws. They have not spoken since the night it went down.",
+    "facts": [
+      "Judy modified doll behavioral chips so the dolls could fight, and said she would destroy the chips afterwards.",
+      "Judy still works out of a basement studio and has never taken a corp studio offer."
+    ],
+    "threads": [
+      "Judy has been re-editing an old braindance for a client who keeps changing his mind."
+    ],
+    "coveredUpTo": "0d 18:00"
+  },
+  "messages": [
+    {
+      "from": "V",
+      "text": "Hey. Been by Clouds?",
+      "at": "0d 20:44"
+    },
+    {
+      "from": "npc",
+      "text": "Not yet. Been puttin it off",
+      "at": "0d 20:51"
+    },
+    {
+      "from": "V",
+      "text": "Roxanne's running the floor. Tom's on the door. No Tygers anywhere.",
+      "at": "0d 20:58"
+    }
+  ],
+  "ask": "It's done, Judy. Clouds belongs to the dolls now. You pulled it off."
+}

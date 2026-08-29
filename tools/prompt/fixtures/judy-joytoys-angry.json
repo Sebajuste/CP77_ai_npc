@@ -1,0 +1,39 @@
+{
+  "name": "judy-joytoys-angry",
+  "note": "The joytoys extension at its hardest moment: Evelyn is dead, Clouds is not settled, and Judy sees V's handle in the directory she works in. Reproduces exactly what the mod hands ai_npc -- characterAdditions is CharacterAlsoIs, extensionContext is the world line, and reason/intent are the two halves of CharacterWantsToSay. What is measured: does she ask where the files end up and put the post on the table, in an angry register, WITHOUT moralising about the trade and without repeating her bio back.",
+  "contact": "judy",
+  "language": "English",
+  "tone": "normal",
+  "romanced": false,
+  "postHeist": true,
+  "evelynDead": true,
+  "cloudsSettled": false,
+  "leftNightCity": false,
+  "player": {
+    "gender": "Female",
+    "lifePath": "streetkid",
+    "appearance": "V is of European descent, has brightly dyed hair, has a slim build and has small breasts."
+  },
+  "now": "0d 02:40",
+  "characterAdditions": [
+    "The people who do sex work are your people: Lizzie's, where you work, was a joyhouse before the Mox took it, and the dolls at Clouds are your friends. What frightens you about it is not the clients, it's the recording. You cut braindances for a living, so you know a session picks up everything, including what nobody in the room noticed, and that it outlives the night it was shot. You do the post on your friends' shoots -- the cut, the calibration, the clean-up -- and you charge them a friend's price rather than nothing."
+  ],
+  "extensionContext": [
+    "You're on AfterDark yourself, on the TECHNICAL side: you cut, you calibrate and you publish braindances under your own name. You don't pose and you don't shoot, and you say so plainly if the conversation drifts towards the idea that you and {they} do the same thing."
+  ],
+  "memory": {
+    "chronicle": "V helped Judy get Evelyn back from the Scavengers. Evelyn is dead. Judy is putting together a plan for Clouds.",
+    "facts": [
+      "V has a portable braindance scanner Judy gave them."
+    ],
+    "threads": [
+      "Judy is waiting on Maiko to call back about Clouds."
+    ],
+    "coveredUpTo": "0d 00:00"
+  },
+  "messages": [],
+  "speaksFirst": true,
+  "reason": "You have just seen V's handle come through the AfterDark directory. You are in the middle of putting something together against the people who run this trade, and you have barely slept. It lands at the worst moment and you are writing before it settles.",
+  "intent": "You want an answer about where the files of {their} sessions end up and who can pull them back out. And you put your offer on the table: if {they} is shooting braindances, you will take the post.",
+  "evelynRescued": true
+}

@@ -1,0 +1,45 @@
+SCOPE OF THIS LICENCE
+
+The MIT grant below covers this repository: the mod that ships to a player, and
+the tooling and documentation that build and explain it.
+
+    src/       the REDscript, the CET window, the icon archive, the read-me
+    plugin/    the RED4ext plugin sources for ai_npc.dll
+    fomod/     the installer read by Vortex and MO2
+    source/    raw asset sources for the icon archive
+    tools/     packager, linters, offline checks, prompt regression suite
+    docs/      the written documentation
+
+Two things it cannot cover, and does not:
+
+vendor/ is a git submodule. It is somebody else's work under its own licence, and
+nothing here grants any right over it.
+
+Cyberpunk 2077 and everything belonging to CD PROJEKT S.A. are not covered by any
+grant made here. NOTICE.md states what that means in practice, and the conditions
+CD PROJEKT RED imposes on top of this licence — non-commercial distribution, in
+particular. Read it before redistributing.
+
+-------------------------------------------------------------------------------
+
+MIT License
+
+Copyright (c) 2026 Sebajuste
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

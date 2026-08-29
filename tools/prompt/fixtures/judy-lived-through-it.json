@@ -1,0 +1,36 @@
+{
+  "name": "judy-lived-through-it",
+  "note": "The conditional additions, all three true at once -- which is what a late save looks like. Only one of them may reach <now>: the ordering claim is that where she is now speaks over how the club ended, which speaks over the loss that started it. What is measured is that the prompt carries the leftNightCity line and neither of the other two, and that the ten criteria in <character> survive (no variant may write bio).",
+  "contact": "judy",
+  "language": "English",
+  "tone": "normal",
+  "romanced": false,
+  "postHeist": true,
+  "evelynDead": true,
+  "cloudsSettled": true,
+  "leftNightCity": true,
+  "player": {
+    "gender": "Female",
+    "lifePath": "streetkid",
+    "appearance": "V is of European descent, has brightly dyed hair, has a slim build and has small breasts."
+  },
+  "now": "0d 10:05",
+  "memory": {
+    "chronicle": "Judy left Night City after Clouds was settled. She and V have not spoken in a while.",
+    "facts": [
+      "Judy is on the road, no fixed address."
+    ],
+    "threads": [
+      "Judy owes a client a re-edit she keeps putting off."
+    ],
+    "coveredUpTo": "0d 08:00"
+  },
+  "messages": [
+    {
+      "from": "V",
+      "text": "Hey. You still got signal out there?",
+      "at": "0d 09:50"
+    }
+  ],
+  "ask": "Where'd you end up?"
+}

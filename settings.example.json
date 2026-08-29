@@ -1,0 +1,15 @@
+{
+    "openRouterApiKey": "",
+    "openRouterModel": "google/gemma-4-31b-it:free",
+    "openRouterProvider": "Auto",
+    "claudeCliModel": "sonnet",
+    "claudeCliPath": "",
+    "codexCliModel": "",
+    "codexCliPath": "",
+    "memoryChronicleExact": true,
+    "maxTokens": 0,
+    "reasoningEffort": "",
+    "appearance": "",
+    "playerDescription": "",
+    "importConversationsFrom": ""
+}

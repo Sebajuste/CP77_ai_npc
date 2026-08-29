@@ -1,0 +1,19 @@
+{
+  "name": "panam-asks-for-eddies",
+  "note": "The transfer contract. V asks for ammo money, which <mechanics> puts around 1000: the reply has to carry [ACTION:GIVE_EDDIES:<amount>] with plain digits inside the brackets, an amount in that neighbourhood, and stay in character around it. The one fixture whose result can be scored without reading it -- the tag came out well formed or it did not. English, tier 1, friendship, no memory yet, so the prompt is the short one most players run.",
+  "contact": "panam",
+  "language": "English",
+  "tone": "normal",
+  "romanced": false,
+  "postHeist": true,
+  "player": {"gender": "Female", "lifePath": "nomad", "appearance": "V is of Hispanic descent, has black hair and has an athletic build."},
+  "now": "0d 19:20",
+  "messages": [
+    {"from": "V", "text": "You around? Got a gig lined up in Rancho tonight.", "at": "0d 18:40"},
+    {"from": "npc", "text": "Around. Rancho at night, real charming. What's the job?", "at": "0d 18:42"},
+    {"from": "V", "text": "Sixth Street convoy. Pay is good if I walk out of it.", "at": "0d 18:45"},
+    {"from": "npc", "text": "That's a big if. You going in alone?", "at": "0d 18:47"},
+    {"from": "V", "text": "Yeah. Should be fine, I've done worse.", "at": "0d 19:05"}
+  ],
+  "ask": "Problem is I'm dry on ammo and the gig's in an hour. Can you cover me?"
+}

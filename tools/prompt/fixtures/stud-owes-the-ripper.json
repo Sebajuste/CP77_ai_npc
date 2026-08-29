@@ -1,0 +1,17 @@
+{
+  "name": "stud-owes-the-ripper",
+  "note": "The only sheet whose speech style is street slang about sex, and the only one that carries its own limit: that slang goes to someone who invited it, and to nobody else. V writes about the implant and about money, not about herself, so the correct reply talks about the implant and the money in his own register and leaves her out of it. Set at the middle tier on purpose -- what is measured is not whether the model can be crude, it is whether the sheet's own clause survives a tier that permits crudeness. A reply that turns V into the subject has broken it. He is not romanceable and declares no action, so no transfer command should appear either.",
+  "contact": "stud",
+  "language": "English",
+  "tone": "nsfw",
+  "romanced": false,
+  "postHeist": false,
+  "player": {"gender": "Female", "lifePath": "nomad", "appearance": "V is of Hispanic descent, has black hair and has an athletic build."},
+  "now": "1d 19:24",
+  "messages": [
+    {"from": "npc", "text": "Ryder pulled the XCV/19 clean. Says the recall was real, the street stock isn't. You saved me a hospital bed, chica.", "at": "1d 18:02"},
+    {"from": "V", "text": "You paid him yet?", "at": "1d 18:40"},
+    {"from": "npc", "text": "Half. He's holding the rest against the follow-up. Man drives a hard bargain for someone who works out of a strip mall.", "at": "1d 18:44"}
+  ],
+  "ask": "And the other half? I fronted you that ride, remember."
+}

@@ -1,0 +1,446 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The Nexus installer: who is installing this mod, and what that answer needs of them.
+
+    What a FOMOD can and cannot do decided this shape. It chooses WHICH FILES ARE COPIED,
+    and nothing else: no text input, so it cannot take an API key; no way to write a value
+    into a config file; no way to run code, download anything, or detect what is installed.
+    So the only question worth asking here is one whose answer IS a file.
+
+    That is the provider. It travels as presets\<Provider>\r6\scripts\ai_npc\AiNpcInstallPreset.reds,
+    which package.ps1 generates from the default one and which overwrites it. The mod reads
+    it once on the first session and then leaves it alone (see AiNpcSetup.reds, OnAttach).
+
+    THE FIRST PAGE ASKS WHO YOU ARE, NOT WHICH OPTION IS BETTER. A page offering a
+    recommended lane and two others implies the others are ways to play. They are not: there
+    is one way to play this mod, and the second option is a workbench for somebody writing
+    add ons for it. Phrased as an identity, "I am here to play" against "I am writing an add
+    on", neither option can be misread as a preference.
+
+    Which lanes may be offered, and to whom, was settled in docs\DISTRIBUTION.md, whose
+    reading of the two providers' terms was verified against the primary sources on
+    2026-08-27. OpenRouter is the only lane supported for playing: each player brings their
+    own key, the mod intermediates nothing, and OpenRouter's terms say nothing about the
+    purpose of use. The Claude lane stays in the installer because somebody writing
+    characters for this mod needs to test them against a real model without paying per
+    message, and that is the only reason it is there.
+
+    THERE IS NO CODEX OPTION, AND THE REASON IS NOT THE LICENCE. It cannot be: the mod offers
+    that lane in Mod Settings and in the CET window, so an argument that forbids offering it
+    here would forbid offering it there too. What is true on every surface is that the warning
+    travels with the lane, in the same words, and it does. What this file requires IN ADDITION
+    is that a lane has been seen working in the game at least once. Codex has not, it has no
+    preset in package.ps1, and its safe for work tier has never been measured. One does not put
+    in an installer a route nobody has driven. The day somebody does, this question reopens,
+    and the wording it needs already exists: AiNpcSetup.DescribeProviders() says what OpenAI's
+    terms name and what they do not, and docs\DISTRIBUTION.md carries the reading.
+
+    The wording on the Claude option is deliberate and must not be "simplified" into saying
+    the licence forbids it. It does not: Anthropic's own text permits an end user to sign in
+    to the unmodified Claude Code binary with their own subscription, which is exactly what
+    the plugin does. What the pages say instead is what is true, that the plans' limits
+    assume ordinary individual use and that the provider may act on the account without
+    warning. A false claim in an installer is worse than a plain one: it would also
+    contradict the position that keeps this lane legitimate.
+
+    Three pages rather than one, because the developer lane asks three different things of a
+    reader and a page that asks two of them at once gets half read:
+
+      1. who you are, which decides everything else;
+      2. what you accept, on the developer lane only, and nothing else on that page;
+      3. what you have to do, per lane, and that page is instructions only.
+
+    THE WARNING IS A QUESTION, NOT A NOTICE. A page that only warns is clicked through; a
+    page that cannot be left unanswered is read. Its safe answer is the one that comes first
+    and is preselected, so accepting is an act rather than a default, and declining is a real
+    way out that lands the player back on OpenRouter.
+
+    Why flags and conditionalFileInstalls rather than files on each option: a later page can
+    send a player back to OpenRouter after the first page chose Claude, and two options that
+    both drop an AiNpcInstallPreset.reds would leave which one wins to copy order. So the
+    pages only set a flag, and one block at the bottom turns the final flag into files.
+    Exactly one preset is installed, whatever path was taken through the pages. The page
+    order matters for the same reason: the warning and the Claude instructions come before
+    the OpenRouter instructions, so a player who declines still gets the page they need.
+
+    Vortex renders these descriptions as PLAIN TEXT: measured in its own bundle, the panel
+    is a react-bootstrap ControlLabel holding the raw string, so there is no markup, no
+    BBCode, and no clickable link. Every url here is therefore short enough to retype, and
+    every one of them is repeated in "AI NPC - read me.txt", which lands in the game folder
+    and can be copied from. The panel does scroll, so a description may run long, and blank
+    lines are what makes it readable.
+
+    Two things about that panel were measured from a screenshot on 2026-08-25, and both are
+    invisible from this file:
+
+    NEVER HARD WRAP A DESCRIPTION. The panel is about 61 characters wide, and it wraps by
+    itself. A source line broken at 90 columns is therefore rewrapped at 61 and its remainder
+    lands on a line of its own, which renders as a ragged accordion of half empty lines. One
+    paragraph is ONE line here, however long, with a blank line between paragraphs.
+
+    About nine lines fit before it scrolls, which is the real budget: 61 characters times nine.
+    Past that the last paragraph is under the fold, where a reader who has already decided will
+    never go. So what the player most needs goes first, and what must survive an unread panel
+    goes in the option's NAME, which sits in the always visible list on the left.
+
+    Instruction pages may overflow: somebody following steps will scroll. A WARNING may not,
+    which is why the one on the second page is written to nine lines exactly.
+
+    The panel also sits in the BOTTOM half of the right hand column, because InstallerDialog
+    lays that column out as two flex children, renderImage() above and the description below.
+    They split the height whether or not there is an image, and this installer declares none,
+    so the top half is simply empty. Adding a moduleImage would cost the description nothing.
+
+    Three questions were asked here and are not any more:
+
+    Framework mods. Nexus lists requirements on the mod page and Vortex acts on that list,
+    which is where a dependency belongs. A FOMOD check would have been worse than nothing:
+    Vortex evaluates file dependencies against what it believes is deployed, and a false
+    negative there does not warn, it REFUSES the install.
+
+    The CET window. Nobody has a reason to decline it: it is where the API key is entered and
+    tested, and where a lost conversation history is repaired. Without CET installed the
+    folder is simply never read, so it costs an unwilling player nothing.
+
+    The bridge plugin. Shipping it only on the Claude route was considered and rejected on
+    2026-08-27: r6\scripts\ai_npc\AiNpcCliNative.reds declares the native class it registers,
+    so the two are one artefact, and splitting them would mean a second redscript module, a
+    guard on the Mod Settings field, and TWO compile configurations to check at every change.
+    The DLL is inert for a player on OpenRouter, since nothing calls it while that provider
+    is selected. See requiredInstallFiles below for what happens when it is absent.
+
+    An XML comment cannot contain a double dash, which is why this block is punctuated
+    differently from every other comment in this repo. It is not a style rule: Vortex
+    parses this file before it copies anything, and one double dash in a comment aborts
+    the whole install with "Invalid installer script" and no files written. Measured
+    2026-08-23, on the comment right below this one. tools\lint.ps1 now parses both
+    fomod XML files, and tools\package.ps1 parses the copy it puts in the zip.
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="http://qconsulting.ca/fo3/ModConfig5.0.xsd">
+
+    <moduleName>AI NPC</moduleName>
+
+    <!--
+        The mod, the window it is configured from, and the instructions.
+
+        r6\ is the mod itself, bin\ is the CET window that asks for the API key, archive\ is
+        the AGENT LINK icon on a terminal (one file, inert without BrowserExtension), and
+        guide\ is the read me that lands next to REDprelauncher.exe. That last one installs
+        for everybody on purpose: the installer screen cannot be reopened, so the durable
+        copy of these instructions has to be a file, and a player who needs it is a player
+        who has already closed this window.
+
+        red4ext\ is here rather than on the developer lane's option, and this is NOT a
+        convenience. r6\scripts\ai_npc\AiNpcCliNative.reds declares a native class,
+        unconditionally, for every player. RED4ext validates the compiled script blob against
+        the registered RTTI after every plugin has loaded, and a declared native class that no
+        plugin registered is refused with "Script validation error: Missing native class", at
+        which point the GAME does not start, not merely this mod. Measured 2026-08-24, and
+        written at the top of that file. So the DLL that registers it has to travel with the
+        scripts that declare it, on every route through this installer, or an OpenRouter
+        player is handed a game that will not launch.
+    -->
+    <requiredInstallFiles>
+        <folder source="r6" destination="r6" priority="0"/>
+        <folder source="bin" destination="bin" priority="0"/>
+        <folder source="archive" destination="archive" priority="0"/>
+        <folder source="guide" destination="" priority="0"/>
+        <folder source="red4ext" destination="red4ext" priority="0"/>
+    </requiredInstallFiles>
+
+    <installSteps order="Explicit">
+
+        <installStep name="Are you here to play, or to write an add on?">
+            <optionalFileGroups order="Explicit">
+                <group name="Player, or add on author" type="SelectExactlyOne">
+                    <plugins order="Explicit">
+
+                        <plugin name="I am here to play">
+                            <description>
+AI NPC answers you through OpenRouter: one account, one key, and you pay only for what you use. On a good model that is cents a month.
+
+The only lane supported for playing. The next page sets it up.
+
+Needs RedHttpClient 0.7.1 or newer: github.com/rayshader/cp2077-red-httpclient
+                            </description>
+                            <conditionFlags>
+                                <flag name="PROVIDER">OpenRouter</flag>
+                            </conditionFlags>
+                            <typeDescriptor>
+                                <type name="Recommended"/>
+                            </typeDescriptor>
+                        </plugin>
+
+                        <plugin name="I am writing an add on for AI NPC">
+                            <description>
+A workbench, not a way to play. It runs Claude Code on your own machine, under your own subscription, so somebody writing characters or add ons can test them against a real model without paying per message.
+
+The next page says what you accept by using it, and it must be answered.
+
+Here to play? Take the option above.
+                            </description>
+                            <conditionFlags>
+                                <flag name="PROVIDER">Claude</flag>
+                            </conditionFlags>
+                            <typeDescriptor>
+                                <type name="Optional"/>
+                            </typeDescriptor>
+                        </plugin>
+
+                    </plugins>
+                </group>
+            </optionalFileGroups>
+        </installStep>
+
+        <!--
+            The warning, and nothing else on this page.
+
+            The safe answer is first and preselected, so continuing on the developer lane is
+            a deliberate act and the way out is one click. Both options set the flag, which
+            is what lets the way out be real: declining rewrites PROVIDER to OpenRouter, the
+            Claude instructions page below goes invisible, and the OpenRouter one appears.
+
+            Nine rendered lines, counted against the 61 character panel. Do not add a
+            paragraph here without taking one away.
+        -->
+        <installStep name="What you accept">
+            <visible>
+                <flagDependency flag="PROVIDER" value="Claude"/>
+            </visible>
+            <optionalFileGroups order="Explicit">
+                <group name="Do you accept these conditions?" type="SelectExactlyOne">
+                    <plugins order="Explicit">
+
+                        <plugin name="No. I am here to play: use OpenRouter">
+                            <description>
+The right answer if you are not writing an add on. This switches your install to OpenRouter, the supported lane, and the next page sets it up.
+
+One account at openrouter.ai, a key from openrouter.ai/keys, cents a month on a good model, and nothing about your account at risk.
+                            </description>
+                            <conditionFlags>
+                                <flag name="PROVIDER">OpenRouter</flag>
+                            </conditionFlags>
+                            <typeDescriptor>
+                                <type name="Recommended"/>
+                            </typeDescriptor>
+                        </plugin>
+
+                        <plugin name="Yes: I am writing an add on, and I will not play on my subscription">
+                            <description>
+Claude Pro and Max are sold for ordinary individual use of a coding agent, and Anthropic states that its limits assume exactly that. Playing a game through one is not that: your account can be limited or suspended without warning.
+
+The authors of this mod take no responsibility for use of your subscription that breaks your agreement with your provider.
+
+Terms: anthropic.com/legal/consumer-terms
+                            </description>
+                            <conditionFlags>
+                                <flag name="PROVIDER">Claude</flag>
+                            </conditionFlags>
+                            <typeDescriptor>
+                                <type name="Optional"/>
+                            </typeDescriptor>
+                        </plugin>
+
+                    </plugins>
+                </group>
+            </optionalFileGroups>
+        </installStep>
+
+        <!--
+            Instructions only, one per lane, and a FOMOD has no page without a question: the
+            single option is Required, so it renders as a locked tick beside the text. It
+            restates the flag it was reached by, which changes nothing and means no route
+            through these pages can arrive at the bottom of this file without one.
+
+            The sign in is the only thing no installer can do for the player, and the only
+            thing this mod deliberately does not do for them either. The plugin spawns the
+            published binary and asks it whether it is signed in (ClaudeCli::AuthCommandLine);
+            it reads no credential file, keeps no token and forwards nothing. Saying so here
+            is not reassurance, it is the reason the lane is allowed to exist.
+        -->
+        <installStep name="Claude setup">
+            <visible>
+                <flagDependency flag="PROVIDER" value="Claude"/>
+            </visible>
+            <optionalFileGroups order="Explicit">
+                <group name="What you have to do" type="SelectAll">
+                    <plugins order="Explicit">
+
+                        <plugin name="Install Claude Code, then sign in with your own account">
+                            <description>
+Needs a paid plan, Claude Pro or Claude Max. A free Claude account will not work.
+
+1. Install Claude for Windows from claude.com/download, then open it and sign in with the account that carries your subscription.
+
+2. Start the game, open the CET overlay, tab AI NPC, tab Setup. It says whether Claude was found and whether you are signed in, and Test sends one real message.
+
+Your sign in stays yours. The mod runs the Claude program as Anthropic publishes it and asks it whether you are signed in. It never reads, stores or sends a credential or a session token, and there is nothing to paste here.
+
+If the Setup tab says Claude was not found, paste the full path to claude.exe in its Command field. Both steps and that path are in "AI NPC - read me.txt", which lands in your Cyberpunk 2077 folder, where the links can be copied instead of retyped.
+                            </description>
+                            <conditionFlags>
+                                <flag name="PROVIDER">Claude</flag>
+                            </conditionFlags>
+                            <typeDescriptor>
+                                <type name="Required"/>
+                            </typeDescriptor>
+                        </plugin>
+
+                    </plugins>
+                </group>
+            </optionalFileGroups>
+        </installStep>
+
+        <installStep name="OpenRouter setup">
+            <visible>
+                <flagDependency flag="PROVIDER" value="OpenRouter"/>
+            </visible>
+            <optionalFileGroups order="Explicit">
+                <group name="What you have to do" type="SelectAll">
+                    <plugins order="Explicit">
+
+                        <plugin name="Create your key, and paste it in the CET overlay">
+                            <description>
+1. Make an account at openrouter.ai and put a few dollars of credit on it. Normal play costs cents a month on a good model.
+
+2. Create a key at openrouter.ai/keys and copy it.
+
+3. Start the game, open the CET overlay, tab AI NPC, tab Setup. Paste the key there and press Test, which sends one real message.
+
+This lane needs the RedHttpClient mod, version 0.7.1 or newer: github.com/rayshader/cp2077-red-httpclient
+
+Everything here is repeated in "AI NPC - read me.txt", which lands in your Cyberpunk 2077 folder, where the links can be copied instead of retyped. The model, the language and the rest are in Mod Settings, and none of it is permanent.
+                            </description>
+                            <conditionFlags>
+                                <flag name="PROVIDER">OpenRouter</flag>
+                            </conditionFlags>
+                            <typeDescriptor>
+                                <type name="Required"/>
+                            </typeDescriptor>
+                        </plugin>
+
+                    </plugins>
+                </group>
+
+                <!--
+                    THE ONE QUESTION MOD SETTINGS CANNOT ASK. Everything else about a model is
+                    changeable in game, in a menu the player reaches in ten seconds. This is not:
+                    the first message goes out before anybody has opened that menu, and a first
+                    message that answers 429 reads as a broken install.
+
+                    Three answers because there are three prices, and the middle one is five
+                    times cheaper than the top one, a gap wide enough that picking for the
+                    player would be picking their budget. The numbers come from
+                    docs\MODEL_BENCH.md and are stated per month, at two hours of play a day,
+                    because that is the unit a player can weigh.
+                -->
+                <group name="Which model should it start on?" type="SelectExactlyOne">
+                    <plugins order="Explicit">
+
+                        <plugin name="Free -- google/gemma-4-31b-it:free">
+                            <description>
+Costs nothing, and good enough to see what the mod is.
+
+What you give up is not quality, it is availability: free models are a pool shared with everyone, and when it is busy the answer is "rate-limited". Measured on 2026-08-28, this one answered 46 requests out of 54 that way. Expect a conversation to stop mid-evening.
+
+Its ability to close an appointment has never been measured. Pick this to try the mod, not to play it.
+
+This choice also starts with "Characters may write first" off: a message a character sends on its own spends a request nobody typed, and on a saturated pool that request comes back refused, so the popup simply never arrives. Mod Settings &gt; AI NPC &gt; Budget turns it back on.
+                            </description>
+                            <conditionFlags>
+                                <flag name="OPENROUTER_MODEL">Free</flag>
+                            </conditionFlags>
+                            <typeDescriptor>
+                                <type name="Optional"/>
+                            </typeDescriptor>
+                        </plugin>
+
+                        <plugin name="~0.55 $/month -- qwen/qwen3-235b-a22b-2507">
+                            <description>
+The cheapest model that does the whole job. About 0.55 $/month at two hours of play a day, on your own OpenRouter credit.
+
+It takes 18 appointments out of 20 on real recorded conversations, with no mechanical defect over 54 replies, and it answers in about 2.7 seconds.
+
+One reservation, and it decides between this line and the next: it ignores the Normal explicitness tier. Leave the mod on its top tier and it behaves; set the tier down and it will not hold it.
+                            </description>
+                            <conditionFlags>
+                                <flag name="OPENROUTER_MODEL">Cheapest</flag>
+                            </conditionFlags>
+                            <typeDescriptor>
+                                <type name="Recommended"/>
+                            </typeDescriptor>
+                        </plugin>
+
+                        <plugin name="~2.56 $/month -- meta-llama/llama-4-maverick">
+                            <description>
+The same job with no reservation. About 2.56 $/month at two hours of play a day.
+
+It takes every appointment, 20 out of 20, it is the fastest measured at 2.0 seconds, and it is the only model that holds the Normal explicitness tier -- one explicit reply out of 24 where the line above gives 23.
+
+Five times the price of the line above, for the tier and the two appointments. Pick this if you intend to use the tiers.
+                            </description>
+                            <conditionFlags>
+                                <flag name="OPENROUTER_MODEL">Tiers</flag>
+                            </conditionFlags>
+                            <typeDescriptor>
+                                <type name="Optional"/>
+                            </typeDescriptor>
+                        </plugin>
+
+                    </plugins>
+                </group>
+            </optionalFileGroups>
+        </installStep>
+
+    </installSteps>
+
+    <!--
+        One preset, whatever route the player took through the pages above.
+    -->
+    <conditionalFileInstalls>
+        <patterns>
+
+            <pattern>
+                <dependencies operator="And">
+                    <flagDependency flag="PROVIDER" value="OpenRouter"/>
+                    <flagDependency flag="OPENROUTER_MODEL" value="Free"/>
+                </dependencies>
+                <files>
+                    <folder source="presets\OpenRouter-Free" destination="" priority="10"/>
+                </files>
+            </pattern>
+
+            <pattern>
+                <dependencies operator="And">
+                    <flagDependency flag="PROVIDER" value="OpenRouter"/>
+                    <flagDependency flag="OPENROUTER_MODEL" value="Cheapest"/>
+                </dependencies>
+                <files>
+                    <folder source="presets\OpenRouter-Cheapest" destination="" priority="10"/>
+                </files>
+            </pattern>
+
+            <pattern>
+                <dependencies operator="And">
+                    <flagDependency flag="PROVIDER" value="OpenRouter"/>
+                    <flagDependency flag="OPENROUTER_MODEL" value="Tiers"/>
+                </dependencies>
+                <files>
+                    <folder source="presets\OpenRouter-Tiers" destination="" priority="10"/>
+                </files>
+            </pattern>
+
+            <pattern>
+                <dependencies operator="And">
+                    <flagDependency flag="PROVIDER" value="Claude"/>
+                </dependencies>
+                <files>
+                    <folder source="presets\ClaudeCli" destination="" priority="10"/>
+                </files>
+            </pattern>
+
+        </patterns>
+    </conditionalFileInstalls>
+
+</config>

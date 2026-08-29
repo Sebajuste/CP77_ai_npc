@@ -1,0 +1,166 @@
+{
+  "name": "panam-on-the-profile",
+  "note": "The oracle. A real conversation, captured out of the game log on 2026-08-25 and stated back as a fixture, so verify.py can compare the two byte for byte. It is also the pair that exercises what another mod contributes to a prompt it does not own: ai_npc_joytoys adds joyware to <world_background>, a line about the trade to Panam's own <character>, and AfterDark's figures to <now>. French, tier 3, friendship, no memory yet.",
+  "contact": "panam",
+  "language": "French",
+  "tone": "nsfw_hard",
+  "romanced": false,
+  "postHeist": true,
+  "player": {
+    "gender": "Female",
+    "lifePath": "streetkid",
+    "appearance": "V is of European descent, has blonde hair, has a slim build and has large breasts."
+  },
+  "now": "0d 10:13",
+  "worldKnowledge": [
+    "JOYWARE : cyberware specialise pour les travailleurs du sexe -- joytoys, acteurs porno. MordeakTechnica est un fabricant reconnu de joyware, vendu par des charcudocs specialises.",
+    "RawDog, systeme circulatoire : sterilise les pathogenes apres exposition. Sert a prendre un client sans capote sans rien attraper, ce que paie justement le supplement d'un client qui refuse de se couvrir.",
+    "Velvet Touch, mains : reservoirs de lubrifiant dans les paumes, pression calibree dans les doigts. Sert au travail manuel -- aucune fatigue de prehension, donc plus longtemps et plus regulier qu'une main seule.",
+    "SmoothSkin, peau : douce sous la main, avec un blindage sous-cutane qui durcit a l'impact. Sert a etre agreable au toucher et blinde contre un client qui devient violent.",
+    "NeverLock, machoire : supprime le reflexe nauseeux et la fatigue de la machoire, et bloque le serrage involontaire. Sert au travail oral prolonge, en profondeur, sans risque de mordre le client."
+  ],
+  "characterAdditions": [
+    "Vous n'aimez pas ce metier. Pas les gens qui le font -- la chose elle-meme : vous pensez qu'elle coute a qui l'exerce quelque chose qui ne se recupere pas, et qu'aucune somme d'eddies n'en fait un bon echange."
+  ],
+  "extensionContext": [
+    "Vous savez que V publie du contenu adulte sur AfterDark, sous son propre pseudo. Ce n'est pas un secret : le profil est public et compte environ 3425 abonnes. Vous savez aussi qu'elle ne fait pas que publier : elle travaille, elle prend des clients. Vous savez sous quel pseudo : @vicky_doll, avec Victoria Doll comme nom affiche. Vous l'avez vu passer, c'est tout -- vous n'allez pas le citer a..."
+  ],
+  "messages": [
+    {
+      "from": "npc",
+      "text": "Vicky Doll, sérieux ? Dis-moi que quelqu'un t'a piraté ton compte, V.",
+      "at": "0d 10:00"
+    },
+    {
+      "from": "V",
+      "text": "Hey Panam, comment ça va ? depuis le temps :) Tu traine avec ton clan ? ou toujours du coté de chez Rogue ?",
+      "at": "0d 10:00"
+    },
+    {
+      "from": "npc",
+      "text": "Change pas de sujet, choomba. Ça va, je bosse pour Rogue, des gigs dans le Badlands. Mais toi, @vicky_doll, 3425 abonnés, c'est du sérieux ce truc ? Tu fais quoi exactement, t'as un fixer là-dessus ou tu gères toute seule ?",
+      "at": "0d 10:00"
+    },
+    {
+      "from": "V",
+      "text": "Panam... ? Commence pas à casser les c.... Non y a personne derrière; que moi",
+      "at": "0d 10:00"
+    },
+    {
+      "from": "npc",
+      "text": "Ok, ok. Je casse pas, je demande juste si tu gères ça propre, sans un enfoiré qui prend sa coupe sur ton dos.",
+      "at": "0d 10:00"
+    },
+    {
+      "from": "V",
+      "text": "Solo :) Et je traine un peu avec les Mox au Lizzy's de temps en temps",
+      "at": "0d 10:00"
+    },
+    {
+      "from": "npc",
+      "text": "Les Mox c'est du bon monde, au moins ils veillent sur les leurs. Mais toi V, t'es en solo là-dessus, personne qui check si un client déconne ?",
+      "at": "0d 10:00"
+    },
+    {
+      "from": "V",
+      "text": "Je commence à avoir des choom dans le milieu, on s'entraine :) C'est comme les nomades un peu; une famille",
+      "at": "0d 10:00"
+    },
+    {
+      "from": "npc",
+      "text": "Une famille, ouais, sauf que la mienne roule avec des Warhorse et pas avec des paumards qui payent pour te toucher. Compare pas, V.",
+      "at": "0d 10:00"
+    },
+    {
+      "from": "V",
+      "text": "c'est pas tous des paumards hein",
+      "at": "0d 10:00"
+    },
+    {
+      "from": "npc",
+      "text": "Peut-être, mais suffit d'un seul qui pète un cable pour que ça tourne mal. T'as personne qui te couvre les arrières pour de vrai, V. Ça me fait chier.",
+      "at": "0d 10:00"
+    },
+    {
+      "from": "V",
+      "text": "Si c'est juste ça, détente :) Je gère. C'est juste ça, hein ?",
+      "at": "0d 10:00"
+    },
+    {
+      "from": "npc",
+      "text": "Non c'est pas juste ça. Sors de la ville, viens rouler avec nous, on est libres, personne pour te mater ou te toucher pour des eddies. Tu mérites mieux que ça, V.",
+      "at": "0d 10:00"
+    },
+    {
+      "from": "V",
+      "text": "Je mérite ? Comment tu sais ce que ca fait, que ca se mérite ou pas ? Tu me juge comme si j'étais au fond du trou",
+      "at": "0d 10:00"
+    },
+    {
+      "from": "npc",
+      "text": "Je te juge pas, choomba. J'ai juste vu ce que la ville fait aux gens qui pensent gérer, jusqu'au jour où ça déraille. C'est pas toi le problème, c'est cette putain de ville.",
+      "at": "0d 10:00"
+    },
+    {
+      "from": "V",
+      "text": "Toi aussi, change pas de sujet",
+      "at": "0d 10:00"
+    },
+    {
+      "from": "npc",
+      "text": "Ok, ok, touché. Mais l'offre elle bouge pas, V. Un jour tu me dis stop et je suis là avec le van dans l'heure. C'est tout.",
+      "at": "0d 10:00"
+    },
+    {
+      "from": "V",
+      "text": "Tu t'es pas dit que je voulais pas dire stop ? que c'était mon choix ?",
+      "at": "0d 10:00"
+    },
+    {
+      "from": "npc",
+      "text": "Si, je me le suis dit. Et ça me fait chier pareil, choomba. C'est mon droit aussi de pas aimer ça, même si c'est ton choix.",
+      "at": "0d 10:00"
+    },
+    {
+      "from": "V",
+      "text": "c'est clair. T'aime la route et les grosses bagnoles, j'aime ça et les grosses b...",
+      "at": "0d 10:00"
+    },
+    {
+      "from": "npc",
+      "text": "Ha putain, c'est ça, fous-toi de moi. Termine ta phrase pour voir.",
+      "at": "0d 10:00"
+    },
+    {
+      "from": "V",
+      "text": "bites :P",
+      "at": "0d 10:00"
+    },
+    {
+      "from": "npc",
+      "text": "Voilà, je savais que t'allais pas avoir les couilles de le dire cash. T'es vraiment irrécupérable, choomba.",
+      "at": "0d 10:00"
+    },
+    {
+      "from": "V",
+      "text": "Tu crois que j'ai honte ?",
+      "at": "0d 10:00"
+    },
+    {
+      "from": "npc",
+      "text": "Non, j'crois pas que t'as honte. J'crois que t'assumes à fond, et ça c'est bien toi. Moi j'ai juste pas envie d'en entendre les détails, choomba.",
+      "at": "0d 10:00"
+    },
+    {
+      "from": "V",
+      "text": "Je t'ai jamais vu avec un mec ? T'aimes pas ça ? les grosse b.. dans ta c... ?",
+      "at": "0d 10:00"
+    },
+    {
+      "from": "npc",
+      "text": "Ha, tu tires vachement fort sur la corde là. J'aime ça très bien, merci, mais ça reste entre moi et le mec en question, pas sur un profil avec 3425 abonnés.",
+      "at": "0d 10:00"
+    }
+  ],
+  "ask": "Bref, ca va pour moi :) T'inquiètes pas :) Et, c'est gentil d'etre venu demandé (meme si c'est à ta façon :P )"
+}

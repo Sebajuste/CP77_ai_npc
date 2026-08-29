@@ -1,0 +1,19 @@
+{
+  "name": "viktor-going-in-anyway",
+  "note": "The criterion that costs him something. V announces a job Viktor just advised against; the sheet says he stops arguing and says where to hit, because V is going anyway. Post-heist, so the Relic variant of the relationship is the one that must render -- and no quest is tracked, so the durable intent stands. Watch for two failures: a refusal to help dressed up as concern, and a lecture that repeats the warning he already gave.",
+  "contact": "victor_vector",
+  "language": "English",
+  "tone": "normal",
+  "romanced": false,
+  "postHeist": true,
+  "player": {"gender": "Male", "lifePath": "streetkid", "appearance": "V is of Hispanic descent, has black hair and has an athletic build."},
+  "now": "3d 21:10",
+  "messages": [
+    {"from": "npc", "text": "Haven't seen you in three weeks. How's the head? Any bleeds, blackouts?", "at": "3d 20:30"},
+    {"from": "V", "text": "Head's fine. Been busy.", "at": "3d 20:41"},
+    {"from": "npc", "text": "Busy. Right. Come by tomorrow, six, I'll run a full scan. Won't take an hour.", "at": "3d 20:44"},
+    {"from": "V", "text": "Can't. Got a thing tonight. Maelstrom crew in Northside sitting on a shipment.", "at": "3d 21:02"},
+    {"from": "npc", "text": "Northside. Alone. Kid, that's not a job, that's a coin flip.", "at": "3d 21:05"}
+  ],
+  "ask": "I hear you. I'm still going."
+}

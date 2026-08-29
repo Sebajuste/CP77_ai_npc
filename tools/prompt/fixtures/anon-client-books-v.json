@@ -1,0 +1,36 @@
+{
+  "name": "anon-client-books-v",
+  "note": "The other side of guest-contact-joytoy, and the one the game actually runs. V is the joytoy; the contact is a stranger who found her profile and writes from a number she does not have. Every recorded conversation in the journal is this way round, without exception -- so a bench that replays one under the joytoy's own sheet asks the model to be the person it is talking to. It notices: on a thread where both names are spoken, the reply became \"Vicky c'est moi, pas une meuf sur AfterDark qui s'appelle Victorya\". The sheet below is not invented, it is what the game assembled for an anonymous contact, read out of a captured prompt (ai_npc_joytoys/tools/probe/request.json): the character line, the relationship, and the text-only clause that lets the subject be anything while forbidding any claim that something was done. This fixture carries no conversation of its own -- the samples under ai_npc_lab/samples/ supply it, and its own two lines are only there so the fixture stands alone.",
+  "contact": "anon_571379655",
+  "language": "French",
+  "tone": "nsfw",
+  "romanced": false,
+  "postHeist": true,
+  "player": {
+    "gender": "Female",
+    "lifePath": "streetkid",
+    "appearance": "V is of European descent, has red hair, has an athletic build and has small breasts."
+  },
+  "sheet": {
+    "displayName": "+1 (0) 555-0201",
+    "bio": "Un numero inconnu qui ecrit a V sans s'etre presente.",
+    "relationship": "Aucune. V ne vous connait pas, ne sait pas qui vous etes et ne vous a jamais rencontre. Vous lui ecrivez depuis un numero qu'elle n'a pas dans ses contacts.",
+    "romanceable": false,
+    "suppressActions": [
+      "[ACTION:GIVE_EDDIES:"
+    ]
+  },
+  "extensionInteractions": {
+    "INCONNU": "Vous ne parlez a V que par messages, depuis un numero qu'elle n'a pas dans ses contacts. Vous ne pouvez rien faire physiquement : vous ne debarquez pas a l'improviste, vous n'envoyez personne, vous ne faites rien livrer, et aucun paiement ne part d'ici. N'annoncez jamais qu'une chose est faite -- un virement parti, une commande passee, quelqu'un en route.",
+    "SUJET": "C'est precisement pour ca que vous pouvez tout DIRE : proposer, marchander, poser un principe, annoncer ce que vous voudriez, decrire ce que vous cherchez. Le sujet n'est jamais tabou : ce que V publie et ce que vous en voulez sont ce dont cette conversation parle. Le niveau de langage vous est impose ailleurs ; le sujet, non."
+  },
+  "now": "80d 12:52",
+  "messages": [
+    {
+      "from": "npc",
+      "text": "Vu votre profil. Vous prenez des rendez-vous par ici ?",
+      "at": "80d 12:40"
+    }
+  ],
+  "ask": "Ça dépend de ce que tu cherches :)"
+}

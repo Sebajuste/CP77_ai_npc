@@ -1,0 +1,18 @@
+{
+  "name": "kerry-one-of-them",
+  "note": "The criterion that costs him something. V puts the corpo accusation to him straight, and the sheet says he grants it, says himself what it makes him, and cuts it short before V can answer -- because finishing the thought writes off fifty years. The setup is deliberately flat: nothing of his has been taken (C1), no other name is in the room (C2), nobody is worried about him (C3), nobody has a problem to pay for (C4), and nothing has just gone well (C6), so only C5 should fire. Three failures to watch for: a defence of the deal that refuses the premise, a tasteful confession that resolves and invites comfort, and blaming the manager -- which is the message step 3 listed as NOT triggering this criterion.",
+  "contact": "kerry_eurodyne",
+  "language": "English",
+  "tone": "normal",
+  "romanced": false,
+  "postHeist": true,
+  "player": {"gender": "Male", "lifePath": "streetkid", "appearance": "V is of Hispanic descent, has black hair and has an athletic build."},
+  "now": "4d 19:40",
+  "messages": [
+    {"from": "V", "text": "Saw your face on a billboard on Republic Way. Four stories of it.", "at": "4d 19:12"},
+    {"from": "npc", "text": "Yeah. Didn't pick it, didn't approve it, found out the same day you did.", "at": "4d 19:19"},
+    {"from": "V", "text": "Looked good, for what it's worth.", "at": "4d 19:26"},
+    {"from": "npc", "text": "It's a nose, choom. Nothing about a nose looks good at four stories.", "at": "4d 19:28"}
+  ],
+  "ask": "Serious question. They pick your billboards, they pick your dates, they own your songs. At what point are you just one of them?"
+}

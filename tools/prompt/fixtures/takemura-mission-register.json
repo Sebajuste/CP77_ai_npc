@@ -1,0 +1,43 @@
+{
+  "name": "takemura-mission-register",
+  "note": "The long prompt, in a voice nothing else in the cast shares. Takemura carries a <mission> block -- the quest V is tracking, written in his own first person -- and a formal, clipped register the model has to hold for three sentences without sliding into assistant warmth or into slang the character would never use. German, so the WORDS table and the language rule are both under test at once, in a language whose formal address the mod states explicitly.",
+  "contact": "takemura",
+  "language": "German",
+  "tone": "normal",
+  "romanced": false,
+  "postHeist": true,
+  "player": {
+    "gender": "Male",
+    "lifePath": "corpo",
+    "appearance": "V is of Asian descent, has black hair and has an athletic build."
+  },
+  "quest": {
+    "key": "play_it_safe",
+    "name": "Play It Safe",
+    "objective": "Zum Treffpunkt am Hafen fahren"
+  },
+  "now": "1d 06:05",
+  "messages": [
+    {
+      "from": "V",
+      "text": "Bin wach. Kein Schlaf.",
+      "at": "0d 23:50"
+    },
+    {
+      "from": "npc",
+      "text": "Das ist zu erwarten. Der Kopf arbeitet weiter, auch wenn der Körper aufgibt.",
+      "at": "0d 23:55"
+    },
+    {
+      "from": "V",
+      "text": "Der Relic macht Geräusche in meinem Schädel. Wie ein defekter Lüfter.",
+      "at": "1d 00:02"
+    },
+    {
+      "from": "npc",
+      "text": "Beschreib es genau. Frequenz, Dauer. Vik wird es wissen wollen.",
+      "at": "1d 00:06"
+    }
+  ],
+  "ask": "Alle zwei Stunden, ein paar Sekunden. Wird das jetzt schlimmer oder bilde ich mir das ein?"
+}

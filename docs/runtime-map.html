@@ -1,0 +1,1266 @@
+<title>ai_npc Runtime Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<style>
+:root {
+  --ground:      #F1F2F4;
+  --paper:       #FBFBFC;
+  --ink:         #15181C;
+  --ink-soft:    #545C65;
+  --ink-faint:   #7C858F;
+  --rule:        #D5D9DE;
+  --rule-soft:   #E4E7EA;
+  --accent:      #9E6208;
+  --accent-mark: #E8A33A;
+  --alarm:       #9C3524;
+  --alarm-soft:  #F0E0DC;
+  --ok:          #3D6B4A;
+  --ok-soft:     #E0EAE2;
+
+  --sheet:       #FBFBF8;
+  --sheet-edge:  #DCDCD6;
+
+  --measure: 68ch;
+  --wide: 62rem;
+}
+
+:root:not([data-theme="light"]) {
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground:    #131619;
+    --paper:     #1A1E22;
+    --ink:       #E7E9EB;
+    --ink-soft:  #9BA3AC;
+    --ink-faint: #78818B;
+    --rule:      #2B3137;
+    --rule-soft: #23282D;
+    --accent:      #E3A845;
+    --accent-mark: #C98A28;
+    --alarm:       #E28873;
+    --alarm-soft:  #35211D;
+    --ok:          #8FBF9C;
+    --ok-soft:     #1D2A21;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --ground:    #131619;
+  --paper:     #1A1E22;
+  --ink:       #E7E9EB;
+  --ink-soft:  #9BA3AC;
+  --ink-faint: #78818B;
+  --rule:      #2B3137;
+  --rule-soft: #23282D;
+  --accent:      #E3A845;
+  --accent-mark: #C98A28;
+  --alarm:       #E28873;
+  --alarm-soft:  #35211D;
+  --ok:          #8FBF9C;
+  --ok-soft:     #1D2A21;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+/* The base sits on :root, not on body. Every size on this page is in rem, and rem resolves
+   against the ROOT element -- so a base declared on body left the whole secondary scale
+   (tables, code, the rail, captions, chips) rendering against the browser's 16px instead of
+   this one, about a fifth smaller than every number here reads. */
+:root { font-size: 19px; }
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: "Newsreader", Georgia, "Times New Roman", serif;
+  line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+}
+
+.page {
+  display: grid;
+  grid-template-columns: 1fr;
+  max-width: 78rem;
+  margin: 0 auto;
+  padding: 0 1.5rem 6rem;
+}
+
+@media (min-width: 68rem) {
+  .page { grid-template-columns: 14rem minmax(0, 1fr); gap: 0 3.5rem; }
+}
+
+/* ── masthead ─────────────────────────────────────────── */
+
+.masthead {
+  grid-column: 1 / -1;
+  border-bottom: 2px solid var(--ink);
+  padding: 3.5rem 0 1.75rem;
+  margin-bottom: 3rem;
+}
+
+.eyebrow {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0 0 1.1rem;
+}
+
+.masthead h1 {
+  font-family: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  font-weight: 700;
+  font-size: clamp(2.4rem, 6vw, 3.9rem);
+  line-height: 0.98;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+  margin: 0 0 1.1rem;
+}
+
+.masthead h1 .mono {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-weight: 600;
+  font-size: 0.86em;
+  letter-spacing: -0.03em;
+}
+
+.standfirst {
+  max-width: 46ch;
+  font-size: 1.16rem;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+.masthead-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 2rem;
+  margin-top: 1.8rem;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/* ── contents rail ────────────────────────────────────── */
+
+.rail { display: none; }
+
+@media (min-width: 68rem) {
+  .rail {
+    display: block;
+    grid-column: 1;
+    align-self: start;
+    position: sticky;
+    top: 2rem;
+    padding-bottom: 3rem;
+  }
+}
+
+.rail-title {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.66rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  padding-bottom: 0.7rem;
+  border-bottom: 1px solid var(--rule);
+  margin: 0 0 0.85rem;
+}
+
+.rail ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.52rem;
+  counter-reset: rail;
+}
+
+.rail a {
+  display: grid;
+  grid-template-columns: 1.6rem 1fr;
+  gap: 0.35rem;
+  font-family: "Archivo", Arial, sans-serif;
+  font-size: 0.83rem;
+  line-height: 1.3;
+  color: var(--ink-soft);
+  text-decoration: none;
+  border-radius: 2px;
+}
+
+.rail a::before {
+  counter-increment: rail;
+  content: counter(rail);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.72rem;
+  color: var(--ink-faint);
+}
+
+.rail a:hover { color: var(--accent); }
+.rail a:hover::before { color: var(--accent); }
+
+a:focus-visible,
+.rail a:focus-visible {
+  outline: 2px solid var(--accent-mark);
+  outline-offset: 3px;
+}
+
+/* ── main flow ────────────────────────────────────────── */
+
+.flow {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 4.25rem;
+  min-width: 0;
+}
+
+@media (min-width: 68rem) {
+  .flow { grid-column: 2; }
+}
+
+section { min-width: 0; }
+
+.sec-head {
+  display: grid;
+  grid-template-columns: 2.6rem minmax(0, 1fr);
+  align-items: baseline;
+  gap: 0.5rem;
+  border-top: 1px solid var(--ink);
+  padding-top: 1rem;
+  margin-bottom: 1.6rem;
+}
+
+.sec-num {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 0.03em;
+}
+
+.sec-head h2 {
+  font-family: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  font-weight: 600;
+  font-size: clamp(1.5rem, 3.2vw, 2rem);
+  line-height: 1.08;
+  letter-spacing: -0.018em;
+  text-wrap: balance;
+  margin: 0;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+  max-width: var(--measure);
+}
+
+.body p { margin: 0; }
+
+.body h3 {
+  font-family: "Archivo", Arial, sans-serif;
+  font-weight: 600;
+  font-size: 1.02rem;
+  letter-spacing: 0.005em;
+  margin: 1.1rem 0 -0.25rem;
+}
+
+strong { font-weight: 500; color: var(--ink); }
+.body strong { font-weight: 500; }
+
+em { font-style: italic; }
+
+code {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.83em;
+  background: var(--rule-soft);
+  padding: 0.08em 0.34em;
+  border-radius: 3px;
+  color: var(--ink);
+}
+
+ul.notes {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+ul.notes > li {
+  padding-left: 1.25rem;
+  position: relative;
+}
+
+ul.notes > li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.72em;
+  width: 0.55rem;
+  height: 1px;
+  background: var(--accent-mark);
+}
+
+/* ── the pulled-out claim ─────────────────────────────── */
+
+.claim {
+  max-width: var(--measure);
+  border-left: 3px solid var(--accent-mark);
+  padding: 0.2rem 0 0.2rem 1.15rem;
+  font-size: 1.08rem;
+  color: var(--ink);
+}
+
+.claim p { margin: 0; }
+.claim p + p { margin-top: 0.7rem; }
+
+/* ── diagram sheets: always paper, in either theme ────── */
+
+figure.sheet {
+  margin: 0.6rem 0;
+  max-width: var(--wide);
+  background: var(--sheet);
+  border: 1px solid var(--sheet-edge);
+  border-radius: 2px;
+  padding: 1.5rem 1.25rem 1.1rem;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.04);
+}
+
+figure.sheet .canvas {
+  overflow-x: auto;
+  padding-bottom: 0.4rem;
+}
+
+figure.sheet .mermaid {
+  margin: 0;
+  min-width: 30rem;
+}
+
+figure.sheet figcaption {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: #6C726B;
+  border-top: 1px solid var(--sheet-edge);
+  margin-top: 1rem;
+  padding-top: 0.7rem;
+}
+
+figure.sheet figcaption b {
+  color: #8A6108;
+  font-weight: 600;
+}
+
+/* ── tables ───────────────────────────────────────────── */
+
+.table-wrap {
+  max-width: var(--wide);
+  overflow-x: auto;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  background: var(--paper);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: "Archivo", Arial, sans-serif;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  min-width: 34rem;
+}
+
+thead th {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  text-align: left;
+  padding: 0.75rem 0.95rem;
+  border-bottom: 1px solid var(--rule);
+  white-space: nowrap;
+}
+
+tbody td {
+  padding: 0.68rem 0.95rem;
+  border-bottom: 1px solid var(--rule-soft);
+  vertical-align: top;
+  color: var(--ink-soft);
+}
+
+tbody tr:last-child td { border-bottom: 0; }
+
+tbody td:first-child { color: var(--ink); }
+
+td.num, th.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  white-space: nowrap;
+}
+
+td code, th code { background: transparent; padding: 0; }
+
+/* ── cost bars ────────────────────────────────────────── */
+
+.bar {
+  display: block;
+  height: 6px;
+  background: var(--accent-mark);
+  border-radius: 1px;
+  min-width: 2px;
+}
+
+td.barcell { width: 34%; padding-top: 1rem; }
+
+/* ── holder chips (invariants) ────────────────────────── */
+
+.chip {
+  display: inline-block;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.63rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.45rem;
+  border-radius: 2px;
+  white-space: nowrap;
+}
+
+.chip.weak { background: var(--alarm-soft); color: var(--alarm); }
+.chip.held { background: var(--ok-soft);    color: var(--ok); }
+
+tr.weak td:first-child {
+  box-shadow: inset 3px 0 0 var(--alarm);
+  padding-left: 0.8rem;
+}
+
+/* ── the routing table at the top ─────────────────────── */
+
+.routes {
+  max-width: var(--wide);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 1px;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+}
+
+.route {
+  background: var(--paper);
+  padding: 0.95rem 1.05rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.route .want {
+  font-family: "Archivo", Arial, sans-serif;
+  font-size: 0.86rem;
+  line-height: 1.35;
+  color: var(--ink);
+}
+
+.route .goto {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.7rem;
+  color: var(--accent);
+  letter-spacing: 0.01em;
+}
+
+/* ── constraint list ──────────────────────────────────── */
+
+.constraints {
+  max-width: var(--wide);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+  gap: 1.5rem 2rem;
+  counter-reset: cx;
+}
+
+.constraints li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  border-top: 1px solid var(--rule);
+  padding-top: 0.75rem;
+}
+
+.constraints li::before {
+  counter-increment: cx;
+  content: counter(cx, decimal-leading-zero);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+}
+
+.constraints b {
+  font-family: "Archivo", Arial, sans-serif;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--ink);
+}
+
+.constraints span {
+  font-size: 0.94rem;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+
+/* ── warning block ────────────────────────────────────── */
+
+.warn {
+  max-width: var(--measure);
+  background: var(--alarm-soft);
+  border-left: 3px solid var(--alarm);
+  padding: 1rem 1.15rem;
+  font-size: 0.98rem;
+}
+
+.warn p { margin: 0; }
+.warn p + p { margin-top: 0.6rem; }
+
+.warn.closed {
+  background: var(--ok-soft);
+  border-left-color: var(--ok);
+}
+
+.warn.closed .label { color: var(--ok); }
+
+.warn .label {
+  display: block;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.64rem;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--alarm);
+  margin-bottom: 0.45rem;
+}
+
+/* ── colophon ─────────────────────────────────────────── */
+
+.colophon {
+  grid-column: 1 / -1;
+  max-width: var(--wide);
+  margin-top: 4.5rem;
+  border-top: 2px solid var(--ink);
+  padding-top: 1.1rem;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  color: var(--ink-faint);
+  line-height: 1.7;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+</style>
+
+<div class="page">
+
+  <header class="masthead">
+    <p class="eyebrow">Cyberpunk 2077 &middot; MIT &middot; Contributor documentation</p>
+    <h1><span class="mono">ai_npc</span> Runtime Map</h1>
+    <p class="standfirst">Which piece lives in which process, on which thread, and what survives what. The layer that is true <em>between</em> files, and therefore written in none of them.</p>
+    <div class="masthead-meta">
+      <span>17 318 SLOC redscript</span>
+      <span>2 409 SLOC C++</span>
+      <span>4 lanes &middot; 2 transports</span>
+      <span>Checked 2026-08-28</span>
+    </div>
+  </header>
+
+  <nav class="rail" aria-label="Contents">
+    <p class="rail-title">Contents</p>
+    <ol>
+      <li><a href="#s1">The four constraints</a></li>
+      <li><a href="#s2">Where the pieces live</a></li>
+      <li><a href="#s3">The lanes</a></li>
+      <li><a href="#s4">Two transports, one dialect</a></li>
+      <li><a href="#s5">Where state lives</a></li>
+      <li><a href="#s6">The prompt</a></li>
+      <li><a href="#s7">How another mod joins in</a></li>
+      <li><a href="#s8">Invariants the compiler can't see</a></li>
+      <li><a href="#s9">Building and proving</a></li>
+      <li><a href="#s10">Licence and edges</a></li>
+    </ol>
+  </nav>
+
+  <main class="flow">
+
+    <section id="s0">
+      <div class="body">
+        <p>This is not a summary of the other documents. <code>README.md</code> already lists every file and what it holds; <code>docs/API.md</code> is the integration contract; <code>VIEW_ARCHITECTURE.md</code>, <code>MEMORY.md</code> and <code>PROMPT_BUDGET.md</code> each own a subsystem. This page routes to them and does not repeat them.</p>
+      </div>
+      <div class="routes" style="margin-top:1.5rem">
+        <div class="route"><span class="want">Give one of my contacts an AI voice, or extend a vanilla one</span><span class="goto">docs/API.md</span></div>
+        <div class="route"><span class="want">Know what a particular file does</span><span class="goto">README.md &rarr; file map</span></div>
+        <div class="route"><span class="want">Understand the chat surfaces and their rules</span><span class="goto">docs/VIEW_ARCHITECTURE.md</span></div>
+        <div class="route"><span class="want">Understand what a character remembers</span><span class="goto">docs/MEMORY.md</span></div>
+        <div class="route"><span class="want">Change the prompt, and know what it costs</span><span class="goto">docs/PROMPT_BUDGET.md</span></div>
+        <div class="route"><span class="want">Write or rewrite a character</span><span class="goto">docs/CHARACTER_RULES.md</span></div>
+        <div class="route"><span class="want">Build and ship</span><span class="goto">README.md &sect; Packaging</span></div>
+        <div class="route"><span class="want">Change the runtime</span><span class="goto">this page, then the file map</span></div>
+      </div>
+    </section>
+
+    <section id="s1">
+      <div class="sec-head"><span class="sec-num">01</span><h2>The four constraints that shape everything</h2></div>
+      <div class="body">
+        <p>Nearly every decision below is a consequence of one of these. Read them first and most of the ceremony stops looking like ceremony.</p>
+      </div>
+      <ol class="constraints" style="margin-top:1.6rem">
+        <li><b>REDscript cannot start a process.</b><span>Reaching a command-line tool needs native code. That is the whole reason <code>ai_npc.dll</code> exists.</span></li>
+        <li><b>Nothing may block the game thread.</b><span>A generation takes seconds, and seconds on the game thread is a frozen game. So every request is asynchronous — and every asynchronous request needs an answer to &ldquo;what if it never comes back&rdquo;.</span></li>
+        <li><b>REDscript has no try/catch.</b><span>There is no containment. Code that can fail must be written so that it cannot, or must check before it acts.</span></li>
+        <li><b>The mod does not own the widget tree it paints on.</b><span>The engine builds and replaces the phone UI whenever it likes. A handle held across that is a handle into nothing.</span></li>
+      </ol>
+      <div class="claim" style="margin-top:2rem">
+        <p>A fifth, softer one runs through all of it: <strong>a player pays for every token</strong>, on a metered key or against a subscription's fair use. Cost is a design constraint here, not an afterthought.</p>
+      </div>
+    </section>
+
+    <section id="s2">
+      <div class="sec-head"><span class="sec-num">02</span><h2>Where the pieces live</h2></div>
+      <div class="body">
+        <p>Four address spaces. The two crossings drawn thick are the ones where a mistake is silent rather than loud.</p>
+      </div>
+
+      <figure class="sheet">
+        <div class="canvas">
+<pre class="mermaid">
+%%{init: {"theme":"neutral", "flowchart": {"useMaxWidth": false}, "themeVariables": {"fontSize": "17px"}}}%%
+flowchart TB
+    subgraph GAME["Cyberpunk 2077 process"]
+      subgraph GT["game thread"]
+        VM["REDscript VM<br/>src/r6/scripts/ai_npc"]
+        TICK["OnUpdate tick<br/>ScriptApi.cpp"]
+      end
+      subgraph WT["plugin worker thread"]
+        WORKER["job queue and worker"]
+        BACKEND["backend<br/>ClaudeCli / CodexCli"]
+      end
+      HTTP["RedHttpClient<br/>its own threads"]
+    end
+    subgraph CHILD["child process, one per request"]
+      CLI["claude.exe / codex.exe<br/>and whatever it spawns"]
+    end
+    CLOUD["OpenRouter over https"]
+
+    VM -- "AiNpcCli.Send" --> WORKER
+    WORKER --> BACKEND
+    BACKEND -- "CreateProcess, 3 pipes" --> CLI
+    CLI -- "stdout JSON" --> BACKEND
+    BACKEND --> WORKER
+    WORKER -- "answer queue" --> TICK
+    TICK == "AiNpcCliDeliver" ==> VM
+    VM -- "AsyncHttpClient.Post" --> HTTP
+    HTTP <--> CLOUD
+    HTTP == "callback: target + method" ==> VM
+</pre>
+        </div>
+        <figcaption>Fig. 1 &nbsp;&mdash;&nbsp; <b>Thick edges are hand-kept contracts.</b> Everything else the compiler checks.</figcaption>
+      </figure>
+
+      <div class="body">
+        <p><code>AiNpcCliDeliver</code> is a plain REDscript global function whose signature is agreed by hand with <code>ScriptApi.cpp</code>. If the two ever disagree, nothing raises an error — the answer simply never arrives, and the lane's watchdog reports it as a provider that never replied.</p>
+        <ul class="notes">
+          <li><strong>The answer is delivered on the game thread, never on the worker.</strong> Calling into the script VM from another thread corrupts it. RED4ext's <code>Running</code> game state gives a per-frame tick on the right thread, and that tick drains the answer queue.</li>
+          <li><strong><code>OnUpdate</code> must return <code>false</code>.</strong> The SDK documents its result as ignored. It is not: <code>true</code> means &ldquo;this state is done, do not call me again&rdquo;, the tick fires once, and every request completes with status 200 while no answer ever reaches script.</li>
+          <li><strong>The child is put in a job object before it is resumed</strong>, so what it spawns dies with it — and in a <em>second</em>, per-request job as well, because the npm <code>.cmd</code> shim can exit while the node process it started still holds our pipe open.</li>
+        </ul>
+      </div>
+
+      <div class="body" style="margin-top:2rem">
+        <h3>Inside one CLI request</h3>
+        <p>Three flows have to move at once or the child deadlocks: it can block writing a large reply into a full stdout pipe while we block writing its stdin.</p>
+      </div>
+
+      <figure class="sheet">
+        <div class="canvas">
+<pre class="mermaid">
+%%{init: {"theme":"neutral", "flowchart": {"useMaxWidth": false}, "themeVariables": {"fontSize": "17px"}}}%%
+flowchart LR
+    W["worker thread"] --> SPAWN["CreateProcess<br/>SUSPENDED, no window<br/>scrubbed environment"]
+    SPAWN --> JOB["assign to both jobs<br/>then ResumeThread"]
+    JOB --> T1["thread: stdin<br/>close = end of input"]
+    JOB --> T2["thread: stderr"]
+    JOB --> T3["this thread: stdout<br/>capped at 8 MB"]
+    JOB --> WAIT["WaitForSingleObject<br/>180 s"]
+    WAIT -- "timeout" --> KILL["TerminateProcess, by PID"]
+    WAIT -- "exited" --> CODE["read exit code"]
+    KILL --> CLOSE["terminate the request job<br/>pipes break, readers return"]
+    CODE --> CLOSE
+    T1 --> JOIN["join all three"]
+    T2 --> JOIN
+    T3 --> JOIN
+    CLOSE --> JOIN
+    JOIN --> INT["backend.Interpret"]
+</pre>
+        </div>
+        <figcaption>Fig. 2 &nbsp;&mdash;&nbsp; <b>The wait comes before the joins, and that ordering is the timeout.</b></figcaption>
+      </figure>
+
+      <div class="body">
+        <p>Reading on the worker thread instead would make the budget unenforceable: a child that hangs without writing leaves <code>ReadFile</code> blocked with no reader left to watch the clock.</p>
+        <p><strong>The environment is scrubbed.</strong> <code>ANTHROPIC_API_KEY</code>, <code>OPENAI_API_KEY</code> and a dozen relatives are removed before the child starts. An inherited key does not fail — it works, produces identical replies, and bills per token for what the player's subscription already covers, which is the opposite of what these lanes promise.</p>
+      </div>
+    </section>
+
+    <section id="s3">
+      <div class="sec-head"><span class="sec-num">03</span><h2>The lanes</h2></div>
+      <div class="body">
+        <p>A <strong>lane</strong> is one place that sends a request. There are four, and they are separate because each has its own counter, its own clock and its own re-entry point. The lane is encoded in the request id itself — <code>laneCode &times; 1 000 000 + serial</code> — so nothing has to be remembered between the send and the answer, and there is no registry to fall out of step with.</p>
+      </div>
+
+      <div class="table-wrap" style="margin-top:1.4rem">
+        <table>
+          <thead><tr><th>Lane</th><th class="num">Code</th><th>What it does</th><th>Where the answer re-enters</th></tr></thead>
+          <tbody>
+            <tr><td>speaking</td><td class="num">1</td><td>the reply the player is waiting for</td><td>the chat bubble</td></tr>
+            <tr><td>repair</td><td class="num">2</td><td>a second request inside one turn, when a command came back malformed</td><td>the same bubble, corrected</td></tr>
+            <tr><td>thinking</td><td class="num">3</td><td>compacts old messages into memory, invisibly</td><td>the memory block — no UI</td></tr>
+            <tr><td>test</td><td class="num">4</td><td>the setup window's connection test</td><td>the setup window</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="claim" style="margin-top:1.6rem">
+        <p>The serial is what makes a <strong>late</strong> answer harmless. A request that timed out is not cancelled — the process is still running and the plugin will still deliver — but by then the lane has moved on, and the stale answer is dropped instead of being written into a conversation that has had three messages since.</p>
+      </div>
+
+      <figure class="sheet">
+        <div class="canvas">
+<pre class="mermaid">
+%%{init: {"theme":"neutral", "sequence": {"useMaxWidth": false}, "themeVariables": {"fontSize": "17px"}}}%%
+sequenceDiagram
+    participant P as Player
+    participant V as chat view
+    participant L as speaking lane
+    participant W as watchdog
+    participant T as transport
+    participant M as thinking lane
+
+    P->>V: types, Enter
+    V->>L: TriggerPostRequest
+    L->>L: daily token budget left?
+    alt spent
+        L-->>V: the character says the budget is gone
+    else left
+        L->>L: a scripted answer for this? no request if so
+        L->>L: build system prompt and transcript
+        L->>W: Arm - 90 s cloud, 240 s CLI
+        L->>T: send
+        alt an answer comes back
+            T-->>L: status and body
+            L->>W: Disarm
+            L->>V: typing indicator, then the bubble
+            L->>M: NotifyTurnComplete
+        else nothing comes back
+            W-->>L: the wait expired
+            L->>V: the carrier could not deliver
+        else a typed failure
+            T-->>L: 401 / 502 / 503 / 504 and a message
+            L->>V: the carrier could not deliver
+        end
+    end
+</pre>
+        </div>
+        <figcaption>Fig. 3 &nbsp;&mdash;&nbsp; One turn. <b>The failure edges are the design</b>, not an appendix to it.</figcaption>
+      </figure>
+
+      <div class="body">
+        <ul class="notes">
+          <li><strong>A refusal, an expiry and a typed error all end the turn in the same shape</strong>, and the player is told by a character rather than by a HUD banner.</li>
+          <li><strong>The watchdog exists because a request can simply never end.</strong> RedHttpClient reports an answer and nothing else; a connection that dies mid-flight produces no callback at all. Since a <code>DelaySystem</code> callback cannot be cancelled, a wait is never cancelled either — it is <em>renamed</em>. Every wait gets a number, every timer carries the number it was armed for, and a timer whose number is no longer current has nothing to report.</li>
+          <li><strong>The thinking lane is triggered by the end of a turn</strong> (or by a conversation opening), never by a timer, and it shares no state with the speaking lane — deliberately, because routing it through that lane would grey out the player's input while nothing is being said to them.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="s4">
+      <div class="sec-head"><span class="sec-num">04</span><h2>Two transports, one dialect</h2></div>
+      <div class="body">
+        <p>The mod builds <strong>one</strong> request body and parses <strong>one</strong> response shape, whatever the provider. The plugin speaks OpenAI <code>chat/completions</code> in both directions — not because it talks to OpenAI, but so the script side keeps a single builder and a single parser.</p>
+      </div>
+
+      <figure class="sheet">
+        <div class="canvas">
+<pre class="mermaid">
+%%{init: {"theme":"neutral", "flowchart": {"useMaxWidth": false}, "themeVariables": {"fontSize": "17px"}}}%%
+flowchart LR
+    B["AiNpcLlmChatBody<br/>OpenAI chat/completions"] --> SW{"provider"}
+    SW -- "OpenRouter" --> H["RedHttpClient POST https"]
+    SW -- "ClaudeCli / CodexCli" --> N["AiNpcCli.Send"]
+    N --> PB["ParseChatBody<br/>system and user kept apart"]
+    PB --> CL["command line and stdin<br/>per backend"]
+    CL --> OUT["the CLI's own JSON"]
+    OUT --> IN["Interpret"]
+    IN --> R["MakeChatResponse<br/>or Failure with a message"]
+    H --> RESP["the provider's JSON"]
+    R --> ONE["one parser<br/>AiNpcReply"]
+    RESP --> ONE
+</pre>
+        </div>
+        <figcaption>Fig. 4 &nbsp;&mdash;&nbsp; <b>A CLI that is not signed in reaches the player through the same lines of REDscript as an OpenRouter 401.</b></figcaption>
+      </figure>
+
+      <div class="body">
+        <p>A typed failure travels as a non-200 with <code>{"error":{"message":…}}</code> — the shape the script side already reads — down to the sentence in the bubble.</p>
+        <p><strong>System and user stay apart all the way down.</strong> Claude takes <code>--system-prompt-file</code>; Codex has no system prompt and must fold the block into its input. Where that block goes decides the instruction hierarchy the safe-for-work tier depends on, so it is a per-backend decision and must not be pre-concatenated in script.</p>
+      </div>
+
+      <div class="table-wrap" style="margin-top:1.4rem">
+        <table>
+          <thead><tr><th></th><th>OpenRouter</th><th>Claude CLI</th><th>Codex CLI</th></tr></thead>
+          <tbody>
+            <tr><td>Needs</td><td>an API key</td><td>the CLI, signed in</td><td>the CLI, signed in</td></tr>
+            <tr><td>Ships in the zip</td><td>nothing extra</td><td><code>ai_npc.dll</code></td><td><code>ai_npc.dll</code></td></tr>
+            <tr><td>Billing</td><td>metered, per token</td><td>the player's subscription</td><td>the player's subscription</td></tr>
+            <tr><td>Script timeout</td><td class="num">90 s</td><td class="num">240 s</td><td class="num">240 s</td></tr>
+            <tr><td>Real deadline</td><td>the provider's</td><td class="num">180 s, in the plugin</td><td class="num">180 s, in the plugin</td></tr>
+            <tr><td>Auth check</td><td>credential shape, in script</td><td><code>auth status</code>, once a session</td><td>once a session</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="body" style="margin-top:1.2rem">
+        <p>The 240 s on a CLI lane is a <strong>backstop, not a deadline</strong>: the plugin runs the shorter clock and answers with a typed &ldquo;timed out&rdquo; the player can act on. The script clock only fires when the plugin itself never answers.</p>
+        <p><strong>The plugin knows about CLI backends only.</strong> It must never learn what OpenRouter is — a &ldquo;provider&rdquo; abstraction spanning both layers would be owned by neither.</p>
+      </div>
+    </section>
+
+    <section id="s5">
+      <div class="sec-head"><span class="sec-num">05</span><h2>Where state lives, and what it survives</h2></div>
+      <div class="body">
+        <p>The most useful picture here, because it is legible in no source file: the same conversation exists in three places with three different lifetimes.</p>
+      </div>
+
+      <figure class="sheet">
+        <div class="canvas">
+<pre class="mermaid">
+%%{init: {"theme":"neutral", "flowchart": {"useMaxWidth": false}, "themeVariables": {"fontSize": "17px"}}}%%
+flowchart TB
+    subgraph SAVE["the savegame - survives everything"]
+      BR["m_branchId : Int32"]
+      SQ["m_seq : Int32"]
+      IB["m_importedBranch / m_importedSeq"]
+    end
+    subgraph DISK["r6/storages/AiNpc - survives a reload, not managed by Vortex"]
+      J["journal.branch.jsonl<br/>append-only, one op per line"]
+      IX["journal.index.json"]
+      S["settings.json"]
+      U["usage.json - the daily token ledger"]
+      C["config-report.json"]
+    end
+    subgraph LIVE["memory - dies with the session"]
+      SESS["AiNpcChatSession<br/>a contact id and two flags"]
+      REND["AiNpcPhoneChatRenderer<br/>every widget handle in the mod"]
+      LANE["the lane's turn state"]
+    end
+    BR --> J
+    SQ --> J
+    J --> SESS
+    SESS -.-> REND
+    REND -.->|"rebuilt whenever the phone HUD is"| REND
+</pre>
+        </div>
+        <figcaption>Fig. 5 &nbsp;&mdash;&nbsp; <b>The savegame holds a pointer, not the conversation.</b></figcaption>
+      </figure>
+
+      <div class="body">
+        <p>Two integers: which branch file, and how far into it this save had read. The conversation itself is an append-only journal of operations on disk. That is what makes reloading an earlier save coherent — the pointer replays to the right position, and the next message <strong>forks</strong> a new branch rather than overwriting what the abandoned future wrote. Nothing on disk is ever rewritten.</p>
+        <p><strong>The renderer is rebuilt; the session is not.</strong> That asymmetry is the whole of the view design. A renderer holds weak references into a tree the game owns and replaces; a session holds a contact id and two flags and holds no widget at all. So the chat survives a HUD rebuild instead of quietly painting into a tree nobody is looking at.</p>
+        <p><code>r6/storages/</code> is <strong>not</strong> managed by Vortex. Unlike <code>r6/scripts/</code>, whose files are hard links into the Vortex staging folder, this directory is the mod's own — safe to read and write directly, and where every report and log the mod produces lands.</p>
+      </div>
+
+      <div class="warn" style="margin-top:1.4rem">
+        <span class="label">One mod, one storage</span>
+        <p><code>FileSystem.GetStorage("AiNpc")</code> is a claim of ownership, not an accessor. A second mod calling the same name has the storage <strong>permanently revoked for both, for the rest of the session</strong> — and the only trace is <code>red4ext/logs/redfilesystem-*.log</code>.</p>
+        <p>The mod opens it once, in a service, and hands the handle around. A companion mod must borrow that handle, never claim the name.</p>
+      </div>
+    </section>
+
+    <section id="s6">
+      <div class="sec-head"><span class="sec-num">06</span><h2>The prompt</h2></div>
+      <div class="body">
+        <p>One call assembles every block, in this order. A block with nothing to say emits nothing at all — no empty tag.</p>
+      </div>
+
+      <figure class="sheet">
+        <div class="canvas">
+<pre class="mermaid">
+%%{init: {"theme":"neutral", "flowchart": {"useMaxWidth": false}, "themeVariables": {"fontSize": "17px"}}}%%
+flowchart TB
+    A["system = fiction + system_rules"] --> B["explicitness - the tier the player consented to"]
+    B --> C["character - sheet plus what extensions add"]
+    C --> D["player - who V is"]
+    D --> E["relationship"]
+    E --> F["interactions - what may reach V, and how"]
+    F --> G["world_background, holding world_lore"]
+    G --> H["mechanics - how the world works"]
+    H --> H2["commands - what this contact may do"]
+    H2 --> I["memory - what this character remembers"]
+    I --> J["intent - hers, plus what extensions add"]
+    J --> K["mission - quest state"]
+    K --> L["now - clock, weather, world events, live context"]
+    L --> M["explicitness - the closing reminder"]
+    M --> N["the transcript"]
+</pre>
+        </div>
+        <figcaption>Fig. 6 &nbsp;&mdash;&nbsp; Assembly order. <b>Volatile blocks go last</b>, so the stable head stays cacheable.</figcaption>
+      </figure>
+
+      <div class="body" style="margin-top:2rem">
+        <h3>Two of those blocks are composed, not written</h3>
+        <p><code>system_rules</code> and <code>interactions</code> are <strong>lists of keyed rubrics in a fixed order</strong>, not paragraphs. A provider, a <code>characters.*.json</code> file or an extension contributes <em>by key</em>: a known key replaces that rubric in place, an unknown one is appended. Nothing can drop the block, reorder it, or wrap it.</p>
+      </div>
+
+      <figure class="sheet">
+        <div class="canvas">
+<pre class="mermaid">
+%%{init: {"theme":"neutral", "flowchart": {"useMaxWidth": false}, "themeVariables": {"fontSize": "17px"}}}%%
+flowchart LR
+    CORE["ai_npc's own rubrics<br/>in their fixed order"] --> M{"merge by key"}
+    SHEET["the character sheet"] --> M
+    JSON["prompts.json /<br/>characters.*.json"] --> M
+    EXT["extensions:<br/>GetRuleContributions"] --> M
+    M -->|"known key"| REPL["replaces that rubric in place"]
+    M -->|"unknown key"| APP["appended, before LENGTH"]
+    M -->|"locked key"| REF["refused, with the reason logged"]
+    REPL --> OUT["the rendered block"]
+    APP --> OUT
+</pre>
+        </div>
+        <figcaption>Fig. 7 &nbsp;&mdash;&nbsp; <b>Contribution is by key, never by replacement of the whole block.</b></figcaption>
+      </figure>
+
+      <div class="claim" style="margin-top:1.6rem">
+        <p><strong>Three rubrics are locked in <code>system_rules</code> — FORM, TIME and LENGTH — and one in <code>interactions</code> — PROMISES.</strong> They are not editorial. They describe the surface the reply lands on: one message per turn, no <code>Name:</code> prefix, a length that fits a phone bubble, time markers the mod writes and the model may only read, and a promise to show up that something will actually honour. A contact that wins those breaks the chat for the player, not the characterisation.</p>
+      </div>
+
+      <div class="body" style="margin-top:1.6rem">
+        <p>Everything else is contributable, which is the point: a contact that is not a person needs YOU and SETTING in its own words, and may need rubrics the cast never imagined — the NCPD archive declares NOT JACKIE, SCOPE and REGISTER.</p>
+
+        <h3>What text from outside is allowed to be</h3>
+        <p>Every string reaching the prompt from a provider, a JSON file, an extension or a fact watch passes through one check. <strong>The prompt is a tree of tags this mod writes, and text from anywhere else is a leaf.</strong> A leaf carrying a tag stops being one: measured, a <code>&lt;/character&gt;</code> inside a character addition closes that block and lets what follows open a <code>system_rules</code> of its own, with its own LENGTH, in a position nobody intended. Every locked rubric above is worth exactly as much as this check.</p>
+        <p>It is <strong>not</strong> a ban on <code>&lt;</code> and <code>&gt;</code>. <code>&lt;3</code> is in a shipped speech style and <code>-&gt;</code> is in half the sheets; refusing those would refuse the mod's own text and teach authors to work around the guard. What is refused is a <em>tag</em> — a closing one, or a name between angle brackets.</p>
+      </div>
+
+      <div class="body" style="margin-top:1.6rem">
+        <h3>The bounds</h3>
+        <p>Refused rather than clamped wherever half a sentence would be worse than none.</p>
+      </div>
+
+      <div class="table-wrap" style="margin-top:1rem">
+        <table>
+          <thead><tr><th>What</th><th class="num">Bound</th></tr></thead>
+          <tbody>
+            <tr><td>one replaceable section (a bio, a world background)</td><td class="num">4 000</td></tr>
+            <tr><td>one rubric</td><td class="num">600</td></tr>
+            <tr><td>all rubric contributions to one block</td><td class="num">2 000</td></tr>
+            <tr><td>one <code>now</code> line</td><td class="num">400</td></tr>
+            <tr><td>all of <code>now</code></td><td class="num">1 200</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="body" style="margin-top:1.2rem">
+        <p>Rubrics are bounded tighter than <code>now</code> lines on purpose: a rubric sits in the <strong>cacheable prefix</strong> and is read on every message, where length costs on every request rather than on the ones an event interrupts.</p>
+
+        <h3>Inside <code>now</code>, and the rule that governs it</h3>
+        <p>It carries the clock, a neutral weather line, whatever another mod put on the wire for this contact, and the character's own live context.</p>
+      </div>
+
+      <div class="warn" style="margin-top:1.2rem">
+        <span class="label">Nothing in <code>now</code> may ask for an output</span>
+        <p>A line there lands after <code>mechanics</code> and last but for the closing token, so an instruction placed in it competes with the one the prompt already gave, from a later and more specific position — measured at <strong>5 replies in 6</strong> emitting their action command with no ambient event live, against <strong>1 in 6</strong> with an instruction-bearing one.</p>
+        <p>Context only. Output rules belong in <code>system_rules</code>, stated once for every message.</p>
+      </div>
+
+      <div class="body" style="margin-top:1.4rem">
+        <p>A sentence arriving from a quest-fact watch is framed as <code>[WORLD EVENT: …]</code> rather than inlined. Under the clock, in a prompt where every other line is either the character's own sheet or something V said, a bare sentence reads as V having said it; the frame is what makes it the world reporting instead. The sentence itself is passed through untouched — another mod's author wrote it about their own content, and rewording it here would be a translation layer with nobody to check it.</p>
+
+        <h3>What it costs</h3>
+        <p>The section shares once published here were measured on the <strong>previous</strong> prompt shape and have not been re-measured since the rubric redesign. As an order of magnitude: the two heaviest blocks were the world lore and the rule block at roughly a third each, memory came third, and the commands — the feature anyone would disable first — were under a tenth. <strong>Re-measure before optimising anything.</strong></p>
+        <p>One rule survived the redesign intact: a toggle must remove <em>both</em> the prompt text and the code that reads the answer. Prompt without parser, and the character promises what will never happen; parser without prompt, and it is dead code waiting for a tag nobody was told to write.</p>
+
+        <h3>Placeholders</h3>
+        <p>Fragments are written with <code>{npc}</code>, <code>{they}</code>, <code>{language}</code>, <code>{register}</code> and expanded once, per contact. Substitution is single-pass: a value substituted in is never re-scanned. The values themselves must come from sources that do not expand a template of their own — an invariant still held by comments alone.</p>
+      </div>
+    </section>
+
+    <section id="s7">
+      <div class="sec-head"><span class="sec-num">07</span><h2>How another mod joins in</h2></div>
+      <div class="body">
+        <p><code>docs/API.md</code> is the contract. What belongs here is the one picture it does not draw: what happens when a third-party mod wants a character to <strong>write first</strong>.</p>
+      </div>
+
+      <figure class="sheet">
+        <div class="canvas">
+<pre class="mermaid">
+%%{init: {"theme":"neutral", "sequence": {"useMaxWidth": false}, "themeVariables": {"fontSize": "17px"}}}%%
+sequenceDiagram
+    participant X as another mod
+    participant F as floor registry
+    participant L as speaking lane
+    participant Q as speech queue
+    participant T as the ticket
+
+    X->>L: client.CharacterWantsToSay - contact, reason, intent, policy
+    L->>F: who holds the floor on this contact?
+    alt someone else holds it
+        L->>Q: queue it until the deadline, or
+        L->>T: Refused - the reason names the holder
+    else free
+        L->>L: a generation running? wrote too recently?
+        alt yes
+            L->>Q: queue it, or Failed with the reason
+        else no
+            L->>L: run the speaking lane with this intent
+            L->>T: Done, when the message is delivered
+        end
+    end
+    Note over T: Pending to Done, Failed, Refused or Cancelled
+</pre>
+        </div>
+        <figcaption>Fig. 8 &nbsp;&mdash;&nbsp; <b>A ticket always settles.</b> Refused and Failed are deliberately different.</figcaption>
+      </figure>
+
+      <div class="body">
+        <ul class="notes">
+          <li><strong>The floor</strong> is a lease on a contact — one holder at a time, with an expiry (300 s by default), so a mod that crashes or forgets cannot silence a character for ever.</li>
+          <li><strong>A ticket</strong> is how the asking mod learns what became of its request. <em>Refused</em> means somebody else had the right of way; <em>Failed</em> means it could not be done.</li>
+          <li><strong>Declaring a contact and extending one are different jobs.</strong> One mod may declare a contact; any number may extend one. A vanilla character is already declared — you extend her, because two mods cannot both be right about who she is.</li>
+        </ul>
+
+        <h3>What an extension may put in the prompt</h3>
+        <p>Each hook takes the contact's context, so one extension can answer differently for different characters and different moments. Everything it returns is bounded and checked for markup by the rules in section 6 — an extension cannot enlarge its own budget, and its refusals are logged with its name on them.</p>
+      </div>
+
+      <div class="table-wrap" style="margin-top:1.2rem">
+        <table>
+          <thead><tr><th>Hook</th><th>Lands in</th><th class="num">Bound</th></tr></thead>
+          <tbody>
+            <tr><td><code>GetRuleContributions(block, ctx)</code></td><td><code>system_rules</code> or <code>interactions</code>, by key</td><td class="num">600 / 2 000</td></tr>
+            <tr><td><code>GetIntentAddition(ctx)</code></td><td><code>intent</code>, on its own line under the character's</td><td class="num">400</td></tr>
+            <tr><td><code>GetLiveContextAddition(ctx)</code></td><td><code>now</code></td><td class="num">400 / 1 200</td></tr>
+            <tr><td><code>GetScriptedReply(ctx)</code></td><td>answers instead of the model; no request is sent</td><td class="num">—</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="body" style="margin-top:1.2rem">
+        <p>A locked key is refused, not silently dropped: one sentence explains why, and the config report and the runtime log print the same one.</p>
+        <p>Built-in characters use the same road for their own arcs. A sheet declares arc beats, each becomes a quest-fact watch, and what the watch reports arrives in <code>now</code> framed as a world event — the same shape a third-party mod gets.</p>
+
+        <h3>What a character can <em>do</em></h3>
+        <p>Commands are not on that table, and that is recent. They used to be: an extension declared four methods for them, a provider declared four more under different names, and the built-in eddie transfer skipped both and was parsed in a pass of its own. Three lists claimed to describe one vocabulary, nothing made them agree, and every defect found in that code was a place where they had drifted — a veto called from nowhere, a clamp that told nobody, and one mod whose rendezvous command was claimed correctly and <em>never once advertised</em>, because it had spelled its fragment method the way the other lane spelled it. It compiled, logged nothing, and read in game as a feature nobody had got round to writing.</p>
+        <p>There is now one declaration, and everyone uses it — the mod that declared the character, a mod extending somebody else's, a <code>characters.*.json</code> sheet, and ai_npc itself for the transfer. <code>AddAction</code> takes four things: the <strong>pattern</strong>, the <strong>sentence</strong> that teaches the model when to emit it, the <strong>handler</strong> that runs it, and the <strong>tag</strong> naming who may use it.</p>
+        <p>The pattern is both halves at once. The model reads it; the dispatcher matches against it. A command cannot be advertised without being implemented, nor implemented without being advertised, because there is only one thing to write. Slots — <code>[ACTION:TRICK:{venue}:{hour}:{price}]</code> — fill one colon-separated field each, so the handler is handed three strings, always three, never empty; a tag with the wrong number of fields is a <em>fumble</em> routed to the repair pass, not an index somebody walks off the end of. A trailing slot may be optional, for a command a model writes short when only part of it was agreed.</p>
+      </div>
+
+      <figure class="sheet">
+        <div class="canvas">
+<pre class="mermaid">
+%%{init: {"theme":"neutral", "flowchart": {"useMaxWidth": false}, "themeVariables": {"fontSize": "17px"}}}%%
+flowchart TB
+    A["client.AddAction<br/>pattern - sentence - handler - scope tag"] --> REG[("the registry<br/>every mod's commands, sorted by id")]
+    TAGS["what this contact IS<br/>ainpc:contact - contact:judy - joytoy:client"] --> BUILD
+    REG --> BUILD{"build this contact's table"}
+    SUP["a suppression<br/>removes one command from a tag"] -. "one-way" .-> BUILD
+    BUILD --> TABLE["the claim table"]
+    TABLE -->|"rendered - only what is offered now"| PROMPT["the commands block, in the prompt"]
+    TABLE -->|"indexed - ownership, offered or not"| REPLY["the reply, dispatched"]
+</pre>
+        </div>
+        <figcaption>Fig. 9 &nbsp;&mdash;&nbsp; <b>One table, read twice.</b> The prompt and the dispatch cannot describe different commands, because they are the same object.</figcaption>
+      </figure>
+
+      <div class="body" style="margin-top:1.6rem">
+        <p>A command finds its people by <strong>tag</strong>, never by a list of contact ids. That is what lets a taxi mod with no characters of its own reach an escort another mod minted at runtime, thirty seconds ago, under an id nobody could have written down.</p>
+      </div>
+
+      <div class="table-wrap" style="margin-top:1.2rem">
+        <table>
+          <thead><tr><th>Scope tag</th><th>Who carries it</th><th>Written by</th></tr></thead>
+          <tbody>
+            <tr><td><code>ainpc:contact</code></td><td>every drivable contact — this is how <em>everyone</em> is spelled</td><td>ai_npc, always</td></tr>
+            <tr><td><code>contact:judy</code></td><td>that one character</td><td>ai_npc, always</td></tr>
+            <tr><td><code>joytoy:client</code></td><td>whoever carries it</td><td>a provider, a sheet's <code>tags</code>, or any mod's <code>TagCharacter</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="body" style="margin-top:1.2rem">
+        <ul class="notes">
+          <li><strong>There is no default scope, and no wildcard.</strong> An omission must narrow reach, never widen it: a permissive default is found by the player, in play, on the day the model happens to emit the tag — a refused registration is found by its author immediately. Writing <code>ainpc:contact</code> is a decision, and the load report names every mod that made it.</li>
+          <li><strong>Tags only ever add; suppression only ever removes.</strong> Two levers, one job each, which is what lets a behaviour be read without knowing which mods are installed. A character declared by a JSON file says the same thing as data, through <code>suppressActions</code>.</li>
+          <li><strong>A tag is never omitted in order to remove reach.</strong> If leaving one out could take a character out of somebody's rule, every tag added later would become one more thing every modder must remember to write — and forgetting it would silently break <em>other mods'</em> commands. So the two tags ai_npc grants cannot be written by a mod, and cannot be dropped.</li>
+        </ul>
+      </div>
+
+      <div class="claim" style="margin-top:1.6rem">
+        <p><strong>The offer governs the announcement. The claim governs the strip.</strong> The table is built twice for one turn — once to write the prompt, once to read the reply — and a network round trip sits between them. The world moves inside it: the player edits a config file, the last slot in the diary fills. A claim that has stopped <em>offering</em> its command still <em>owns</em> its tag.</p>
+      </div>
+
+      <figure class="sheet">
+        <div class="canvas">
+<pre class="mermaid">
+%%{init: {"theme":"neutral", "sequence": {"useMaxWidth": false}, "themeVariables": {"fontSize": "17px"}}}%%
+sequenceDiagram
+    participant X as another mod
+    participant T as the claim table
+    participant V as the model
+    participant H as the handler
+
+    X->>T: AddAction, once, at attach
+    Note over T: the turn begins
+    T->>T: build for this contact
+    T->>V: the commands block - only what is offered
+    Note over X,V: the round trip. the world moves here:<br/>a config file is edited, the last slot fills
+    V->>T: the reply, carrying a bracket
+    T->>T: build again - same function, later world
+    Note over T: no longer offered is not no longer owned
+    alt the head matches and the fields are there
+        T->>H: OnAction with the fields
+        H->>T: done, or refused with a note for the character
+        T->>T: strip the tag, whatever the answer
+    else the head matches, the fields do not
+        T->>V: one small repair - the command alone, no persona
+        Note over T: and if repair cannot run, strip it anyway
+    else no head matches
+        T->>T: left in the text - the load report already named it
+    end
+</pre>
+        </div>
+        <figcaption>Fig. 10 &nbsp;&mdash;&nbsp; <b>A command that exists never reaches the player.</b> The one bracket that survives is the one no command matches, and that is a configuration error the report already names.</figcaption>
+      </figure>
+
+      <div class="body" style="margin-top:1.6rem">
+        <p>A refusal is not silent either. The handler answers with a result that may carry a <strong>note</strong>, and the note is handed to the character as something it knows for its next reply — so a transfer cut short by what that character has already released comes back in her own voice, naming the real figure, instead of a promise the player watches go unhonoured. The note is left empty only when the reason is outside the fiction: a character told that a config file changed would invent an explanation for it.</p>
+      </div>
+    </section>
+
+    <section id="s8">
+      <div class="sec-head"><span class="sec-num">08</span><h2>Invariants the compiler cannot see</h2></div>
+      <div class="body">
+        <p>Every line below is a rule whose violation compiles cleanly. Most were learned the expensive way. The last column is the uncomfortable one: it says what actually holds the rule today.</p>
+      </div>
+
+      <div class="table-wrap" style="margin-top:1.4rem">
+        <table>
+          <thead><tr><th>Invariant</th><th>What breaks</th><th>What holds it</th></tr></thead>
+          <tbody>
+            <tr class="weak"><td><code>OnUpdate</code> returns <code>false</code></td><td>every request completes and no answer ever reaches script</td><td><span class="chip weak">a comment</span></td></tr>
+            <tr class="weak"><td>the native surface stays at one class, one function</td><td>each declared native type is one more line in a validation error that <strong>stops the game booting</strong> when the DLL is absent</td><td><span class="chip weak">a comment</span></td></tr>
+            <tr><td>a native class declares an <code>IScriptable</code> parent</td><td>registered without one it is a struct to the RTTI; the script blob is refused and the game does not start</td><td><span class="chip held">PostRegisterTypes</span></td></tr>
+            <tr class="weak"><td><code>AiNpcCliDeliver</code>'s signature matches <code>ScriptApi.cpp</code></td><td>answers silently never arrive; the watchdog blames the provider</td><td><span class="chip weak">nothing</span></td></tr>
+            <tr><td>one mod per RedFileSystem storage name</td><td>the storage is revoked for <strong>both</strong> mods for the session; the only trace is a RedFileSystem log</td><td><span class="chip held">one call, in a service</span></td></tr>
+            <tr class="weak"><td>no stale <code>.reds</code> in the deployed folder</td><td>a duplicate free function compiles with zero warnings, and the last file loaded wins — silently</td><td><span class="chip weak">lint sees the repo, not the game folder</span></td></tr>
+            <tr class="weak"><td>template value sources never expand a template</td><td>unbounded recursion inside prompt construction</td><td><span class="chip weak">a comment</span></td></tr>
+            <tr><td>text from outside the mod carries no tag</td><td>a <code>&lt;/character&gt;</code> closes the block it sits in, and what follows opens a <code>system_rules</code> of its own</td><td><span class="chip held">checked and asserted</span></td></tr>
+            <tr class="weak"><td>a rubric block is rendered under its own tag</td><td>two <code>system_rules</code> in one prompt, and no <code>interactions</code> at all</td><td><span class="chip weak">the renderer, since 28 Aug — nothing checks it</span></td></tr>
+            <tr class="weak"><td>a toggle removes prompt text <em>and</em> the parser</td><td>the character promises what will never happen</td><td><span class="chip weak">convention</span></td></tr>
+            <tr class="weak"><td>every reply handler checks it is still the current one</td><td>a late answer lands in the wrong conversation</td><td><span class="chip weak">the CLI lanes only</span></td></tr>
+            <tr><td>everything shipped lives under <code>src/</code> at its real game path</td><td>the file is in the repo and absent from the zip — or present and never loaded</td><td><span class="chip held">package.ps1 verifies the zip</span></td></tr>
+            <tr><td><code>.reds</code> are UTF-8 without BOM</td><td>PowerShell round-tripping corrupts accents invisibly; the compiler still passes</td><td><span class="chip held">documented, and care</span></td></tr>
+            <tr><td>the conversation store is reached from its own layer</td><td>a second door clears a thread without the rest of what clearing a thread means</td><td><span class="chip held">lint</span></td></tr>
+            <tr><td>a thread is erased through one door</td><td>the character's transfer allowance survives the conversation it belonged to</td><td><span class="chip held">lint</span></td></tr>
+            <tr><td>the speaking lane answers only for the generation</td><td>callers with no request in flight hold the lane to ask it something else</td><td><span class="chip held">lint</span></td></tr>
+            <tr><td>a setting is asked by name, never read off the field</td><td>a call site reads a menu field before the service exists and gets a wrong answer, not a crash</td><td><span class="chip held">lint</span></td></tr>
+            <tr><td>ai_npc contributes through its own client</td><td>the mod that ships the API is the one contributor absent from the API's own diagnostic</td><td><span class="chip held">lint</span></td></tr>
+            <tr><td>everything <code>docs/API.md</code> offers is declared under <code>api/</code></td><td>&ldquo;read one folder to see the contract&rdquo; stops being true, and nothing says so</td><td><span class="chip held">lint</span></td></tr>
+            <tr class="weak"><td>nothing outside <code>api/</code> is exported on purpose</td><td>inside a module <code>public</code> means exported; the surface doubled under a facade meant to bound it</td><td><span class="chip weak">a per-file ratchet, not a target</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="body" style="margin-top:1.4rem">
+        <p>If you add a rule of this kind, add it here. A rule that lives only in the head of whoever wrote it is a rule with a deadline.</p>
+      </div>
+
+      <div class="warn closed" style="margin-top:1.4rem">
+        <span class="label">Closed — the rubric tag, found here 27 Aug</span>
+        <p>The rules renderer hardcoded <code>"&lt;system_rules&gt;"</code> whatever block it was rendering, so the interactions rubrics shipped inside a second <code>system_rules</code> element and <code>interactions</code> never appeared in a real prompt. It now builds the tag from the block name it was given.</p>
+        <p>What found it is still not what would have caught it. The offline prompt builder had always rendered the tag from the block name, and the divergence went unreported for as long as it existed, because the builder re-implements the mod rather than comparing against it. The three tests over the renderer all pass <code>"system_rules"</code>, where the bug was invisible — and all three still do.</p>
+      </div>
+    </section>
+
+    <section id="s9">
+      <div class="sec-head"><span class="sec-num">09</span><h2>Building, and what the checks can prove</h2></div>
+      <div class="body">
+        <p>One path reaches the game. There is no other, and copying by hand into the game folder is not a shortcut — it desynchronises Vortex from what it believes it deployed.</p>
+      </div>
+
+      <figure class="sheet">
+        <div class="canvas">
+<pre class="mermaid">
+%%{init: {"theme":"neutral", "flowchart": {"useMaxWidth": false}, "themeVariables": {"fontSize": "17px"}}}%%
+flowchart LR
+    SRC["src/<br/>the game-folder layout"] --> PKG["tools/package.ps1"]
+    PLG["plugin/build.ps1<br/>ai_npc.dll"] --> PKG
+    ARC["tools/build-archive.ps1<br/>the icon archive"] --> PKG
+    PKG --> Z["dist/ai_npc-version.zip<br/>and dist/ai_npc.zip"]
+    Z --> V["Vortex - Replace"]
+    V --> G["the game"]
+    T["tools/test.ps1"] -.-> LINT["lint.ps1"]
+    T -.-> CC["compile-check.ps1<br/>debug shape and release shape"]
+    T -.-> CPP["plugin/test/run.ps1"]
+    T -.-> PR["tools/prompt<br/>byte-identical prompt check"]
+</pre>
+        </div>
+        <figcaption>Fig. 11 &nbsp;&mdash;&nbsp; The only path to the game, and the checks that run beside it.</figcaption>
+      </figure>
+
+      <div class="body">
+        <p>What <code>package.ps1</code> refuses to ship: a build with no single <code>AiNpcVersion()</code>, a hardcoded API key anywhere under <code>r6/scripts</code>, a FOMOD whose XML does not parse, a FOMOD pointing at a folder the archive does not contain, or a zip missing the icon archive. It checks the <em>staged</em> copy and then re-opens the finished zip — because a file can be at the right path in the repo and absent from what ships.</p>
+      </div>
+
+      <div class="claim" style="margin-top:1.4rem">
+        <p><strong>What none of it can prove is that the mod works.</strong> Nothing in the offline suite launches the game. Runtime assertions exist, but their results are read back from a file, so a green report can be a replay of an older run. Treat &ldquo;offline green&rdquo; and &ldquo;verified in game&rdquo; as two different claims.</p>
+      </div>
+    </section>
+
+    <section id="s10">
+      <div class="sec-head"><span class="sec-num">10</span><h2>Licence, and the edges of what it covers</h2></div>
+      <div class="body">
+        <p>The code in this repository is MIT. Three things that licence does not automatically settle, and that a fork should know.</p>
+        <ul class="notes">
+          <li><strong>The frameworks are not vendored.</strong> RED4ext, redscript, Codeware, RedHttpClient, RedData, RedFileSystem and Mod Settings are installed by the player, each under its own terms; this repository ships none of them. <code>vendor/RED4ext.SDK</code> is a submodule used to build the plugin and carries its own licence.</li>
+          <li><strong>No credentials ship, by construction.</strong> <code>settings.json</code> is created at first run in the player's own storage. The packager scans every <code>.reds</code> for key patterns and refuses to build if it finds one, and the plugin strips provider keys from the child's environment before spawning it.</li>
+          <li><strong>The CLI lanes rest on the player's own account.</strong> The code that drives <code>claude</code> or <code>codex</code> is MIT like the rest, but what those tools do is governed by the player's subscription and that provider's terms — theirs to accept, not this project's to grant. A fork must not ship credentials, and should not present a subscription lane as something the mod provides.</li>
+          <li><strong>Assets are not code.</strong> Anything under <code>src/archive/</code> and <code>source/</code> is game-format content and should be treated separately from the MIT grant when in doubt.</li>
+        </ul>
+      </div>
+    </section>
+
+  </main>
+
+  <p class="colophon">Last checked against the tree on 2026-08-26. If anything here contradicts the code, the code is right and this page is a bug. &nbsp;&middot;&nbsp; Companion documents: README.md, docs/API.md, docs/VIEW_ARCHITECTURE.md, docs/MEMORY.md, docs/PROMPT_BUDGET.md, docs/PLAN_ROBUSTNESS_1_0.md.</p>
+
+</div>

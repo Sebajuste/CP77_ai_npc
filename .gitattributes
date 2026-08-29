@@ -1,0 +1,11 @@
+# Fins de ligne normalisees dans le depot, quelle que soit la config locale.
+* text=auto
+
+# Formats binaires — jamais de normalisation : une substitution CRLF
+# corromprait silencieusement un CR2W ou une image.
+*.png binary
+*.xbm binary
+*.inkatlas binary
+*.archive binary
+*.bin binary
+*.dll binary

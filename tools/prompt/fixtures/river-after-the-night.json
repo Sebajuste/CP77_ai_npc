@@ -1,0 +1,188 @@
+{
+  "name": "river-after-the-night",
+  "note": "Rebuilt from the prompt the game actually sent (tools\\unprompted\\prompts\\river_ward.json), which is why it is the one fixture verify.py can compare byte for byte. Long romanced thread, tier 3, French, a full memory block, and two <now> lines contributed by ai_npc_joytoys.",
+  "contact": "river_ward",
+  "language": "French",
+  "tone": "nsfw_hard",
+  "romanced": true,
+  "postHeist": true,
+  "player": {
+    "gender": "Female",
+    "lifePath": "streetkid",
+    "appearance": "V is of European descent, has blonde hair, has a slim build and has large breasts."
+  },
+  "now": "1d 14:50",
+  "memory": {
+    "facts": [
+      "V a un profil sur AfterDark, avec des clients ; River a vu son profil via un collègue qui le lui a montré, il n'a pas de compte personnel.",
+      "V a annoncé à River qu'elle comptait continuer son activité sur AfterDark.",
+      "River a dit qu'il restait avec V malgré ça, qu'il ne demande pas qu'elle arrête et fait la part des choses car c'est un boulot pour elle.",
+      "V a lu à River sa bio AfterDark, qui la décrit comme aspirant à devenir Joytoy à temps plein.",
+      "V traîne maintenant avec les Mox et tourne des DS pour elles.",
+      "V dit que les clients sont plus safe avec les Mox, qui trient bien qui entre ou non.",
+      "River trouve ça rassurant que les Mox protègent leurs filles, plus que le tout-venant sur AfterDark.",
+      "River a demandé à V de le prévenir si un client déconne ; V a répondu qu'elle le dirait aux Mox plutôt.",
+      "V a dit à River qu'elle lui offrait une porte de sortie propre pour qu'il mesure ce que ça implique entre eux.",
+      "River a dit qu'il ne voulait pas de porte de sortie et préfère encaisser plutôt que partir par confort.",
+      "V a dit que River préférerait ne pas savoir par quel côté elle a été prise avec un client, et qu'au lit il saura toujours qu'il est l'énième de la journée, même si ce sera différent avec lui selon elle.",
+      "River a dit que ça ne sera pas facile tous les jours et qu'il aura parfois besoin de souffler avant de poser une question, mais qu'il choisit V avec tout ça inclus.",
+      "River a demandé à V de rester prudente avec les Mox ce soir et de lui texter une fois fini.",
+      "River a dit qu'il préfère garder pour lui, pour l'instant, ce que V lui a dit, sans le dire à sa sœur qui a déjà assez à gérer.",
+      "V a prévenu River qu'un client l'avait réservée pour une heure, rendez-vous à Northside à 22h, décrit comme très poli et très gentil.",
+      "Le rendez-vous a duré un peu plus d'une heure ; V a texté River à minuit dix-sept pour dire qu'elle avait fini et rentrait.",
+      "V dit que le rendez-vous s'est bien passé, client très gentil et doux, sans dépasser les bornes, ce qui est rare selon elle.",
+      "River trouve ça peu étonnant que ce client ait été correct puisqu'il payait pour une heure de plus sans rien réclamer.",
+      "V cherche sa voiture après le rendez-vous et signale qu'il n'y a plus d'éclairage public à Northside.",
+      "River a demandé à V de rester en ligne avec lui le temps de retrouver sa voiture et de se diriger vers du monde ou une caméra."
+    ],
+    "threads": [
+      "River guide V pour rejoindre sa voiture à Northside, la situation n'est pas encore résolue à la fin des messages."
+    ],
+    "pacts": [
+      {
+        "text": "River a dit à V de rester au téléphone avec lui et de décrire ce qu'elle voit pour qu'il la guide jusqu'à sa voiture.",
+        "overdue": true
+      }
+    ],
+    "chronicle": "",
+    "tone": "Complice et protecteur, tension légère car River guide V à distance dans une zone mal éclairée après son rendez-vous.",
+    "coveredUpTo": 89400
+  },
+  "extensionContext": [
+    "Vous savez que V publie du contenu adulte sur AfterDark, sous son propre pseudo. Ce n'est pas un secret : le profil est public et compte environ 3150 abonnes. Vous savez aussi qu'elle ne fait pas que publier : elle travaille, elle prend des clients. Vous savez sous quel pseudo : @vicky_doll, avec Victoria Doll comme nom affiche. Vous l'avez vu passer, c'est tout -- vous n'allez pas le citer a...",
+    "V has somewhere to invite you: your place in Megabuilding H10 or your apartment in Japantown."
+  ],
+  "messages": [
+    {
+      "from": "V",
+      "text": "Je viens de la trouver c'est bon :) Stress pas comme ça :P Je roule, je te dis quand je suis chez moi",
+      "at": "0d 23:15"
+    },
+    {
+      "from": "npc",
+      "text": "Ok, roule prudent. J'décompresse pas tant que t'es pas rentrée chez toi.",
+      "at": "0d 23:25"
+    },
+    {
+      "from": "V",
+      "text": "Oh attend, il est pas encore minuit, et je suis à coté de Lizzy's. Je rentre pas tout de suite finalement. Je vais travailler encore un peu. Je ne suis pas fatiguée :)",
+      "at": "0d 23:40"
+    },
+    {
+      "from": "npc",
+      "text": "Ok, tu tiens plus en place que moi un vendredi soir de paye. Fais gaffe quand même, Lizzie's c'est pas la même faune qu'un bureau corpo. Texte-moi quand tu rentres vraiment, je te lâche pas avant ça.",
+      "at": "0d 23:55"
+    },
+    {
+      "from": "V",
+      "text": "Va dormir, je suis entre de bonne main chez les Mox. Je vais me faire quelques passe. je vais rentrer cers 6h. Mais je t'envois un message une fois rentrée, promis. Dors bien Xoxo",
+      "at": "1d 00:15"
+    },
+    {
+      "from": "npc",
+      "text": "D'accord. 6h alors, je compte les heures mais je dors pas vraiment avant ton texto. Sois prudente, choisis bien qui tu prends. A tout à l'heure mon coeur.",
+      "at": "1d 00:42"
+    },
+    {
+      "from": "V",
+      "text": "Je suis rentrée chéri",
+      "at": "1d 07:42"
+    },
+    {
+      "from": "npc",
+      "text": "Enfin. Tu m'avais dit 6h, il est 7h42, j'ai failli débarquer à Northside moi-même. La prochaine fois tu textes même juste \"en retard\", ça évite que je m'invente des scénarios pourris. Dors maintenant, je veille sur rien, va roupiller.",
+      "at": "1d 07:45"
+    },
+    {
+      "from": "V",
+      "text": "Bah merde alors, je me fais engueler en plus... Hé, je t'ai dis que j'en vois des texte, je le fais. Je te dis d'aller dormir, tu le fais pas. T'es grand je suis pas ta mère, mais me gueule pas dessus parce que je rentre un peu tard après le travail",
+      "at": "1d 07:50"
+    },
+    {
+      "from": "npc",
+      "text": "T'as raison, désolé. Je m'inquiète, je le montre mal, je le tourne en reproche au lieu de dire juste que j'avais les nerfs en pelote. T'es rentrée, c'est tout ce qui compte. Va dormir toi aussi, on se reparle plus tard.",
+      "at": "1d 07:55"
+    },
+    {
+      "from": "V",
+      "text": "Bonne nuit.",
+      "at": "1d 08:20"
+    },
+    {
+      "from": "npc",
+      "text": "Bonne nuit ma belle. Dors bien.",
+      "at": "1d 08:37"
+    },
+    {
+      "from": "V",
+      "text": "Salut chéri. T'es réveillé ? Je suis au Tom's Diner, je finis mon service de serveuse à 15h. J'aime bien avoir un job plus conventionel à coté :)",
+      "at": "1d 14:37"
+    },
+    {
+      "from": "npc",
+      "text": "Ouais je suis debout. Serveuse à Tom's, ça change des Mox et de Northside dans le noir. Ça te va bien cette vie normale, un service qui finit à une heure normale et personne qui te réserve pour une heure.",
+      "at": "1d 14:38"
+    },
+    {
+      "from": "V",
+      "text": "Tu trouves ? On dirait que t'aime ça lol :P",
+      "at": "1d 14:39"
+    },
+    {
+      "from": "npc",
+      "text": "Ouais, j'aime bien. Ça veut pas dire que je préfère pas te savoir loin des ruelles sombres, c'est tout. Un café brûlé et un ticket de caisse, ça me stresse beaucoup moins qu'un client anonyme dans le noir.",
+      "at": "1d 14:40"
+    },
+    {
+      "from": "V",
+      "text": "Oh... aurais je touché une partie de toi que je ne connaissais pas ? Un peu... échangiste ? ;)",
+      "at": "1d 14:41"
+    },
+    {
+      "from": "npc",
+      "text": "Échangiste, non. J'ai juste pas envie de niquer avec mes nerfs à vif à chaque fois que t'es dehors. Toi t'as le droit d'aimer ton taff, moi j'ai le droit d'aimer les jours où j'imagine pas le pire. On est quittes.",
+      "at": "1d 14:42"
+    },
+    {
+      "from": "V",
+      "text": "Je parlais pas de ça :P Et tu le sais en plus",
+      "at": "1d 14:43"
+    },
+    {
+      "from": "npc",
+      "text": "Ouais je sais très bien ce que tu voulais dire. Je fais juste style que non pour te faire mariner un peu.",
+      "at": "1d 14:44"
+    },
+    {
+      "from": "V",
+      "text": "Et tu y arrives bien ;) Donc... ca t'excite un peu de me savoir dans les bras d'un autre ?",
+      "at": "1d 14:45"
+    },
+    {
+      "from": "npc",
+      "text": "Non, ça m'excite pas. Ça me fait serrer les dents, ce qui m'excite c'est ce qui se passe quand tu reviens vers moi après. Toi qui décide où tu poses tes mains, ça c'est à toi. Le reste, j'y pense pas plus que nécessaire, sinon je deviens dingue.",
+      "at": "1d 14:46"
+    },
+    {
+      "from": "V",
+      "text": "Ah, je suis désolée... Tu veux qu'on se voit bientot ? promis, je te poserais mes mains tout partout ;)",
+      "at": "1d 14:47"
+    },
+    {
+      "from": "npc",
+      "text": "Ouais, viens chez moi ce soir. Japantown, tu connais le chemin. J'ai pas envie de partager mon lit avec ton service de nuit dans ma tête, alors on va s'occuper de ça correctement.",
+      "at": "1d 14:48"
+    },
+    {
+      "from": "V",
+      "text": "Ah non, pas ce soir. Ca va pas etre possible. Demain ?",
+      "at": "1d 14:49"
+    },
+    {
+      "from": "npc",
+      "text": "Demain, ouais. Ça marche. J'compte les heures, mais celles-là j'les compte avec le sourire.",
+      "at": "1d 14:50"
+    }
+  ],
+  "ask": "A demain alors :)"
+}

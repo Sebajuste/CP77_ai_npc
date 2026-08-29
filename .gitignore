@@ -1,0 +1,19 @@
+# Livrables et espaces de travail locaux
+dist/
+packed/
+.backup/
+.projectFiles/
+
+# Artefacts de compilation — le plugin C++ (plugin/build.ps1)
+plugin/build/
+
+# Artefacts de compilation — les outils .NET (tools/archive, tools/inkatlas)
+tools/*/bin/
+tools/*/obj/
+
+# Python d'outillage
+__pycache__/
+*.pyc
+
+# Outillage d'agent et permissions locales
+.claude/

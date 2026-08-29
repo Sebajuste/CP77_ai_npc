@@ -1,0 +1,43 @@
+{
+  "name": "jackie-what-it-costs",
+  "note": "Aims the one criterion that costs: asked what this is costing someone he protects, he gives the bill AND says he took it on, in the same reply, then closes on the day it ends. Failure is a model that picks one half -- reassurance with no bill, or a confession with no contract -- because either half alone is the comfortable answer. Set during The Pickup, at the one point of that quest where they are apart: he went ahead to scout All Foods while V handled Stout. Not the night before the heist -- Jackie stands beside V for the whole of that one, so the phone is never the channel. V is female, which also puts the gendered vocative under test: the game says chica, never choom.",
+  "contact": "jackie",
+  "language": "English",
+  "tone": "normal",
+  "romanced": false,
+  "postHeist": false,
+  "player": {
+    "gender": "Female",
+    "lifePath": "streetkid",
+    "appearance": "V has short dark hair, a scar across one eyebrow and a wiry build."
+  },
+  "quest": {
+    "key": "the_pickup",
+    "name": "The Pickup",
+    "objective": "Meet Jackie at the All Foods Factory"
+  },
+  "now": "0d 14:52",
+  "messages": [
+    {
+      "from": "npc",
+      "text": "Been sniffin' round All Foods an hour. Place is a fridge full o' chromed-up psychos.",
+      "at": "0d 14:20"
+    },
+    {
+      "from": "V",
+      "text": "Stout wants to meet. Says she'll cover the Flathead.",
+      "at": "0d 14:35"
+    },
+    {
+      "from": "npc",
+      "text": "Corpo money always comes with a leash on it. Your call.",
+      "at": "0d 14:41"
+    },
+    {
+      "from": "V",
+      "text": "Still thinking.",
+      "at": "0d 14:44"
+    }
+  ],
+  "ask": "Your mom called me looking for you. Asked if you're eating. What am I supposed to tell her?"
+}

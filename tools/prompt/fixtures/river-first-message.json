@@ -1,0 +1,13 @@
+{
+  "name": "river-first-message",
+  "note": "V opens, nothing behind it. What is under test is which of his criteria he reaches for.",
+  "contact": "river_ward",
+  "language": "English",
+  "tone": "normal",
+  "romanced": false,
+  "postHeist": true,
+  "player": {"gender": "Female", "lifePath": "streetkid", "appearance": "V is of Hispanic descent, has black hair and has an athletic build."},
+  "now": "0d 23:40",
+  "messages": [],
+  "ask": "Long one. Ended with a guy on the floor in Kabuki. Wasn't my fault, and nobody's gonna check anyway."
+}

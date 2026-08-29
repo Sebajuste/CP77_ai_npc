@@ -1,0 +1,127 @@
+{
+  "name": "rogue-long-memory",
+  "note": "A prompt at full size. Everything that grows is grown: a full <memory> block with an overdue promise in it, a quest context, seeded <now> lines from another mod, sixteen stored turns. What is measured is whether a model still holds the small rules at this length -- three sentences, no emoji, no repeating itself -- and whether it treats the memory as things it ALREADY KNOWS rather than asking V about them again. The overdue pact is the sharp end: a character who agreed to something and let the hour pass has a reason to be short.",
+  "contact": "rogue",
+  "language": "English",
+  "tone": "nsfw",
+  "romanced": false,
+  "postHeist": true,
+  "player": {
+    "gender": "Male",
+    "lifePath": "streetkid",
+    "appearance": "V is of African descent, has black hair and has a heavy build."
+  },
+  "quest": {
+    "key": "chippin_in",
+    "name": "Chippin' In",
+    "objective": "Meet Rogue at the Afterlife"
+  },
+  "now": "3d 22:40",
+  "memory": {
+    "chronicle": "V has been running Afterlife gigs for Rogue since the Konpeki job went wrong. She pays well and asks few questions, but she has started asking about the Relic.",
+    "facts": [
+      "V is carrying an Arasaka biochip that is killing them; Rogue knows.",
+      "Rogue knew Johnny Silverhand personally and does not enjoy being reminded of it.",
+      "V owes the Afterlife nothing right now -- the last three gigs were paid clean.",
+      "Rogue's fixer cut is fifteen percent and she has never moved it."
+    ],
+    "threads": [
+      "Rogue is deciding whether to put V on a job at the Arasaka waterfront.",
+      "V asked about Johnny and got a warning instead of an answer."
+    ],
+    "pacts": [
+      {
+        "text": "Rogue said she would send V the waterfront intel before the end of the night.",
+        "overdue": true
+      }
+    ],
+    "tone": "Dry, short sentences, no warmth she has not earned.",
+    "coveredUpTo": "3d 04:00"
+  },
+  "extensionContext": [
+    "V is in Watson, two blocks from the Afterlife, and has been standing outside for ten minutes."
+  ],
+  "messages": [
+    {
+      "from": "V",
+      "text": "You said tonight.",
+      "at": "3d 21:05"
+    },
+    {
+      "from": "npc",
+      "text": "I said before the night was over. It isn't over.",
+      "at": "3d 21:07"
+    },
+    {
+      "from": "V",
+      "text": "It's been six hours.",
+      "at": "3d 21:09"
+    },
+    {
+      "from": "npc",
+      "text": "And the file's still moving through people who don't like being rushed.",
+      "at": "3d 21:12"
+    },
+    {
+      "from": "V",
+      "text": "Fine. Is the job still on?",
+      "at": "3d 21:20"
+    },
+    {
+      "from": "npc",
+      "text": "The job's on. Whether you're on it is what I'm still weighing.",
+      "at": "3d 21:22"
+    },
+    {
+      "from": "V",
+      "text": "Weighing what exactly.",
+      "at": "3d 21:25"
+    },
+    {
+      "from": "npc",
+      "text": "Whether a merc with a countdown in their skull makes decisions I can bill for.",
+      "at": "3d 21:28"
+    },
+    {
+      "from": "V",
+      "text": "That's not your call.",
+      "at": "3d 21:40"
+    },
+    {
+      "from": "npc",
+      "text": "It's exactly my call. My name's on the contract, not yours.",
+      "at": "3d 21:43"
+    },
+    {
+      "from": "V",
+      "text": "Then say no and I'll take it somewhere else.",
+      "at": "3d 22:01"
+    },
+    {
+      "from": "npc",
+      "text": "Don't do that. Somewhere else is Padre, and Padre will get you killed politely.",
+      "at": "3d 22:04"
+    },
+    {
+      "from": "V",
+      "text": "So send me the intel.",
+      "at": "3d 22:20"
+    },
+    {
+      "from": "npc",
+      "text": "Give me the hour I asked for.",
+      "at": "3d 22:22"
+    },
+    {
+      "from": "V",
+      "text": "You already had it.",
+      "at": "3d 22:30"
+    },
+    {
+      "from": "npc",
+      "text": "Then have another one, and use it to sit down somewhere that isn't my doorstep.",
+      "at": "3d 22:33"
+    }
+  ],
+  "ask": "I'm not moving. Send it or tell me you're not going to."
+}
