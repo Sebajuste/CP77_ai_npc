@@ -19,6 +19,25 @@ module AiNpc
 // it. Announcing a command nobody implements, and implementing one nobody announced, are not
 // mistakes that can be made from here.
 
+/// What a slot of the pattern means ///
+
+// What one slot of a pattern means, written once and read by every command that uses it.
+//
+// The name is the slot as the pattern shows it -- "{venue}" -- so the model reads the same
+// token in the tag and in the definition, with nothing to match up.
+public class AiNpcActionParam {
+    public let name: String;
+    public let text: String;
+}
+
+// Nothing inside ai_npc calls this; ai_npc_joytoys does, twice per registration.
+public func AiNpcParam(name: String, text: String) -> ref<AiNpcActionParam> {
+    let param = new AiNpcActionParam();
+    param.name = name;
+    param.text = text;
+    return param;
+}
+
 /// What applying an action did ///
 
 // The note is the reason this is not a Bool. A refused action is otherwise invisible: the tag

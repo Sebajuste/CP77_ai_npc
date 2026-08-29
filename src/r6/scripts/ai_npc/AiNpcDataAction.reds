@@ -29,26 +29,6 @@ module AiNpc
 //
 // `prompt` is the sentence that teaches the model WHEN to emit it, and it is not optional in
 // practice: a tag announced with no trigger is a command the model fires at random or never.
-// What one slot of a pattern means, written once and read by every command that uses it.
-//
-// The name is the slot as the pattern shows it -- "{venue}" -- so the model reads the same
-// token in the tag and in the definition, with nothing to match up.
-public class AiNpcActionParam {
-    public let name: String;
-    public let text: String;
-}
-
-// PUBLIC BECAUSE IT IS API. A mod declaring a command builds its parameters with this, from
-// its own module -- ai_npc_joytoys does, twice per registration. Nothing inside ai_npc needs
-// the export, so a visibility pass reading this module alone will take it for a private
-// helper; the compile stays green here and the sibling repo stops building.
-public func AiNpcParam(name: String, text: String) -> ref<AiNpcActionParam> {
-    let param = new AiNpcActionParam();
-    param.name = name;
-    param.text = text;
-    return param;
-}
-
 public class AiNpcActionDef {
     public let tag: String;
     public let prompt: String;
