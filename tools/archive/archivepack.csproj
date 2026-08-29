@@ -7,12 +7,26 @@
     <AssemblyName>archivepack</AssemblyName>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
+
+  <!-- WolvenKit is not redistributed here and is not on NuGet: this references the DLLs of a
+       local install. Set the WolvenKitDir environment variable to point at yours; the default
+       below is only where an install lands if you unzip it beside the mods, and it holds no
+       user name because MSBuild reads USERPROFILE from the environment. -->
+  <PropertyGroup>
+    <WolvenKitDir Condition="'$(WolvenKitDir)' == ''">$(USERPROFILE)\Documents\CP77_mods\WolvenKit-8.20.0\</WolvenKitDir>
+  </PropertyGroup>
+
+  <Target Name="CheckWolvenKit" BeforeTargets="BeforeBuild">
+    <Error Condition="!Exists('$(WolvenKitDir)WolvenKit.RED4.dll')"
+           Text="WolvenKit.RED4.dll not found under $(WolvenKitDir). Set the WolvenKitDir environment variable to your WolvenKit 8.20 install (the folder holding WolvenKit.RED4.dll)." />
+  </Target>
+
   <ItemGroup>
-    <Reference Include="WolvenKit.RED4"><HintPath>C:\Users\sebaj\Documents\CP77_mods\WolvenKit-8.20.0\WolvenKit.RED4.dll</HintPath></Reference>
-    <Reference Include="WolvenKit.Core"><HintPath>C:\Users\sebaj\Documents\CP77_mods\WolvenKit-8.20.0\WolvenKit.Core.dll</HintPath></Reference>
-    <Reference Include="WolvenKit.Common"><HintPath>C:\Users\sebaj\Documents\CP77_mods\WolvenKit-8.20.0\WolvenKit.Common.dll</HintPath></Reference>
-    <Reference Include="System.Collections.Immutable"><HintPath>C:\Users\sebaj\Documents\CP77_mods\WolvenKit-8.20.0\System.Collections.Immutable.dll</HintPath></Reference>
-    <Reference Include="System.Text.Json"><HintPath>C:\Users\sebaj\Documents\CP77_mods\WolvenKit-8.20.0\System.Text.Json.dll</HintPath></Reference>
-    <Reference Include="System.Text.Encodings.Web"><HintPath>C:\Users\sebaj\Documents\CP77_mods\WolvenKit-8.20.0\System.Text.Encodings.Web.dll</HintPath></Reference>
+    <Reference Include="WolvenKit.RED4"><HintPath>$(WolvenKitDir)WolvenKit.RED4.dll</HintPath></Reference>
+    <Reference Include="WolvenKit.Core"><HintPath>$(WolvenKitDir)WolvenKit.Core.dll</HintPath></Reference>
+    <Reference Include="WolvenKit.Common"><HintPath>$(WolvenKitDir)WolvenKit.Common.dll</HintPath></Reference>
+    <Reference Include="System.Collections.Immutable"><HintPath>$(WolvenKitDir)System.Collections.Immutable.dll</HintPath></Reference>
+    <Reference Include="System.Text.Json"><HintPath>$(WolvenKitDir)System.Text.Json.dll</HintPath></Reference>
+    <Reference Include="System.Text.Encodings.Web"><HintPath>$(WolvenKitDir)System.Text.Encodings.Web.dll</HintPath></Reference>
   </ItemGroup>
 </Project>

@@ -7,7 +7,19 @@
 using System.IO;
 using System.Reflection;
 
-const string WK = @"C:\Users\sebaj\Documents\CP77_mods\WolvenKit-8.20.0\";
+// The WolvenKit install to reflect against. Not redistributed and not on NuGet, so it is a
+// local folder: the WolvenKitDir environment variable names it, and the fallback is only
+// where an install lands if you unzip it beside the mods. Same property the .csproj resolves,
+// so the DLLs loaded at run time are the ones the build compiled against.
+var WK = Environment.GetEnvironmentVariable("WolvenKitDir");
+if (string.IsNullOrWhiteSpace(WK))
+    WK = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                      "Documents", "CP77_mods", "WolvenKit-8.20.0");
+if (!WK.EndsWith(Path.DirectorySeparatorChar)) WK += Path.DirectorySeparatorChar;
+if (!File.Exists(WK + "WolvenKit.RED4.dll"))
+    throw new DirectoryNotFoundException(
+        $"WolvenKit.RED4.dll not found under {WK}. Set the WolvenKitDir environment variable "
+        + "to your WolvenKit 8.20 install (the folder holding WolvenKit.RED4.dll).");
 
 var srcDir  = Path.GetFullPath(args[0]);
 var outPath = Path.GetFullPath(args[1]);
