@@ -42,30 +42,32 @@ written, and it was never meant to ship. Every character sheet was written from 
 release, and nothing was ever published in the meantime. What is in this repository is the
 mod, not the scaffolding it was built against.
 
-> **Before publishing.** The names of the upstream authors are recorded in this project's own
-> notes rather than in their archives, which carry no authorship metadata at all. Confirm the
-> spelling and who did what on the Nexus pages before naming anyone in public.
+**Thanked by mod, not by name.** Those archives carry no authorship metadata — no licence
+file, no author line, nothing but the scripts. Naming someone in a credits file on the
+strength of a half-remembered Nexus handle is worse than naming no one, so the thanks above
+go to the mods. Anyone who wants their name here has only to ask, and it goes in.
 
 
 ---
 
 ## 2. Frameworks this mod requires
 
-None of them are redistributed here — the player installs each one. Listed with the licence
-as verified locally on 2026-08-26; the ones marked *to confirm* were not verifiable from an
-installed copy and should be checked against their repository before release.
+None of them are redistributed here — the player installs each one. Each licence below was
+read out of the copy installed on the development machine, not from memory; the date is when.
+redscript is the one exception: it ships `scc.exe` and nothing else, so there was nothing to
+read, and its row says so rather than guessing.
 
 | Framework | Author | Licence |
 |---|---|---|
-| [RED4ext](https://github.com/WopsS/RED4ext) | WopsS | to confirm |
+| [RED4ext](https://github.com/WopsS/RED4ext) | WopsS (Octavian Dima) | MIT — verified 2026-08-29 |
 | [RED4ext.SDK](https://github.com/WopsS/RED4ext.SDK) (git submodule, build only) | Octavian Dima | MIT — verified |
-| [redscript](https://github.com/jac3km4/redscript) | jac3km4 | to confirm |
-| [Codeware](https://github.com/psiberx/cp2077-codeware) | psiberx | to confirm |
+| [redscript](https://github.com/jac3km4/redscript) | jac3km4 | not verified — the install ships no licence file |
+| [Codeware](https://github.com/psiberx/cp2077-codeware) | psiberx (Pavel Siberx) | MIT — verified 2026-08-29 |
 | [RedData](https://github.com/psiberx/cp2077-red-data) | psiberx | MIT — verified |
 | [RedFileSystem](https://github.com/psiberx/cp2077-red-filesystem) | psiberx | MIT — verified |
 | [RedHttpClient](https://github.com/rayshader/cp2077-red-httpclient) | rayshader | MIT — verified |
-| [Mod Settings](https://www.nexusmods.com/cyberpunk2077/mods/4885) | — | to confirm |
-| [Cyber Engine Tweaks](https://www.nexusmods.com/cyberpunk2077/mods/107) (optional) | yamashi and contributors | to confirm |
+| [Mod Settings](https://github.com/jackhumbert/mod_settings) | Jack Humbert | MIT — verified 2026-08-29 |
+| [Cyber Engine Tweaks](https://github.com/maximegmd/CyberEngineTweaks) (optional) | yamashi and contributors | MIT — verified 2026-08-29 |
 
 `AiNpcContactHash` produces the stable identifier that
 [Phone Extension Framework](https://www.nexusmods.com/cyberpunk2077/mods/24949) expects, so
@@ -88,9 +90,10 @@ custom contacts appear correctly for players who have it.
 
 ## 4. Contributors
 
-*To be filled in before release.* Code, testing, bug reports and translations each deserve a
-line here. If the list is empty, say so plainly rather than omitting the section — an absent
-credits section reads as an oversight, an empty one reads as an answer.
+**Nobody yet.** At 1.0.0 every line of this mod was written by one person, and no bug report,
+test or translation has come in from outside. The section stays, empty and said so plainly:
+an absent credits section reads as an oversight, an empty one reads as an answer. Code,
+testing, bug reports and translations each earn a line here the day they arrive.
 
 ---
 
@@ -153,5 +156,3 @@ wonder what the remainder was, and there is no remainder to wonder about.
 >
 > Not affiliated with CD Projekt Red. The mod's own code is MIT; the game and its characters
 > are not mine.
-
-Name the upstream authors here only once their names have been confirmed on the Nexus pages.

@@ -338,13 +338,13 @@ Everything here is repeated in "AI NPC - read me.txt", which lands in your Cyber
                 <group name="Which model should it start on?" type="SelectExactlyOne">
                     <plugins order="Explicit">
 
-                        <plugin name="Free -- google/gemma-4-31b-it:free">
+                        <plugin name="Free, but often refused -- google/gemma-4-31b-it:free">
                             <description>
-Costs nothing, and good enough to see what the mod is.
+Costs nothing. Enough to see what the mod is, not enough to play an evening with it.
 
-What you give up is not quality, it is availability: free models are a pool shared with everyone, and when it is busy the answer is "rate-limited". Measured on 2026-08-28, this one answered 46 requests out of 54 that way. Expect a conversation to stop mid-evening.
+What you give up is not the writing, it is being able to send a message at all. Free models sit in one pool shared with everybody using them, and when that pool is busy your message comes back refused and the character stays silent. Tested on 2026-08-28: barely one message in seven got through.
 
-Its ability to close an appointment has never been measured. Pick this to try the mod, not to play it.
+Whether it can handle the gameplay actions was never tested. Pick this to try the mod, not to play it.
 
 This choice also starts with "Characters may write first" off: a message a character sends on its own spends a request nobody typed, and on a saturated pool that request comes back refused, so the popup simply never arrives. Mod Settings &gt; AI NPC &gt; Budget turns it back on.
                             </description>
@@ -356,13 +356,13 @@ This choice also starts with "Characters may write first" off: a message a chara
                             </typeDescriptor>
                         </plugin>
 
-                        <plugin name="~0.55 $/month -- qwen/qwen3-235b-a22b-2507">
+                        <plugin name="~0.55 $/month, ~2 300 messages -- qwen/qwen3-235b-a22b-2507">
                             <description>
-The cheapest model that does the whole job. About 0.55 $/month at two hours of play a day, on your own OpenRouter credit.
+The cheapest model that does the whole job. About 0.55 $/month for two hours of play a day, on your own OpenRouter credit, which works out at roughly 2 300 messages. One dollar of credit buys about 4 200 of them.
 
-It takes 18 appointments out of 20 on real recorded conversations, with no mechanical defect over 54 replies, and it answers in about 2.7 seconds.
+It gets the gameplay actions right nine times out of ten, it never garbled a reply in testing, and it answers in under three seconds.
 
-One reservation, and it decides between this line and the next: it ignores the Normal explicitness tier. Leave the mod on its top tier and it behaves; set the tier down and it will not hold it.
+One reservation, and it is the whole difference with the line below: it ignores the content level. Left on the highest level it behaves; set the level lower and it will not hold it.
                             </description>
                             <conditionFlags>
                                 <flag name="OPENROUTER_MODEL">Cheapest</flag>
@@ -372,13 +372,13 @@ One reservation, and it decides between this line and the next: it ignores the N
                             </typeDescriptor>
                         </plugin>
 
-                        <plugin name="~2.56 $/month -- meta-llama/llama-4-maverick">
+                        <plugin name="~2.56 $/month, ~2 300 messages -- meta-llama/llama-4-maverick">
                             <description>
-The same job with no reservation. About 2.56 $/month at two hours of play a day.
+The same job with nothing held back. About 2.56 $/month for the same two hours a day, roughly 2 300 messages. One dollar of credit buys about 900 of them.
 
-It takes every appointment, 20 out of 20, it is the fastest measured at 2.0 seconds, and it is the only model that holds the Normal explicitness tier -- one explicit reply out of 24 where the line above gives 23.
+It gets the gameplay actions right every time, it is the fastest of the three, and it is the only one that respects the content level you set: on the middle level it stayed clean almost always, where the line above went explicit almost always.
 
-Five times the price of the line above, for the tier and the two appointments. Pick this if you intend to use the tiers.
+Five times the price of the line above, and what you buy is the content level. Pick this if you intend to use it.
                             </description>
                             <conditionFlags>
                                 <flag name="OPENROUTER_MODEL">Tiers</flag>
