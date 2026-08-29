@@ -10,27 +10,26 @@
 #
 # The version comes from AiNpcVersion() in the sources; -Version only asserts it.
 #
-# TWO BUILDS, and the difference is one file:
+# TWO BUILDS, and the difference is one folder:
 #
-#   Release  ai_npc-<version>.zip         what goes on Nexus. The two self-test files are
-#                                         dropped: AiNpcTests.reds and AiNpcTestSuite.reds.
+#   Release  ai_npc-<version>.zip         what goes on Nexus. The self-tests are dropped:
+#                                         the whole r6\scripts\ai_npc\tests\ folder.
 #   Debug    ai_npc-<version>-debug.zip   what gets tested here. Tests run at startup and
 #                                         write r6\storages\AiNpc\test-results.json, which
 #                                         is what tools\test.ps1 reads.
 #
 # Release is the default, deliberately: the build that leaves this machine is the one that
 # must not need a flag to be correct. Forgetting -Config Debug costs a rebuild; forgetting a
-# hypothetical -Release would put 4000 lines of assertions on Nexus.
+# hypothetical -Release would put 5000 lines of assertions on Nexus.
 #
 # Nothing else changes between the two. AiNpcSelfTest.reds ships in both builds and asks
-# @if(ModuleExists("AiNpc.TestSuite")) which one it is in, so dropping the two files is a
+# @if(ModuleExists("AiNpc.TestSuite")) which one it is in, so dropping the folder is a
 # deletion and not an edit -- no production source is rewritten on the way into the zip.
 #
-# THE PAIR MOVES TOGETHER. AiNpcTests.reds holds the assertions, AiNpcTestSuite.reds declares
-# the module that answers that question, and either one alone is a build nobody wants: the
-# marker without the suite leaves AiNpcSelfTest.reds calling a function that is not there,
-# and the suite without the marker compiles the assertions out of reach and reports
-# "0 tests".
+# THE MARKER LIVES IN THE FOLDER. tests\AiNpcTestSuite.reds declares the module that answers
+# that question, so it leaves with the assertions and cannot be forgotten. Left outside, it
+# would survive the release build, the suite would compile out of reach, and the mod would
+# report "0 tests" -- which reads exactly like a mod that never started.
 
 param(
     [ValidateSet("Release", "Debug")]
@@ -105,18 +104,23 @@ New-Item -ItemType Directory -Path $stage -Force | Out-Null
 # --- REDscript ---
 Copy-Item (Join-Path $srcDir "r6") $stage -Recurse -Force
 
-# The self-tests are dev scaffolding: ~4000 lines of assertions the player never reads,
-# compiled at every game start. A release build drops them from the staging copy -- src\ is
-# untouched, and nothing in the mod refers to them, so this is the whole of it.
-$testFiles = @("AiNpcTests.reds", "AiNpcTestSuite.reds")
+# The self-tests are dev scaffolding: ~5000 lines of assertions the player never reads,
+# compiled at every game start. A release build drops the whole tests\ folder from the staging
+# copy -- src\ is untouched, and nothing in the mod refers to them, so this is the whole of it.
+#
+# A folder rather than a list of names: a test file added under tests\ leaves the release build
+# alone, where a name that nobody thought to add to a list used to ship 5000 lines of assertions
+# to every player. The two checks below are what a list gave for free and a folder does not --
+# that the folder is there at all, and that the marker module went with it.
+$testDir = Join-Path $stage "r6\scripts\ai_npc\tests"
 if ($Config -eq "Release") {
-    foreach ($name in $testFiles) {
-        $inStage = Join-Path $stage "r6\scripts\ai_npc\$name"
-        if (-not (Test-Path $inStage)) {
-            throw "$name is not where the release build expects it ($inStage). It moved or was renamed - find it before shipping, because the check below can only prove the file is absent, not that the tests are."
-        }
-        Remove-Item $inStage -Force
+    if (-not (Test-Path $testDir)) {
+        throw "The self-tests are not where the release build expects them ($testDir). The folder moved or was renamed - find it before shipping, because the check below can only prove a folder is absent, not that the tests are."
     }
+    if (-not (Test-Path (Join-Path $testDir "AiNpcTestSuite.reds"))) {
+        throw "AiNpcTestSuite.reds is not in $testDir. It declares module AiNpc.TestSuite, which AiNpcSelfTest.reds asks about: left outside the folder it survives the release build, the suite compiles out, and the mod reports 0 tests instead of shipping without them."
+    }
+    Remove-Item $testDir -Recurse -Force
 }
 
 # --- CET mod (the journal window) ---

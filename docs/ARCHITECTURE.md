@@ -595,7 +595,7 @@ cleanly, and most of them were learned the expensive way.
 | no stale `.reds` in the deployed folder | a duplicate free function compiles with zero warnings, and the last file loaded wins — silently | `tools/lint.ps1` checks the repo, not the game folder |
 | template value sources never expand a template | unbounded recursion inside prompt construction | comments |
 | text from outside the mod carries no tag | a `</character>` closes the block it sits in, and what follows opens a `<system_rules>` of its own | `AiNpcSectionText.reds`, asserted |
-| a rubric block is rendered under its own tag | two `<system_rules>` in one prompt, and no `<interactions>` at all | `AiNpcTests.reds`, asserted on a block that is not `system_rules` |
+| a rubric block is rendered under its own tag | two `<system_rules>` in one prompt, and no `<interactions>` at all | `tests\AiNpcTestPrompt.reds`, asserted on a block that is not `system_rules` |
 | a toggle removes prompt text **and** the parser | the character promises what will never happen | `docs/PROMPT_BUDGET.md`, by convention |
 | every reply handler checks it is still the current one | a late answer lands in the wrong conversation | `AiNpcWatchdog.IsWaiting()`, consulted by both transports in both lanes |
 | everything shipped lives under `src/` at its real game path | the file is in the repo and absent from the zip, or present and never loaded | `tools/package.ps1` verifies the zip |
@@ -642,7 +642,7 @@ folder the archive does not contain, or a zip missing the icon archive. It check
 the repo and absent from what ships.
 
 What none of it can prove: **that the mod works.** Nothing in the offline suite launches the
-game. Runtime assertions exist (`AiNpcTests.reds`, dropped from release builds) but their
+game. Runtime assertions exist (`src\r6\scripts\ai_npc\tests\`, dropped from release builds) but their
 results are read back from a file, which means a green report can be a replay of an older
 run. Treat "offline green" and "verified in game" as two different claims — this repository's
 own documents are careful to, and so should any change be.

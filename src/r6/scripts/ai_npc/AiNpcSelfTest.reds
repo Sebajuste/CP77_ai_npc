@@ -7,11 +7,11 @@ import RedFileSystem.*
 // AiNpcStorageService calls AiNpcRunSelfTests once its storage handle is settled -- that is
 // the only point in startup where "the storage is open, or it definitively is not" is a
 // fact, and the results have to land in that storage for tools\test.ps1 to read them
-// offline. What it calls depends on whether AiNpcTests.reds is in the build:
+// offline. What it calls depends on whether the tests\ folder is in the build:
 //
 //   debug build    AiNpcTestSuite.reds is there to declare the module, the first branch
 //                  compiles and the suite runs at startup.
-//   release build  tools\package.ps1 dropped it along with AiNpcTests.reds, ModuleExists is
+//   release build  tools\package.ps1 dropped the whole tests\ folder, ModuleExists is
 //                  false, the second branch compiles and this is a no-op the compiler inlines
 //                  away.
 //

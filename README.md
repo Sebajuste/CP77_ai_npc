@@ -556,11 +556,12 @@ src/r6/scripts/ai_npc/
   AiNpcJournal.reds           pure journal model: operations, replay, branch naming
   AiNpcConversationStore.reds journal files, session lifecycle, the savegame pointer, migrations
   AiNpcResponses.reds         defensive readers for LLM API responses
-  AiNpcTests.reds             runtime assertions over the pure modules (count reported by test.ps1;
-                              dropped from a release build, see Packaging)
-  AiNpcTestSuite.reds         nothing but `module AiNpc.TestSuite`: the marker AiNpcSelfTest.reds
-                              asks about, so the assertions can live in `module AiNpc` and stay
-                              unexported. Dropped WITH AiNpcTests.reds, never alone
+  tests/                      runtime assertions over the pure modules, one file per subject
+                              (count reported by test.ps1; the whole folder is dropped from a
+                              release build, see Packaging). AiNpcTestSuite.reds in there is
+                              nothing but `module AiNpc.TestSuite`: the marker AiNpcSelfTest.reds
+                              asks about, so the assertions live in `module AiNpc` and stay
+                              unexported. It leaves with the folder, never alone
   AiNpcStorage.reds       settings.json, created with defaults on first run, written back on edit
   AiNpcSetup.reds         the configuration surface CET talks to: describe, change, test, apply preset
   AiNpcInstallPreset.reds what the FOMOD installer chose; one variant per provider in the archive
@@ -880,7 +881,7 @@ Three stages. The first two need no game launch:
   It never touches the game's script cache. Because the dependency set is explicit, this also
   proves the mod does not silently rely on some unrelated mod you happen to have installed.
 
-- **runtime self-tests** — assertions over the pure modules, in `AiNpcTests.reds`. REDscript
+- **runtime self-tests** — assertions over the pure modules, in `src\r6\scripts\ai_npc\tests\`. REDscript
   has no standalone runtime, so they execute inside the game (at storage init, cost is a few
   hundred string operations) and write `r6\storages\AiNpc\test-results.json`. `test.ps1` reads
   that file back and reports it, including how stale it is. Failures are also logged as errors.
@@ -916,13 +917,14 @@ powershell -File tools\package.ps1                  # release: what goes on Nexu
 powershell -File tools\package.ps1 -Config Debug    # debug: the self-tests come with it
 ```
 
-**Two configurations, and the difference is two files.** A release build drops
-`AiNpcTests.reds` -- roughly 4000 lines of assertions the player never reads,
-compiled at every game start -- together with `AiNpcTestSuite.reds`, the empty file
-whose only job is to declare the module `AiNpcSelfTest.reds` asks about. They move as a
-pair, and `tools\package.ps1` checks both directions for both: the marker without the
-suite leaves a call to a function that is not in the build, and the suite without the marker
-reports "0 tests".
+**Two configurations, and the difference is one folder.** A release build drops
+`src\r6\scripts\ai_npc\tests\` -- roughly 5000 lines of assertions the player never reads,
+compiled at every game start. The folder is the unit rather than a list of file names, so a
+test file added tomorrow cannot reach a player because nobody extended the list. It carries its
+own marker: `AiNpcTestSuite.reds`, the empty file whose only job is to declare the module
+`AiNpcSelfTest.reds` asks about, sits inside it and leaves with it. `tools\package.ps1` checks
+what the folder cannot say by itself -- that the folder is there, and that the marker is in it,
+because a marker left outside would survive the release build and report "0 tests".
 
 A debug build keeps both, so the suite runs at startup and writes `r6\storages\AiNpc\test-results.json`,
 which is what `tools\test.ps1` reports on.

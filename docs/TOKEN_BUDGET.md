@@ -107,7 +107,7 @@ One responsibility per file.
 | `AiNpcSetup.reds` | A record for the connection test, which was the last send in the mod going out unaccounted for. |
 | `AiNpcSystem.reds` | The two Mod Settings entries. |
 | `AiNpcLanguage.reds` | The two lines the player reads, per language, beside the carrier table. |
-| `AiNpcTests.reds` | `AiNpcTestUsageLedger` and `AiNpcTestBudgetMessages`. |
+| `tests\AiNpcTestTransport.reds` | `AiNpcTestUsageLedger` and `AiNpcTestBudgetMessages`. |
 
 `usage.json` sits in `r6\storages\AiNpc\`, beside `settings.json`. That is the point: a
 `RedFileSystem` storage is **not** part of the savegame, so one tally covers every save, every

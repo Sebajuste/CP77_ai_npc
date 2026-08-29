@@ -19,7 +19,13 @@ $modSrc = Join-Path $root "src\r6\scripts\ai_npc"
 # delegates in one line. A rule is only as wide as its file list.
 $files  = @(Get-ChildItem (Join-Path $modSrc "*.reds")) +
           @(Get-ChildItem (Join-Path $modSrc "cast\*.reds")) +
-          @(Get-ChildItem (Join-Path $modSrc "api\*.reds"))
+          @(Get-ChildItem (Join-Path $modSrc "api\*.reds")) +
+          @(Get-ChildItem (Join-Path $modSrc "tests\*.reds"))
+
+# Plusieurs regles admettent les assertions la ou elles refusent tout le reste : un test
+# nomme ce qu'il verifie, c'est son travail. Elles vivaient dans un fichier, elles vivent
+# dans un dossier -- la question se pose une fois ici, et pas dans six listes de noms.
+function Test-IsSelfTest($f) { return (Split-Path (Split-Path $f.FullName -Parent) -Leaf) -eq "tests" }
 
 # Drops whole-line // comments. Deliberately does not touch trailing comments, so that
 # URLs inside string literals ("https://...") survive intact.
@@ -125,8 +131,9 @@ foreach ($f in $files) {
     if ($f.Name -in @("AiNpcActionTag.reds", "AiNpcActionPattern.reds", "AiNpcActionTable.reds",
                       "AiNpcActionRegistry.reds", "AiNpcActionDispatch.reds", "AiNpcActionPrompt.reds",
                       "AiNpcTransferHandler.reds", "AiNpcDataAction.reds", "AiNpcConfig.reds",
-                      "AiNpcTests.reds", "AiNpcActionHandler.reds", "AiNpcClient.reds",
+                      "AiNpcActionHandler.reds", "AiNpcClient.reds",
                       "AiNpcExtension.reds", "AiNpcContactTags.reds")) { continue }
+    if (Test-IsSelfTest $f) { continue }
     $text = Read-Code $f.FullName
     foreach ($m in [regex]::Matches($text, '\[ACTION\s*:[^\]]*\]')) {
         $advertised += $m.Value
@@ -543,7 +550,7 @@ if ($storeLayerHits -eq 0) {
 #
 # Two files may touch a session's Show/Close: the door, and the tests that assert the door.
 # Everything else calls AiNpcOpenConversation / AiNpcCloseConversation.
-$doorOwners = @("AiNpcChatDoor.reds", "AiNpcTests.reds")
+$doorOwners = @("AiNpcChatDoor.reds")
 $doorStrays = @()
 $doorHits = 0
 foreach ($f in $files) {
@@ -556,7 +563,7 @@ foreach ($f in $files) {
         # session through a differently named handle escapes this; the naming is the codebase's
         # and the rule follows it rather than matching every Show( in the mod.
         if ($line -notmatch '\b[A-Za-z_]*[Ss]ession\s*\.\s*(Show|Close)\s*\(') { continue }
-        if ($doorOwners -contains $f.Name) {
+        if (($doorOwners -contains $f.Name) -or (Test-IsSelfTest $f)) {
             $doorHits++
         } else {
             $doorStrays += "$($f.Name):$lineNo  $($line.Trim())"
@@ -667,12 +674,12 @@ if ($clearStrays) {
 # behalf of a synthetic per-sheet mod id it invents from a contact id, and clears that id's
 # earlier commands first. It speaks for a character file, never for ai_npc.
 $registrarOwners = @("api/AiNpcClient.reds", "AiNpcExtensionRegistry.reds",
-                     "AiNpcActionRegistry.reds", "AiNpcDataAction.reds", "AiNpcTests.reds")
+                     "AiNpcActionRegistry.reds", "AiNpcDataAction.reds")
 $registrarStrays = @()
 $registrarHits = 0
 foreach ($f in $files) {
     $lineNo = 0
-    $owned = ($registrarOwners | Where-Object { $f.Name -eq ($_ -split '/')[-1] }).Count -gt 0
+    $owned = ($registrarOwners | Where-Object { $f.Name -eq ($_ -split '/')[-1] }).Count -gt 0 -or (Test-IsSelfTest $f)
     foreach ($line in [System.IO.File]::ReadAllLines($f.FullName)) {
         $lineNo++
         if ($line.TrimStart().StartsWith("//")) { continue }
@@ -706,14 +713,14 @@ if ($registrarHits -eq 0) {
 $laneAllowed = @("AiNpcHttp.reds", "AiNpcSystem.reds", "AiNpcChatSession.reds",
                  "AiNpcTerminalChat.reds", "AiNpcPhoneWidgets.reds", "AiNpcLaneCallback.reds",
                  "AiNpcSpeechQueue.reds", "AiNpcConversationApi.reds", "AiNpcUtilities.reds",
-                 "AiNpcClientRegistry.reds", "AiNpcTests.reds")
+                 "AiNpcClientRegistry.reds")
 $laneStrays = @()
 $laneAllowedHits = 0
 foreach ($f in $files) {
     $text = Read-Code $f.FullName
     $hits = ([regex]'GetAiNpcHttpSystem\s*\(').Matches($text).Count
     if ($hits -eq 0) { continue }
-    if ($laneAllowed -contains $f.Name) {
+    if (($laneAllowed -contains $f.Name) -or (Test-IsSelfTest $f)) {
         $laneAllowedHits += $hits
     } else {
         $laneStrays += "$($f.Name): $hits reach(es) into the speaking lane"
@@ -791,10 +798,10 @@ if ($mirrors) {
 # The transfer now registers through AddAction like any mod's command, so no other file has any
 # business naming it. That is the invariant, and it is cheap to check: the name appears in its
 # own handler and in the tests, nowhere else.
-$transferOwners = @("AiNpcTransferHandler.reds", "AiNpcTests.reds", "AiNpcConfig.reds")
+$transferOwners = @("AiNpcTransferHandler.reds", "AiNpcConfig.reds")
 $leaks = @()
 foreach ($f in $files) {
-    if ($f.Name -in $transferOwners) { continue }
+    if (($f.Name -in $transferOwners) -or (Test-IsSelfTest $f)) { continue }
     $text = Read-Code $f.FullName
     if ($text -match 'GIVE_EDDIES') { $leaks += $f.Name }
 }
@@ -857,10 +864,10 @@ if (($langMembers -join ",") -ne ($langNames -join ",")) {
 # provide is quietly gone for that file. Both shipped script folders are covered; the second
 # exists only to control @wrapMethod ordering, which modules do not change.
 #
-# Submodules count: AiNpcTests.reds declares `module AiNpc.Tests` so that the rest of the mod
-# can ask @if(ModuleExists("AiNpc.Tests")) whether the self-tests are in this build, which is
-# what lets a release drop them (see AiNpcSelfTest.reds). It is still inside ai_npc's
-# namespace, which is all this check is defending.
+# Submodules count: tests\AiNpcTestSuite.reds declares `module AiNpc.TestSuite` so that the rest
+# of the mod can ask @if(ModuleExists("AiNpc.TestSuite")) whether the self-tests are in this
+# build, which is what lets a release drop them (see AiNpcSelfTest.reds). It is still inside
+# ai_npc's namespace, which is all this check is defending.
 $allSources = Get-ChildItem -Path (Join-Path $root "src/r6/scripts") -Recurse -Filter "*.reds"
 $noModule = @()
 foreach ($f in $allSources) {
@@ -1129,7 +1136,7 @@ if ($treeOwnerHits -eq 0) {
 # accessor, AiNpcProviderSetting, was two files away. Rule N+4b below counts those separately,
 # and no file is excused from it.
 $ambientAllowed = @("AiNpcSystem.reds", "AiNpcHooks.reds", "AiNpcSetup.reds", "AiNpcSeed.reds",
-                    "AiNpcPhoneRenderer.reds", "AiNpcTests.reds", "AiNpcUtilities.reds",
+                    "AiNpcPhoneRenderer.reds", "AiNpcUtilities.reds",
                     "AiNpcContacts.reds", "AiNpcContactRegistry.reds", "AiNpcLanguage.reds",
                     "AiNpcPlayer.reds")
 $ambientStrays = @()
@@ -1138,7 +1145,7 @@ foreach ($f in $files) {
     $text = Read-Code $f.FullName
     $hits = ([regex]'GetAiNpcSystem\(\)').Matches($text).Count
     if ($hits -eq 0) { continue }
-    if ($ambientAllowed -contains $f.Name) {
+    if (($ambientAllowed -contains $f.Name) -or (Test-IsSelfTest $f)) {
         $ambientAllowedHits += $hits
     } else {
         $ambientStrays += "$($f.Name): $hits ambient read(s)"

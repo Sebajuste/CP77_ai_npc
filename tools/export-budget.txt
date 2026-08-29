@@ -104,7 +104,6 @@
 3 AiNpcTerminalSort.reds
 1 AiNpcTerminalStyle.reds
 24 AiNpcTerminalText.reds
-11 AiNpcTests.reds
 7 AiNpcText.reds
 3 AiNpcTicketBook.reds
 9 AiNpcTransferHandler.reds

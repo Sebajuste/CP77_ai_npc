@@ -69,10 +69,10 @@ depth 2–3 — that is good code, and **CC is the wrong lens on it**. Do not "s
 Two structural facts are worth knowing but are **not part of this pass**, and must not be
 started as a side effect of it:
 
-- `AiNpcTests.reds` is 3 098 SLOC and 113 functions in one file. It is the one real breach of
-  the one-file-one-responsibility rule. Splitting it is its own piece of work, with its own
-  brief, because `package.ps1 -Config Release` deletes that exact path and would need to
-  learn the new shape.
+- ~~`AiNpcTests.reds` is 3 098 SLOC and 113 functions in one file.~~ **Fait le 2026-08-29** :
+  les assertions sont reparties en treize fichiers par sujet sous
+  `src\r6\scripts\ai_npc\tests\`, et `package.ps1 -Config Release` laisse tomber le dossier
+  au lieu d'une liste de noms -- un fichier de test ajoute ne peut plus partir chez le joueur.
 - The `AiNpcMemory.reds` cluster holds 6 of the 20 most complex functions and is the only
   place where complexity and nesting rise together. It is also the code with the best test
   coverage in the tree. Leave it alone until something is actually wrong with it.
@@ -129,7 +129,7 @@ legitimate nesting here; allowing some would make the rule fuzzy and the bug int
 **What was measured** 56 of 107 non-test modules have at least one top-level symbol reached
 by the offline suite. The unreached half is mostly the UI layer, which is expected and fine.
 It also contains the entire public façade: `AiNpcApi.reds` alone declares 23 free functions,
-none of them named anywhere in `AiNpcTests.reds`. The machinery underneath — floor leases,
+none of them named anywhere under `tests\`. The machinery underneath — floor leases,
 tickets — *is* covered.
 
 **The consequence** The façade is the surface other mods compile against. After 1.0 its

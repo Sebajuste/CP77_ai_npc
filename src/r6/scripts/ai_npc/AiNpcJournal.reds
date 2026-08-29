@@ -33,7 +33,7 @@ import RedData.Json.*
 //
 // Everything in this file is pure: no game API, no file access, no global state. The IO
 // and the lifecycle live in AiNpcConversationStore.reds; the replay is tested directly
-// (see AiNpcTests.reds).
+// (see tests\AiNpcTestJournal.reds).
 
 public class AiNpcConversation {
     public let contactId: String;

@@ -55,7 +55,7 @@ A thin adapter does the fetching, holds no decision, and is not tested.
 This is not style. The test suite runs from `AiNpcStorageService`'s attach, at game start,
 **before any `ScriptableSystem` exists** — so a policy that calls `AiNpcConversationStore.Get()`
 or `GetAiNpcHttpSystem()` inside itself is untestable by construction, and the whole
-testability argument for rule 3 evaporates. `AiNpcTests.reds` holds `AiNpcFakeChatView`, a
+testability argument for rule 3 evaporates. `tests\AiNpcTestSession.reds` holds `AiNpcMockRenderer`, a
 double that records what it was told and can **refuse**, because a double that always accepts
 would never exercise the notification fall-through.
 

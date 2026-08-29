@@ -14,8 +14,8 @@
 # installed, not just this one.
 #
 # The self-tests are OPTIONAL in the same way, for a different reason: tools\package.ps1
-# drops AiNpcTests.reds from a release build (see its header), which turns the
-# @if(ModuleExists("AiNpc.Tests")) seam in AiNpcSelfTest.reds over to its no-op branch.
+# drops the whole r6\scripts\ai_npc\tests\ folder from a release build (see its header), which
+# turns the @if(ModuleExists("AiNpc.TestSuite")) seam in AiNpcSelfTest.reds over to its no-op branch.
 # -WithoutTests compiles that shape -- the one that actually ships.
 #
 # Usage: powershell -File tools\compile-check.ps1 [-GameDir "D:\Jeux\Cyberpunk 2077"]
@@ -86,15 +86,14 @@ foreach ($folder in $modFolders) {
 
 # Deleted from the copy, exactly as package.ps1 deletes it from the staging folder -- so what
 # is checked here is the file list that ships, not an approximation of it.
-# Two files, and they go together: AiNpcTests.reds holds the assertions and AiNpcTestSuite.reds
-# declares the module AiNpcSelfTest.reds asks about. Dropping one without the other is a build
-# that compiles into a mod nobody would want -- see the head of AiNpcTestSuite.reds.
+# One folder, and it carries its own marker: tests\ holds the assertions and, in
+# AiNpcTestSuite.reds, the module AiNpcSelfTest.reds asks about. Dropping the assertions without
+# the marker is a build that compiles into a mod nobody would want -- see that file's head.
 if ($WithoutTests) {
-    foreach ($name in @("AiNpcTests.reds", "AiNpcTestSuite.reds")) {
-        $copy = Join-Path "$WorkDir\scripts" "ai_npc\$name"
-        if (-not (Test-Path $copy)) { throw "$name not found at $copy - it moved, and this switch would silently check nothing." }
-        Remove-Item $copy -Force
-    }
+    $copy = Join-Path "$WorkDir\scripts" "ai_npc\tests"
+    if (-not (Test-Path $copy)) { throw "the self-tests were not found at $copy - the folder moved, and this switch would silently check nothing." }
+    if (-not (Test-Path (Join-Path $copy "AiNpcTestSuite.reds"))) { throw "AiNpcTestSuite.reds is not in $copy - the marker module left the folder, so this switch would check a shape package.ps1 never builds." }
+    Remove-Item $copy -Recurse -Force
 }
 Copy-Item $vanillaCache "$WorkDir\cache\final.redscripts" -Force
 

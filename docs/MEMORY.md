@@ -709,7 +709,7 @@ archives and chronicles all address the first; this one line addresses the secon
 ## Testing
 
 Everything except the request itself is pure — split, clamp, render, parse, merge,
-promotion, replay with memory — and runs in `AiNpcTests.reds` with no session, no disk and
+promotion, replay with memory — and runs in `tests\AiNpcTestMemory.reds` with no session, no disk and
 no network, exactly as `AiNpcHistory` already does. The order the work was done in follows
 from that: model and pure functions first, then journal and store (the tranche where bugs
 cost an evening, and the one that is fully verifiable offline), then the lanes, then the
