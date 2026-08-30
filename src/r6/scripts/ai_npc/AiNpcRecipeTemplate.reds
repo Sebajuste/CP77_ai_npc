@@ -27,8 +27,8 @@ func AiNpcRecipeTemplate() -> String {
     return "{\n" +
         "    \"_doc\": \"What the system prompt renders, block by block. Copy this file to recipes.json to use it; this one is rewritten every launch and never read. Keys starting with _ are comments.\",\n" +
         "    \"_order\": \"The ORDER of the blocks is not in this file. The mod renders them in one fixed sequence, ranked by how often each one changes, because an OpenAI-compatible backend stops discounting a repeated prompt at the first thing that moves. This file says WHAT is rendered, never WHERE.\",\n" +
-        "    \"_absent\": \"A key you leave out keeps the mod's own answer -- it does NOT remove the block. That is what lets a block added by a later version reach a file written today. Removing a block is explicit: false, \\\"none\\\", or an empty list.\",\n" +
-        "    \"_values\": \"Four shapes: \\\"full\\\" (every part), a list of parts, false or \\\"none\\\" (not rendered), or an object with \\\"parts\\\"/\\\"level\\\" and the block's own options.\",\n" +
+        "    \"_absent\": \"A key you leave out keeps the mod's own answer -- it does NOT remove the block. That is what lets a block added by a later version reach a file written today. Removing a block is explicit, and null is one of the ways to say it: null, false, \\\"none\\\", or an empty list all remove it.\",\n" +
+        "    \"_values\": \"Five shapes: \\\"full\\\" (every part), a list of parts, null or false or \\\"none\\\" (not rendered), an object with \\\"parts\\\"/\\\"level\\\" and the block's own options, and nothing at all -- an absent key keeps the mod's answer.\",\n" +
         "    \"version\": 1,\n" +
         "    \"_active\": \"Which recipe below the mod renders with.\",\n" +
         "    \"active\": \"default\",\n" +

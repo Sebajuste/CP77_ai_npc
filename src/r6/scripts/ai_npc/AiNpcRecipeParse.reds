@@ -130,7 +130,8 @@ func AiNpcRecipeFromJson(body: ref<JsonObject>, name: String, fileName: String,
     return recipe;
 }
 
-// One block's value, in whichever of the four shapes it was written.
+// One block's value, in whichever of the five shapes it was written: an object, a list of
+// parts, a level, a boolean, or null.
 func AiNpcRecipeBlockFromJson(body: ref<JsonObject>, entry: ref<AiNpcRecipeBlockSchema>,
                               where: String, out issues: array<ref<AiNpcConfigIssue>>) -> ref<AiNpcRecipeBlock> {
     let value = body.GetKey(entry.key);
@@ -147,12 +148,29 @@ func AiNpcRecipeBlockFromJson(body: ref<JsonObject>, entry: ref<AiNpcRecipeBlock
             AiNpcRecipePartsFromLevel(value.GetString(), entry, where, issues));
     }
 
-    // What is left is a boolean, and a boolean is the shortest way to say "all of it" or
-    // "none of it". A number or a null lands here too and reads as false, which the schema
-    // then refuses for a required block -- so nothing shaped wrongly passes unremarked.
-    if body.GetKeyBool(entry.key) {
+    if IsDefined(value) && value.IsBool() {
+        if value.GetBool() {
+            return AiNpcRecipeBlockOfParts(entry, entry.parts);
+        }
+        return AiNpcRecipeBlockOfParts(entry, AiNpcRecipeDropped(entry, where, issues));
+    }
+
+    // A number is nobody's way of saying anything about a block, so it is named rather than
+    // read as one of the shapes it resembles. Written out because the alternative is a `1`
+    // that reads as `true` on one line and a `0` that deletes a block on the next.
+    if IsDefined(value) && (value.IsInt64() || value.IsUint64() || value.IsDouble()) {
+        ArrayPush(issues, AiNpcConfigIssueOf("error", where,
+            "a number says nothing about a block. Write \"full\", \"none\", null, or the list of parts. The block keeps every part."));
         return AiNpcRecipeBlockOfParts(entry, entry.parts);
     }
+
+    // null, and it removes the block -- the fourth spelling of "none", after false and the
+    // empty list.
+    //
+    // It is NOT the same as leaving the key out, and the difference is the whole reason this
+    // branch is written rather than inherited. An absent key keeps the mod's answer, so a
+    // block added by a later version reaches a file written today; a key written as null is
+    // somebody saying "not this one", out loud, in a file they edited on purpose.
     return AiNpcRecipeBlockOfParts(entry, AiNpcRecipeDropped(entry, where, issues));
 }
 
@@ -203,7 +221,7 @@ func AiNpcRecipePartsFromLevel(level: String, entry: ref<AiNpcRecipeBlockSchema>
     }
 
     ArrayPush(issues, AiNpcConfigIssueOf("error", where,
-        s"\"\(level)\" is not a level. Write \"full\", \"none\", or the list of parts: \(AiNpcRecipeJoinNames(entry.parts)). The block keeps every part."));
+        s"\"\(level)\" is not a level. Write \"full\", \"none\", null, or the list of parts: \(AiNpcRecipeJoinNames(entry.parts)). The block keeps every part."));
     return entry.parts;
 }
 

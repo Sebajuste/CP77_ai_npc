@@ -93,13 +93,29 @@ func AiNpcTestRecipeParse(t: ref<AiNpcTestRunner>) -> Void {
     t.Check("recipe/an absent key keeps the block", AiNpcRecipeHas(recipe, "quest"));
     t.EqInt("recipe/a well-formed recipe reports nothing", ArraySize(issues), 0);
 
-    // The three ways to remove a block, and they agree.
+    // The four ways to remove a block, and they agree.
     let byWord = AiNpcTestRecipeOf("{\"commands\": \"none\"}", issues);
     let byBool = AiNpcTestRecipeOf("{\"commands\": false}", issues);
     let byList = AiNpcTestRecipeOf("{\"commands\": []}", issues);
+    let byNull = AiNpcTestRecipeOf("{\"commands\": null}", issues);
     t.Check("recipe/none removes the block", !AiNpcRecipeHas(byWord, "commands"));
     t.Check("recipe/false removes the block", !AiNpcRecipeHas(byBool, "commands"));
     t.Check("recipe/an empty list removes the block", !AiNpcRecipeHas(byList, "commands"));
+    t.Check("recipe/null removes the block", !AiNpcRecipeHas(byNull, "commands"));
+    t.EqInt("recipe/removing a block reports nothing", ArraySize(issues), 0);
+
+    // null is written, absence is not, and they mean different things. A key nobody wrote
+    // keeps the mod's answer; a key written as null is somebody saying "not this one".
+    let absent = AiNpcTestRecipeOf("{\"memory\": [\"facts\"]}", issues);
+    t.Check("recipe/an absent key is not a null one", AiNpcRecipeHas(absent, "commands"));
+
+    // A number resembles all of them and means none: 1 would read as true on one line and 0
+    // would delete a block on the next.
+    let numbered: array<ref<AiNpcConfigIssue>>;
+    let counted = AiNpcTestRecipeOf("{\"memory\": 3}", numbered);
+    t.EqInt("recipe/a number is reported", ArraySize(numbered), 1);
+    t.EqString("recipe/a number is an error", numbered[0].severity, "error");
+    t.Check("recipe/a number keeps every part", AiNpcRecipeWants(counted, "memory", "agreed"));
 
     // The parts come back in the SCHEMA's order, never the file's. <memory> reads oldest and
     // blurriest first, and a file listing them backwards must not reverse the block.
@@ -136,7 +152,7 @@ func AiNpcTestRecipeRefusals(t: ref<AiNpcTestRunner>) -> Void {
     // The two required blocks. A recipe that could drop <explicitness> would answer a question
     // that was put to the player, from the strongest position in the prompt.
     let required: array<ref<AiNpcConfigIssue>>;
-    let stubborn = AiNpcTestRecipeOf("{\"explicitness\": false, \"system\": []}", required);
+    let stubborn = AiNpcTestRecipeOf("{\"explicitness\": null, \"system\": []}", required);
     t.EqInt("recipe/both required blocks refuse removal", ArraySize(required), 2);
     t.Check("recipe/explicitness survives being dropped",
         AiNpcRecipeHas(stubborn, "explicitness"));
