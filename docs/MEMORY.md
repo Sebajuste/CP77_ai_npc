@@ -184,6 +184,9 @@ to rebuild exactly from them — not the content. Dropping an unfolded entry wou
 fact outright, so the loop stops rather than cross that line and lets the archive sit
 slightly over its cap until the next fold moves the boundary.
 
+Bringing an exact archived line back into the prompt is an open idea, not a plan: see
+`docs\ROADMAP.md`, *Recall over the archive*.
+
 ### The block reads oldest-first
 
 ```

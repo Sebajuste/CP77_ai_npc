@@ -623,6 +623,7 @@ docs/
   DISTRIBUTION.md         which lanes may be shipped, and to whom
   CREDITS.md              where the mod comes from, and what it owes
   PLAN_*.md               work briefed and not yet done
+  ROADMAP.md              ideas deliberately deferred: what each would buy, and what to measure first
   branding/               the AGENT LINK icon, the AI NPC Nexus image, and how a .png becomes
                           an icon on a terminal
 

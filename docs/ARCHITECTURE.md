@@ -22,6 +22,7 @@ repeat them.
 | write or rewrite a character | `docs/CHARACTER_RULES.md`, `docs/CHARACTER_PROCESS.md` |
 | build and ship | `README.md` § Packaging, `docs/DISTRIBUTION.md` |
 | change the runtime | this file, then the file map |
+| know why an obvious idea was not built | `docs/ROADMAP.md` |
 
 ---
 
