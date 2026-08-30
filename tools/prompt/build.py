@@ -11,7 +11,7 @@ raises, naming the call, rather than being skipped: a prompt missing a section i
 no prompt at all, because it still answers.
 
 The one thing the frame cannot show is control flow. Three blocks in the mod are wrapped in
-`if NotEquals(StrLen(x), 0)` -- <player>, <memory> and <tone> -- and they all follow the same
+`if NotEquals(StrLen(x), 0)` -- and they follow the same
 shape: a tag, one local, the closing tag. So the rule here is stated once and applies to all
 three: a concatenation whose local resolves to empty emits nothing. AiNpcSection already
 carries that rule for every other block.
@@ -84,28 +84,61 @@ class Builder(object):
     def env(self):
         return Env(values=_Locals(self), calls={
             "AiNpcSection": self._section,
+            "AiNpcGetSystemRules": lambda _c: self.sections.system_rules(),
             "AiNpcGetConversationTypePrompt": lambda _c: self.sections.tone_prompt(),
-            "AiNpcGetCharacterBio": lambda _c: self.sections.character_bio(),
-            "AiNpcCharacterAdditionsText": lambda _c: self.sections.character_additions(),
-            "AiNpcWorldBackgroundWith": background_with,
+            "AiNpcRenderCharacter": lambda _c, _r: self._character(),
+            "AiNpcRenderTarget": lambda _c, _r: self._section(
+                "target", self.sections.player_section()),
             "AiNpcGetRelationship": lambda _c: self.sections.relationship(),
             "AiNpcGetWorldInteractions": lambda _c: self.sections.world_interactions(),
             "AiNpcGetWorldBackground": lambda _c: self.sections.world_background(),
+            "AiNpcGetWorldMechanics": lambda _c: self.sections.world_mechanics(),
+            "AiNpcBuildActionTable": lambda _c: None,
+            "AiNpcRenderActionBlock": lambda _ctx, _table: self.sections.command_block(),
+            "AiNpcRenderMemoryBlock": lambda _c, _r: self._memory(),
+            "AiNpcRenderIntent": lambda _c, _ctx, _key, override, _r: self._intent(override),
+            "AiNpcQuestContext": lambda _c, _key, _r: self.sections.quest_context(),
+            "AiNpcRenderNow": lambda _c, _ctx, _p, _pending, _r: self._now(),
             "AiNpcGetCurrentTime": lambda: transcript.clock_label(self.fixture["now"]),
             "AiNpcWeatherLine": self._weather,
             "AiNpcExpandTemplateFor": lambda _c, text: self.sections.expand(text),
             "AiNpcExtensionLiveContext": lambda _ctx: self._extension_context(),
-            "AiNpcGetWorldMechanics": lambda _c: self.sections.world_mechanics(),
-            "AiNpcBuildActionTable": lambda _c: None,
-            "AiNpcRenderActionBlock": lambda _ctx, _table: self.sections.command_block(),
             "AiNpcExtensionIntent": lambda _ctx: self.sections.extension_intent(),
             "AiNpcJoinLines": lambda first, second: (
                 first if not second else second if not first else first + chr(10) + second),
             "AiNpcIntentOf": lambda _c, _key, requested: (
                 requested or self.sections.intent()),
-            "AiNpcQuestContext": lambda _c, _key: self.sections.quest_context(),
             "provider.GetLiveContext": self.sections.live_context,
         })
+
+    # ── the blocks a recipe divides ──────────────────────────────────────────
+    # Every one of them is rendered WHOLE here, which is the default recipe: the shipped
+    # template renders every block at every part, and tools\lint.ps1 fails if it ever stops
+    # doing so. A player's own recipes.json is not a fixture and is not reconstructed --
+    # what this tool checks is the prompt the mod builds out of the box.
+
+    def _character(self):
+        """AiNpcRenderCharacter: the bio, what another mod appended, then the register."""
+        body = background_with(self.sections.character_bio(),
+                               self.sections.character_additions())
+        style = self.sections.speech_style()
+        if style:
+            body = background_with(body, "%s: %s" % (self.texts["speechKey"], style))
+        return self._section("character", body)
+
+    def _intent(self, override):
+        """AiNpcRenderIntent: the contact's own, then what extensions want of V.
+
+        The body only. The frame puts <intent> around it, as it does for every block whose
+        renderer answers a string rather than a section.
+        """
+        own = self.sections.expand(override or self.sections.intent())
+        return background_with(own, self.sections.extension_intent())
+
+    def _now(self):
+        """AiNpcRenderNow: the block walked part by part, as the memory block is."""
+        body = "".join(self._node(part) for part in self.texts["nowParts"])
+        return self._section("now", body)
 
     def _weather(self):
         """AiNpcWeather's line. The word is the fixture's; the frame around it is the mod's."""
@@ -124,16 +157,6 @@ class Builder(object):
     # ── the locals the frame reads ───────────────────────────────────────────
 
     def _local(self, name):
-        if name == "systemRules":
-            return self.sections.system_rules()
-        # The contact's own intention. What extensions add to it is joined by the frame,
-        # through AiNpcJoinLines, exactly as the mod does.
-        if name == "intent":
-            return self.sections.expand(self.sections.intent())
-        if name == "playerSection":
-            return self.sections.player_section()
-        if name == "memoryBlock":
-            return self._memory()
         if name == "questKey":
             return self.fixture["quest"]["key"]
         if name == "pendingContext":
@@ -148,7 +171,7 @@ class Builder(object):
         # which is why it shows up here at all.
         if name == "live":
             return self.sections.live_context()
-        if name in ("contactId", "ctx", "provider"):
+        if name in ("contactId", "ctx", "provider", "recipe"):
             return self.fixture["contact"]
         raise BuildError(
             "AiNpcBuildSystemPrompt reads a local named %r that this builder does not "

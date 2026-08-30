@@ -176,15 +176,16 @@ SOURCES = {
     "AiNpcRomanceExtension.reds": ("AiNpcRomanceRefusalLine",),
     "AiNpcContextData.reds": ("AiNpcSituationClause", "AiNpcQuestHeading",
                               "AiNpcQuestAccountLabel"),
-    "AiNpcPromptBuild.reds": ("AiNpcBuildSystemPrompt", "AiNpcTranscriptHandover",
-                              "AiNpcTranscriptReasonLine"),
-    "AiNpcMemory.reds": ("AiNpcMemoryRenderAt", "AiNpcMemorySectionAgreed",
+    "AiNpcPromptBuild.reds": ("AiNpcBuildSystemPromptWith", "AiNpcTranscriptHandover",
+                              "AiNpcTranscriptReasonLine", "AiNpcRenderNow"),
+    "AiNpcMemory.reds": ("AiNpcMemoryRenderParts", "AiNpcMemorySectionAgreed",
                          "AiNpcMemorySectionChronicle", "AiNpcMemoryLegacyMaxTurns",
                          # The thinking lane: memory compaction. A second call to the model,
                          # with a strict output contract.
                          "AiNpcMemoryInstructionBase", "AiNpcMemoryInstructionFold",
                          "AiNpcMemorySectionFacts", "AiNpcMemorySectionOpen",
                          "AiNpcMemorySectionTone", "AiNpcMemoryPactHorizonWord"),
+    "AiNpcCharacterRender.reds": ("AiNpcCharacterSpeechKey",),
     "AiNpcVersion.reds": ("AiNpcVersion",),
 }
 
@@ -235,6 +236,10 @@ def read_all(script_dir):
         "playerDescription": harvested["AiNpcPlayerDescriptionFor"].appends.get("result", []),
 
         "bioFallback": final("AiNpcGetCharacterBio"),
+        # The label <character> writes the register under. Named in two places -- here and in
+        # the refusal AiNpcRules.reds gives the rubric that used to carry it -- so it is read
+        # rather than typed.
+        "speechKey": final("AiNpcCharacterSpeechKey"),
         "romanceRefusal": final("AiNpcRomanceRefusalLine"),
         "situationClause": final("AiNpcSituationClause"),
         "questHeading": final("AiNpcQuestHeading"),
@@ -249,8 +254,13 @@ def read_all(script_dir):
         "handover": final("AiNpcTranscriptHandover"),
         "reasonLine": final("AiNpcTranscriptReasonLine"),
 
-        "memoryHeader": harvested["AiNpcMemoryRenderAt"].first_assign("result"),
-        "memoryParts": harvested["AiNpcMemoryRenderAt"].appends.get("result", []),
+        # The header, then the sections. AiNpcMemoryRenderParts builds the sections into
+        # `body` and prepends the header only once something survived the recipe's trim, so
+        # the two locals are read in the order the block is written, not the order the
+        # function fills them.
+        "memoryHeader": harvested["AiNpcMemoryRenderParts"].first_assign("result"),
+        "memoryParts": (harvested["AiNpcMemoryRenderParts"].appends.get("result", [])
+                        + harvested["AiNpcMemoryRenderParts"].appends.get("body", [])),
         "memoryAgreed": final("AiNpcMemorySectionAgreed"),
         "memoryFacts": final("AiNpcMemorySectionFacts"),
         "memoryOpen": final("AiNpcMemorySectionOpen"),
@@ -261,15 +271,20 @@ def read_all(script_dir):
         # days, open), and that order is what the constructor applies.
         "memoryHorizonWords": [tree for _label, tree in
                                harvested["AiNpcMemoryPactHorizonWord"].returns],
-        "memoryOverdue": harvested["AiNpcMemoryRenderAt"].last_assign("marker"),
+        "memoryOverdue": harvested["AiNpcMemoryRenderParts"].last_assign("marker"),
         "memoryLegacyMaxTurns": int(final("AiNpcMemoryLegacyMaxTurns")["num"]),
         "memoryChronicle": final("AiNpcMemorySectionChronicle"),
+
+        # <now>, whose contributors are appended to a local of their own before the tag is
+        # put around them. Same rule as the memory block: a loop and a set of conditions,
+        # mirrored rather than copied.
+        "nowParts": harvested["AiNpcRenderNow"].appends.get("body", []),
 
         # Every literal the system prompt frames its blocks with, in order. The offline
         # builder mirrors the assembly, and checks each frame token it writes against this
         # list -- so a tag renamed in AiNpcBuildSystemPrompt stops the build instead of
         # producing a prompt with the old tag in it.
-        "frame": harvested["AiNpcBuildSystemPrompt"].appends.get("prompt", []),
+        "frame": harvested["AiNpcBuildSystemPromptWith"].appends.get("prompt", []),
     }
 
 

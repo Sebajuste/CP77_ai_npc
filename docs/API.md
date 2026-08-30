@@ -376,7 +376,7 @@ Every method has a default; `""` and an empty array mean "no opinion".
 | `GetContactTags() -> array<String>` | empty | What this character IS. `"ainpc:"` is ai_npc's namespace and is ignored |
 | `GetSeedFacts() -> array<String>` | empty | What it knows about V **before** the first message, folded in at the first compaction |
 | `AllowsMemory() -> Bool` | `true` | `false` for a correspondent that accumulates no relationship |
-| `KnowsPlayerLifePath() -> Bool` | `true` | `false` drops the life-path clause from `<player>` and keeps the rest |
+| `KnowsPlayerLifePath() -> Bool` | `true` | `false` drops the life-path clause from `<target>` and keeps the rest |
 | `IsRomanceCapable() -> Bool` | `false` | A property of the character, never inferred from a fact |
 | `GetRomance() -> String` | `""` | What the romance *changes*, added to `<now>` while romanced |
 | `IsRomanced() -> Bool` | `false` | For a contact of yours; a built-in reads the save |
@@ -483,7 +483,7 @@ Read `sourceId` in `OnMessage`, or a mod that answers messages will answer itsel
 | `SetRule(key, text)` | one rubric of `<system_rules>` |
 | `SetInteraction(key, text)` | one rubric of `<interactions>` |
 | `worldBackground` | `<world_background>` |
-| `playerDescription` | `<player>`, life path included |
+| `playerDescription` | `<target>`, life path included |
 | `worldMechanics` | `<mechanics>` |
 | `language` | the active language rule |
 | `speechStyle` | the SPEECH register, for a contact with no provider. `GetSpeechStyle` wins when both are set |
@@ -614,13 +614,17 @@ optional and an absent one keeps resolving down the chain.
 
 `rules` and `interactions` are **composed by key**, not replaced:
 
-- a **known key** — `YOU`, `NEVER`, `SETTING`, `SPEECH`, `REACH`, `REAL` — replaces that rubric
+- a **known key** — `YOU`, `NEVER`, `SETTING`, `REACH`, `REAL` — replaces that rubric
   where it stands, keeping its position;
 - an **unknown key** appends a rubric of your own, after the mod's and before `LENGTH`;
 - **`FORM`, `TIME` and `LENGTH` refuse both** in `rules`, and **`PROMISES`** does in
   `interactions`. They describe the chat itself, and a contact that won them would break the
   player's chat window rather than its own characterisation. Keys are upper-cased and trimmed
-  first, so `form` is the locked `FORM`.
+  first, so `form` is the locked `FORM`;
+- **`SPEECH` refuses both too, and for the opposite reason**: a register is the character's,
+  so it is rendered in `<character>` rather than in the block that describes the chat. Say it
+  with `GetSpeechStyle()`, the `speechStyle` field, or `speechStyle` in `prompts.json` — the
+  three lanes are unchanged, only the destination moved.
 
 `<explicitness>` has no lane at all: it states what the player chose.
 
@@ -1075,8 +1079,9 @@ enough to explain a reply you did not expect.
 --- invariant, and cacheable as a prefix ------------------------------------
 <system>        fiction, rules
 <explicitness>  what may be written         <- the player's tier, and no mod lane at all
-<character>     bio                         <- GetBio / "bio" + CharacterAlsoIs
-<player>        who V is                    <- life path + gender + "appearance",
+<character>     bio, and how they talk      <- GetBio / "bio" + CharacterAlsoIs
+                                            <- SPEECH: GetSpeechStyle / "speechStyle"
+<target>        who V is                    <- life path + gender + "appearance",
                                                or "playerDescription" replacing all three
 <relationship>  how they see V              <- GetRelationship / "relationship"
 <interactions>  what texting can and cannot do
@@ -1101,6 +1106,13 @@ enough to explain a reply you did not expect.
 **Blocks are ordered by increasing volatility, and that is a rule.** OpenAI-compatible backends
 discount a repeated *prefix*; if you add a section, decide how often it changes and put it where
 that answer says.
+
+**The player decides how much of each block is rendered**, in `recipes.json` — block by block,
+and part by part inside a block. The order above is not theirs to change, and `<system>` and
+`<explicitness>` are not theirs to drop. Everything else can be trimmed or removed, so write
+your contribution where it belongs rather than where you hope it will survive: a mod that
+smuggled its text into a block a player never trims would be a mod that ignored the trim.
+`recipes.example.json`, rewritten at every launch, is the whole vocabulary.
 
 `prompts.json` reaches the sections that are not per-character — `interactions`,
 `worldBackground`, `worldMechanics`, `rules` and `languages`. There is no `tone` key there:

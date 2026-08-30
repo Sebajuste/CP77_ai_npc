@@ -565,7 +565,15 @@ src/r6/scripts/ai_npc/
   AiNpcStorage.reds       settings.json, created with defaults on first run, written back on edit
   AiNpcSetup.reds         the configuration surface CET talks to: describe, change, test, apply preset
   AiNpcInstallPreset.reds what the FOMOD installer chose; one variant per provider in the archive
-  AiNpcConfig.reds        loads + validates prompts.json / characters.*.json, writes the report
+  AiNpcConfig.reds        loads + validates prompts.json / characters.*.json / recipes.json,
+                          writes the report and the example files
+  AiNpcRecipe.reds        what the prompt renders, block by block: the model, and the two
+                          questions a renderer asks it
+  AiNpcRecipeSchema.reds  the vocabulary: which blocks exist, their parts, which may not be dropped
+  AiNpcRecipeTemplate.reds  recipes.example.json, which is also the mod's own default recipe
+  AiNpcRecipeParse.reds   a recipes file read into recipes, every refusal named
+  AiNpcCharacterRender.reds  <character>: the bio, what another mod appended, the register
+  AiNpcTargetRender.reds  <target>: who the character is writing to. V, for now
   api/                    THE public surface: everything another mod may call. Nothing outside
                           this folder is part of the deal -- see docs/API.md. AiNpcApi (the
                           free functions), AiNpcClient (the handle and the two doors into it),

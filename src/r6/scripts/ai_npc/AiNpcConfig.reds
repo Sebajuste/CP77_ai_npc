@@ -16,6 +16,8 @@
 // recursively:
 //
 //   prompts.json              world / rules / interactions / language overrides
+//   recipes.json              what the system prompt renders, block by block
+//   recipes.example.json      rewritten every launch: the template, and the mod's own default
 //   characters.builtin.json   optional overrides for the characters shipped with the mod
 //   characters.<mod>.json     dropped in by another mod, or by hand
 //   characters.user.json      always applied last, so a hand edit wins over any mod
@@ -46,6 +48,7 @@ public class AiNpcConfigService extends ScriptableService {
     private let m_defs: array<ref<AiNpcCharacterDef>>;
     private let m_watches: array<ref<AiNpcFactWatch>>;
     private let m_prompts: ref<AiNpcPromptConfig>;
+    private let m_recipe: ref<AiNpcRecipe>;
     private let m_issues: array<ref<AiNpcConfigIssue>>;
     private let m_errors: Int32 = 0;
     private let m_warnings: Int32 = 0;
@@ -70,6 +73,13 @@ public class AiNpcConfigService extends ScriptableService {
     public func GetPrompts() -> ref<AiNpcPromptConfig> {
         this.EnsureLoaded();
         return this.m_prompts;
+    }
+
+    // What the system prompt renders. Never null once a load has happened: the template the
+    // mod ships is parsed even when nothing is on disk.
+    public func GetRecipe() -> ref<AiNpcRecipe> {
+        this.EnsureLoaded();
+        return this.m_recipe;
     }
 
     // Read once at player attach, by AiNpcFactBridge: a watch is only meaningful next to a
@@ -144,14 +154,48 @@ public class AiNpcConfigService extends ScriptableService {
         this.m_errors = 0;
         this.m_warnings = 0;
         this.m_prompts = new AiNpcPromptConfig();
+        this.m_recipe = AiNpcRecipeFull();
 
         this.WriteExampleFile(storage);
         this.WriteFactsExampleFile(storage);
+        this.WriteRecipeTemplate(storage);
+        this.LoadRecipes(storage);
         this.LoadPrompts(storage);
         this.LoadCharacterFiles(storage);
         this.LoadFactFiles(storage);
         this.WriteReport(storage);
         this.LogSummary();
+    }
+
+    // The template is written first and then PARSED, and what comes out is the recipe the mod
+    // renders with when there is no recipes.json. So the file a player copies and the default
+    // they are copying are one text: a template that documented a default kept elsewhere would
+    // be free to disagree with it, and nothing would ever say so.
+    //
+    // A player's file is read the same way, over the same built-in full render, so an absent
+    // key keeps the mod's answer at both levels.
+    private func LoadRecipes(storage: ref<FileSystemStorage>) -> Void {
+        this.m_recipe = this.ReadRecipe(ParseJson(AiNpcRecipeTemplate()) as JsonObject,
+            AiNpcRecipeTemplateFile());
+
+        let root = this.ReadObject(storage, AiNpcRecipeFile());
+        if IsDefined(root) {
+            this.m_recipe = this.ReadRecipe(root, AiNpcRecipeFile());
+            AiNpcLog(s"Loaded \(AiNpcRecipeFile()): rendering with recipe '\(this.m_recipe.name)'.");
+        }
+    }
+
+    private func ReadRecipe(root: ref<JsonObject>, fileName: String) -> ref<AiNpcRecipe> {
+        let issues: array<ref<AiNpcConfigIssue>>;
+        let book = AiNpcRecipeBookFromJson(root, fileName, issues);
+
+        let i = 0;
+        let count = ArraySize(issues);
+        while i < count {
+            this.AddIssue(issues[i].severity, issues[i].source, issues[i].message);
+            i += 1;
+        }
+        return AiNpcRecipeBookActive(book);
     }
 
     private func LoadPrompts(storage: ref<FileSystemStorage>) -> Void {
@@ -978,7 +1022,7 @@ public class AiNpcConfigService extends ScriptableService {
             "            \"_prompts\": \"Rarely needed: the same keys as prompts.json, for this contact only. Omit a key to keep resolving prompts.json, then the built-in text. 'rules' and 'interactions' are objects keyed by rubric -- a known rubric is replaced where it stands, an unknown one is appended.\",\n" +
             "            \"prompts\": {\n" +
             "                \"interactions\": { \"REAL\": \"Replaces the REAL rubric of <interactions> for Nadia only.\" },\n" +
-            "                \"playerDescription\": \"Replaces the <player> section: what THIS contact knows of V. For an unknown number, state the ignorance -- 'you have never met V' -- rather than leaving it empty.\",\n" +
+            "                \"playerDescription\": \"Replaces the <target> section: what THIS contact knows of V. For an unknown number, state the ignorance -- 'you have never met V' -- rather than leaving it empty.\",\n" +
             "                \"worldBackground\": \"Replaces the <world_background> section for Nadia only.\"\n" +
             "            },\n" +
             "            \"_romanced\": \"Your own contact only. For a built-in one -- Panam, Judy, River, Kerry -- the save answers instead and this key is ignored, so an override file cannot claim a romance the playthrough never had.\",\n" +
@@ -1007,6 +1051,12 @@ public class AiNpcConfigService extends ScriptableService {
             "    ]\n" +
             "}\n";
         storage.GetFile(this.EXAMPLE_FILE).WriteText(text);
+    }
+
+    // Same contract as WriteExampleFile, and one line because the text is not this file's: it
+    // is the mod's own default recipe, and it lives with the parser that reads it.
+    private func WriteRecipeTemplate(storage: ref<FileSystemStorage>) -> Void {
+        storage.GetFile(AiNpcRecipeTemplateFile()).WriteText(AiNpcRecipeTemplate());
     }
 
     // Same contract as WriteExampleFile: rewritten every launch, never read back.

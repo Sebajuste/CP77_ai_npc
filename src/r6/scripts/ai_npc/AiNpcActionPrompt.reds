@@ -119,7 +119,15 @@ func AiNpcActionBlockAround(lines: String, opt definitions: String) -> String {
 // Empty means this contact was never given a command, and a bracket in its reply is therefore
 // prose -- asking a model to fix prose against an empty rulebook is how a good reply gets
 // replaced by a worse one.
+//
+// Which is why the recipe is asked HERE and not only in the prompt: a recipe that removed
+// <commands> and left this answering would repair a reply against a vocabulary the model was
+// never shown. Same question, same answer, one decision -- and the short-circuit needs no
+// branch of its own, because "no vocabulary" already means "the brackets are prose".
 func AiNpcActionVocabularyFor(contactId: String) -> String {
+    if !AiNpcRecipeHas(AiNpcPromptRecipe(), "commands") {
+        return "";
+    }
     let ctx = AiNpcBuildContactContext(contactId);
     return AiNpcRenderActionBlock(ctx, AiNpcBuildActionTable(contactId));
 }

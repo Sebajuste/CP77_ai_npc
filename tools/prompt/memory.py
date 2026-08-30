@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""The <memory> block. Mirrors AiNpcMemoryRenderAt in AiNpcMemory.reds.
+"""The <memory> block. Mirrors AiNpcMemoryRenderParts in AiNpcMemory.reds.
 
 What the character remembers of everything that has fallen out of the transcript: the
 chronicle, the facts, the open threads, what was agreed, the tone. Its prose comes from the
@@ -7,7 +7,7 @@ corpus like every other authored text; its structure -- which list is printed un
 label, in which order -- is mirrored here, because it is a loop and not a literal.
 
 Each label is taken from the corpus rather than typed, and taken BY POSITION with its first
-bytes asserted. If AiNpcMemoryRenderAt gains a section or reorders one, the assertion fires
+bytes asserted. If AiNpcMemoryRenderParts gains a section or reorders one, the assertion fires
 with the name of the section it expected, which is the loud failure this tooling is built
 around -- a memory block that quietly loses its FACTS list would still look like a prompt.
 """
@@ -23,23 +23,31 @@ class MemoryShapeError(Exception):
 def _part(parts, index, expected, label):
     if index >= len(parts):
         raise MemoryShapeError(
-            "AiNpcMemoryRenderAt no longer has a %s section (part %d of %d)"
+            "AiNpcMemoryRenderParts no longer has a %s section (part %d of %d)"
             % (label, index, len(parts)))
     tree = parts[index]
     head = tree if isinstance(tree, str) else _head(tree)
     if not head.startswith(expected):
         raise MemoryShapeError(
-            "AiNpcMemoryRenderAt part %d should be %s (starting %r), found %r"
+            "AiNpcMemoryRenderParts part %d should be %s (starting %r), found %r"
             % (index, label, expected, head))
     return tree
 
 
 def _head(tree):
+    """What a part starts with: its first bytes, or the name of the call that writes them.
+
+    Every section label is a function now -- AiNpcMemorySectionFacts and its neighbours --
+    so a positional check against "FACTS:" would only ever see the empty head of a call node.
+    Naming the call is the stronger assertion anyway: a label whose TEXT changed is a
+    deliberate edit to one function, where a label whose CALL changed is a section that moved.
+    """
     if isinstance(tree, str):
         return tree
+    if isinstance(tree, dict) and "call" in tree:
+        return tree["call"]
     if isinstance(tree, dict) and "concat" in tree:
-        first = tree["concat"][0]
-        return first if isinstance(first, str) else ""
+        return _head(tree["concat"][0])
     return ""
 
 
@@ -52,18 +60,21 @@ def render(corpus, memory, now_seconds):
 
     parts = sections["memoryParts"]
     elapsed_part = _part(parts, 0, "The most recent", "the elapsed line")
-    chronicle_part = _part(parts, 1, "", "the chronicle line")
-    facts_label = _part(parts, 2, "FACTS:", "the FACTS label")
+    chronicle_part = _part(parts, 1, "AiNpcMemorySectionChronicle", "the chronicle line")
+    facts_label = _part(parts, 2, "AiNpcMemorySectionFacts", "the FACTS label")
     fact_part = _part(parts, 3, "- ", "a fact line")
-    threads_label = _part(parts, 4, "OPEN:", "the OPEN label")
+    threads_label = _part(parts, 4, "AiNpcMemorySectionOpen", "the OPEN label")
     thread_part = _part(parts, 5, "- ", "a thread line")
-    agreed_label = _part(parts, 6, "", "the AGREED label")
+    agreed_label = _part(parts, 6, "AiNpcMemorySectionAgreed", "the AGREED label")
     pact_part = _part(parts, 7, "- ", "a pact line")
-    tone_part = _part(parts, 8, "TONE:", "the TONE line")
+    tone_part = _part(parts, 8, "AiNpcMemorySectionTone", "the TONE line")
 
     calls = {
         "AiNpcMemorySectionChronicle": lambda: sections["memoryChronicle"],
+        "AiNpcMemorySectionFacts": lambda: sections["memoryFacts"],
+        "AiNpcMemorySectionOpen": lambda: sections["memoryOpen"],
         "AiNpcMemorySectionAgreed": lambda: sections["memoryAgreed"],
+        "AiNpcMemorySectionTone": lambda: sections["memoryTone"],
     }
 
     out = [sections["memoryHeader"]]

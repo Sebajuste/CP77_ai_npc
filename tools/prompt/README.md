@@ -27,6 +27,11 @@ blocs qu'assemble `AiNpcBuildSystemPrompt`, et `build.py` **parcourt cet ordre**
 tenir une copie. Un bloc ajouté, déplacé ou supprimé dans le mod l'est aussi hors ligne à la
 prochaine extraction.
 
+Ce qui est reconstruit ici est le prompt **par défaut** : chaque bloc entier, chaque partie.
+C'est ce que le mod envoie à l'installation, et `tools\lint.ps1` échoue si le gabarit livré
+cesse un jour de tout rendre. Un `recipes.json` écrit par un joueur n'est pas une fixture et
+n'est pas reconstruit — ce serait vérifier une configuration plutôt que le mod.
+
 Trois garde-fous, tous bruyants :
 
 | Ce qui bouge | Ce qui se passe |

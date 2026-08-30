@@ -1578,6 +1578,91 @@ if (-not $versionMatch.Success) {
     }
 }
 
+# --- N+10. The prompt recipe uses one vocabulary ------------------------------------------
+# A recipe names blocks and parts as STRINGS, in three places that have no way to compare
+# themselves: the schema table, the renderers that ask for a part, and the template the mod
+# ships. A typo in any of them compiles, runs, and removes a section from the prompt without
+# a word -- which is the exact failure the parser's own "unknown key" line exists to prevent,
+# and the parser cannot see a typo made in redscript.
+#
+# Three agreements, and all three are read out of the sources:
+#
+#   * every block and part a renderer asks for is declared in AiNpcRecipeSchema;
+#   * every block a recipe may drop is asked about by somebody -- a schema entry nothing
+#     renders is a block a player can turn off with no effect;
+#   * the shipped template names every block and every part. That one is load-bearing beyond
+#     documentation: the template IS the default, so a part it forgets is a part a fresh
+#     install stops rendering, and it is also what makes tools\prompt's offline builder --
+#     which renders every block -- equal to what the mod sends out of the box.
+$schemaText = Read-Code (Join-Path $modSrc "AiNpcRecipeSchema.reds")
+$recipeBlocks = @{}
+foreach ($m in [regex]::Matches($schemaText, 'AiNpcRecipeBlockSchemaOf\("(\w+)",\s*\[([^\]]*)\]\)')) {
+    $parts = @()
+    foreach ($p in [regex]::Matches($m.Groups[2].Value, '"(\w+)"')) { $parts += $p.Groups[1].Value }
+    $recipeBlocks[$m.Groups[1].Value] = $parts
+}
+$requiredBlocks = @()
+# A block with no parts of its own carries one named by the schema, and a file never writes
+# that name -- it writes "full" or true. So it is declared here and skipped below.
+foreach ($m in [regex]::Matches($schemaText, 'AiNpcRecipe(Required|Sourced|Whole)\("(\w+)"\)')) {
+    if ($m.Groups[1].Value -ne "Whole") { $requiredBlocks += $m.Groups[2].Value }
+    $recipeBlocks[$m.Groups[2].Value] = @("all")
+}
+
+$recipeProblems = @()
+if ($recipeBlocks.Count -eq 0) {
+    $recipeProblems += "AiNpcRecipeSchema declares no block - the rule is reading nothing"
+}
+
+# What the renderers ask for.
+$asked = @{}
+foreach ($m in [regex]::Matches($allText, 'AiNpcRecipe(?:Has|SourceOf)\([^,]+,\s*"(\w+)"\)')) {
+    $asked[$m.Groups[1].Value] = $true
+    if (-not $recipeBlocks.ContainsKey($m.Groups[1].Value)) {
+        $recipeProblems += "a renderer asks about block `"$($m.Groups[1].Value)`", which AiNpcRecipeSchema does not declare"
+    }
+}
+foreach ($m in [regex]::Matches($allText, 'AiNpcRecipeWants\([^,]+,\s*"(\w+)",\s*"([\w-]+)"\)')) {
+    $block = $m.Groups[1].Value
+    $part  = $m.Groups[2].Value
+    $asked[$block] = $true
+    if (-not $recipeBlocks.ContainsKey($block)) {
+        $recipeProblems += "a renderer asks about block `"$block`", which AiNpcRecipeSchema does not declare"
+    } elseif ($recipeBlocks[$block] -notcontains $part) {
+        $recipeProblems += "a renderer asks for `"$block`" part `"$part`", which is not one of: $($recipeBlocks[$block] -join ', ')"
+    }
+}
+
+foreach ($block in $recipeBlocks.Keys) {
+    if ($requiredBlocks -contains $block) { continue }
+    if (-not $asked.ContainsKey($block)) {
+        $recipeProblems += "no renderer asks about block `"$block`" - a player could drop it with no effect"
+    }
+}
+
+# What the template says. Read as text rather than parsed: the assertion is that the words are
+# there, and the redscript literal escapes its own quotes.
+$templateText = Read-Code (Join-Path $modSrc "AiNpcRecipeTemplate.reds")
+foreach ($block in $recipeBlocks.Keys) {
+    if ($templateText -notmatch ('\\"' + $block + '\\":')) {
+        $recipeProblems += "the shipped template never names block `"$block`", so a fresh install would not render it"
+    }
+    foreach ($part in $recipeBlocks[$block]) {
+        if ($part -eq "all") { continue }
+        if ($templateText -notmatch ('\\"' + $part + '\\"')) {
+            $recipeProblems += "the shipped template never names `"$block`" part `"$part`""
+        }
+    }
+}
+
+if ($recipeProblems) {
+    Report-Fail "the prompt recipe uses one vocabulary" ($recipeProblems -join "`n")
+} else {
+    $partCount = 0
+    foreach ($block in $recipeBlocks.Keys) { $partCount += $recipeBlocks[$block].Count }
+    Report-Pass "the prompt recipe uses one vocabulary ($($recipeBlocks.Count) block(s), $partCount part(s))"
+}
+
 Write-Output ""
 if ($script:failures -gt 0) {
     Write-Output "$($script:failures) check(s) failed."

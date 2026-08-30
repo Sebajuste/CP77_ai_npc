@@ -58,7 +58,11 @@ func AiNpcRuleIsLocked(block: String, key: String) -> Bool {
     let normalised = AiNpcRuleKey(key);
     if Equals(block, "system_rules") {
         return Equals(normalised, "FORM") || Equals(normalised, "TIME")
-            || Equals(normalised, "LENGTH");
+            || Equals(normalised, "LENGTH")
+            // Not the mod's to keep, like the other three -- it moved. A register is rendered
+            // in <character> now, and a rubric taken here would state it twice, in the block
+            // that describes the chat rather than the one that describes the character.
+            || Equals(normalised, AiNpcCharacterSpeechKey());
     }
     if Equals(block, "interactions") {
         // The one clause whose loss the player sees: a character promising to come and
@@ -87,6 +91,11 @@ func AiNpcRuleTotalBudget() -> Int32 {
 func AiNpcRuleRefusal(block: String, rule: ref<AiNpcRule>) -> String {
     if !IsDefined(rule) || Equals(StrLen(rule.key), 0) {
         return "a rule with no key";
+    }
+    // Its own sentence, because the generic one would be false: a register IS the character's
+    // business, and the answer an author needs is where it went, not that it was kept.
+    if Equals(block, "system_rules") && Equals(AiNpcRuleKey(rule.key), AiNpcCharacterSpeechKey()) {
+        return "rendered in <character> now, not in <system_rules>: state it with GetSpeechStyle, the speechStyle field of a character file, or speechStyle in prompts.json";
     }
     if AiNpcRuleIsLocked(block, rule.key) {
         return s"one of the rubrics ai_npc keeps in <\(block)>: it describes the chat itself, not the character";

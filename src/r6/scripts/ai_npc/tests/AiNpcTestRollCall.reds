@@ -34,6 +34,14 @@ func AiNpcRunAllTests() -> ref<AiNpcTestRunner> {
     AiNpcTestActionTagInventory(t);
     AiNpcTestConfigHelpers(t);
     AiNpcTestPromptOverrides(t);
+    AiNpcTestRecipeSchema(t);
+    AiNpcTestRecipeQueries(t);
+    AiNpcTestRecipeParse(t);
+    AiNpcTestRecipeRefusals(t);
+    AiNpcTestRecipeBook(t);
+    AiNpcTestRecipeTemplate(t);
+    AiNpcTestRecipeRendering(t);
+    AiNpcTestRecipeSpeechMoved(t);
     AiNpcTestArchiveNumber(t);
     AiNpcTestContactHash(t);
     AiNpcTestRomanceFacts(t);

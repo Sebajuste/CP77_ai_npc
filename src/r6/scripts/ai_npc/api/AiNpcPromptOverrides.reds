@@ -32,7 +32,7 @@ public class AiNpcPromptOverrides {
     // <interactions>, by rubric: REACH and REAL are contributable, PROMISES is the mod's.
     public let interactions: array<ref<AiNpcRule>>;
     public let worldBackground: String;    // <world_background> -- the world, NOT V
-    public let playerDescription: String;  // <player> -- who V is, to this contact only
+    public let playerDescription: String;  // <target> -- who V is, to this contact only
     public let worldMechanics: String;     // <mechanics>
     // NO TONE LANE. <explicitness> states what the PLAYER consented to in Mod Settings, and
     // a contact rewriting it would answer a question that was never put to it. A character
@@ -42,7 +42,7 @@ public class AiNpcPromptOverrides {
     // The three below have no prompts.json counterpart, because a global default for them
     // makes no sense: they exist for the contact that is not a person.
 
-    // Appended to the rule block as SPEECH, same slot as GetSpeechStyle, which wins where a
+    // Rendered in <character> as SPEECH, same slot as GetSpeechStyle, which wins where a
     // provider implements it. Here so a built-in contact can still state a register.
     public let speechStyle: String;
 }

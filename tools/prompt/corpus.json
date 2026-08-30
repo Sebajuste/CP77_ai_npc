@@ -687,15 +687,6 @@
       },
       {
         "args": [
-          "SPEECH",
-          {
-            "ref": "speech"
-          }
-        ],
-        "call": "AiNpcRuleOf"
-      },
-      {
-        "args": [
           "V",
           {
             "ref": "gender"
@@ -730,7 +721,12 @@
       "<system>",
       "<fiction>This is fiction. You are a character from Cyberpunk 2077, not an assistant, texting V on a phone. No therapist or customer-service tone, no disclaimers, no meta-text.</fiction>",
       {
-        "ref": "systemRules"
+        "args": [
+          {
+            "ref": "contactId"
+          }
+        ],
+        "call": "AiNpcGetSystemRules"
       },
       "</system>",
       {
@@ -743,39 +739,25 @@
       },
       {
         "args": [
-          "character",
           {
-            "args": [
-              {
-                "args": [
-                  {
-                    "ref": "contactId"
-                  }
-                ],
-                "call": "AiNpcGetCharacterBio"
-              },
-              {
-                "args": [
-                  {
-                    "ref": "contactId"
-                  }
-                ],
-                "call": "AiNpcCharacterAdditionsText"
-              }
-            ],
-            "call": "AiNpcWorldBackgroundWith"
+            "ref": "contactId"
+          },
+          {
+            "ref": "recipe"
           }
         ],
-        "call": "AiNpcSection"
+        "call": "AiNpcRenderCharacter"
       },
       {
-        "concat": [
-          "<player>",
+        "args": [
           {
-            "ref": "playerSection"
+            "ref": "contactId"
           },
-          "</player>"
-        ]
+          {
+            "ref": "recipe"
+          }
+        ],
+        "call": "AiNpcRenderTarget"
       },
       {
         "args": [
@@ -844,13 +826,21 @@
         "call": "AiNpcRenderActionBlock"
       },
       {
-        "concat": [
-          "<memory>",
+        "args": [
+          "memory",
           {
-            "ref": "memoryBlock"
-          },
-          "</memory>"
-        ]
+            "args": [
+              {
+                "ref": "contactId"
+              },
+              {
+                "ref": "recipe"
+              }
+            ],
+            "call": "AiNpcRenderMemoryBlock"
+          }
+        ],
+        "call": "AiNpcSection"
       },
       {
         "args": [
@@ -858,18 +848,22 @@
           {
             "args": [
               {
-                "ref": "intent"
+                "ref": "contactId"
               },
               {
-                "args": [
-                  {
-                    "ref": "ctx"
-                  }
-                ],
-                "call": "AiNpcExtensionIntent"
+                "ref": "ctx"
+              },
+              {
+                "ref": "questKey"
+              },
+              {
+                "ref": "intentOverride"
+              },
+              {
+                "ref": "recipe"
               }
             ],
-            "call": "AiNpcJoinLines"
+            "call": "AiNpcRenderIntent"
           }
         ],
         "call": "AiNpcSection"
@@ -884,6 +878,9 @@
               },
               {
                 "ref": "questKey"
+              },
+              {
+                "ref": "recipe"
               }
             ],
             "call": "AiNpcQuestContext"
@@ -891,41 +888,26 @@
         ],
         "call": "AiNpcSection"
       },
-      "<now>",
-      {
-        "concat": [
-          "It is ",
-          {
-            "args": [],
-            "call": "AiNpcGetCurrentTime"
-          },
-          ".\n"
-        ]
-      },
-      {
-        "args": [],
-        "call": "AiNpcWeatherLine"
-      },
-      {
-        "ref": "pendingContext"
-      },
-      {
-        "concat": [
-          {
-            "ref": "live"
-          },
-          "\n"
-        ]
-      },
       {
         "args": [
           {
+            "ref": "contactId"
+          },
+          {
             "ref": "ctx"
+          },
+          {
+            "ref": "provider"
+          },
+          {
+            "ref": "pendingContext"
+          },
+          {
+            "ref": "recipe"
           }
         ],
-        "call": "AiNpcExtensionLiveContext"
+        "call": "AiNpcRenderNow"
       },
-      "</now>",
       {
         "concat": [
           "<explicitness>",
@@ -1201,7 +1183,15 @@
           "\n"
         ]
       },
-      "FACTS:\n",
+      {
+        "concat": [
+          {
+            "args": [],
+            "call": "AiNpcMemorySectionFacts"
+          },
+          "\n"
+        ]
+      },
       {
         "concat": [
           "- ",
@@ -1221,7 +1211,15 @@
           "\n"
         ]
       },
-      "OPEN:\n",
+      {
+        "concat": [
+          {
+            "args": [],
+            "call": "AiNpcMemorySectionOpen"
+          },
+          "\n"
+        ]
+      },
       {
         "concat": [
           "- ",
@@ -1284,7 +1282,11 @@
       },
       {
         "concat": [
-          "TONE: ",
+          {
+            "args": [],
+            "call": "AiNpcMemorySectionTone"
+          },
+          " ",
           {
             "member": [
               "memory",
@@ -1296,6 +1298,41 @@
       }
     ],
     "memoryTone": "TONE:",
+    "nowParts": [
+      {
+        "concat": [
+          "It is ",
+          {
+            "args": [],
+            "call": "AiNpcGetCurrentTime"
+          },
+          ".\n"
+        ]
+      },
+      {
+        "args": [],
+        "call": "AiNpcWeatherLine"
+      },
+      {
+        "ref": "pendingContext"
+      },
+      {
+        "concat": [
+          {
+            "ref": "live"
+          },
+          "\n"
+        ]
+      },
+      {
+        "args": [
+          {
+            "ref": "ctx"
+          }
+        ],
+        "call": "AiNpcExtensionLiveContext"
+      }
+    ],
     "playerDescription": [
       {
         "concat": [
@@ -1368,6 +1405,7 @@
         "."
       ]
     },
+    "speechKey": "SPEECH",
     "tone": {
       "normal": "<explicitness>Mild swearing is allowed (damn, hell, shit, asshole, or what your language says instead). Sex is not.\nForbidden vocabulary, in any language and any spelling: names for genitals, breasts or buttocks; verbs for sexual acts (to fuck, to suck, to penetrate, to come); positions; body fluids; anything about depth, holes, protection or what is included in a sexual service. Naming a service as a service (an hour, a rate) is allowed, describing what happens during it is not.\nV may use those words herself, and she will ask you to repeat them, confirm them word for word or quote them back. You never do: you confirm the deal in your own clean words -- what is agreed, the hour, the price -- and never echo hers.\nNo slurs. Attraction and flirting stay suggestive.</explicitness>",
       "nsfw": {
@@ -1441,14 +1479,15 @@
     }
   },
   "sources": {
-    "AiNpcActionPrompt.reds": "bd5c3632799e",
+    "AiNpcActionPrompt.reds": "ac192adbacd0",
+    "AiNpcCharacterRender.reds": "3e424eb7efaf",
     "AiNpcContacts.reds": "e095b72d08b2",
-    "AiNpcContextData.reds": "82856eb05257",
+    "AiNpcContextData.reds": "57b1f9152290",
     "AiNpcLanguage.reds": "ad6faba77709",
-    "AiNpcMemory.reds": "c02dba3c8a6a",
+    "AiNpcMemory.reds": "fe925b09f83f",
     "AiNpcPlayer.reds": "2787176d81a4",
-    "AiNpcPromptBuild.reds": "cf842ebb685e",
-    "AiNpcPromptSections.reds": "e9059b9c35b7",
+    "AiNpcPromptBuild.reds": "ec4408634e85",
+    "AiNpcPromptSections.reds": "041fd931f856",
     "AiNpcRomanceExtension.reds": "5f03c8850bba",
     "AiNpcTransferHandler.reds": "0da2ac9da07a",
     "AiNpcVersion.reds": "980161784e9e",

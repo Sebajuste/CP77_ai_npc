@@ -83,6 +83,20 @@ func AiNpcGetPromptConfig() -> ref<AiNpcPromptConfig> {
     return new AiNpcPromptConfig();
 }
 
+// Never null either, and for the same reason: a recipes file that failed to load reads as
+// every block at every part, which is what "no opinion" means for a prompt. A caller that had
+// to guard would be one caller away from a prompt built with no blocks at all.
+func AiNpcPromptRecipe() -> ref<AiNpcRecipe> {
+    let service = AiNpcConfigService.Get();
+    if IsDefined(service) {
+        let recipe = service.GetRecipe();
+        if IsDefined(recipe) {
+            return recipe;
+        }
+    }
+    return AiNpcRecipeFull();
+}
+
 /// Sections ///
 
 // <interactions>: what a character can and cannot do to reach V.
@@ -357,9 +371,12 @@ func AiNpcGetToneReminder(contactId: String) -> String {
         "");
 }
 
+// The register itself. Where it is rendered is AiNpcCharacterRender's business; this answers
+// only what it says.
+//
 // Not a template variable: AiNpcExpandTemplate would have to call this to build its
-// variables, and this expands its result through AiNpcExpandTemplate. A hand-written SPEECH
-// rubric therefore carries its own style text.
+// variables, and this expands its result through AiNpcExpandTemplate. {register} is the
+// language's own form of address instead, which is what a style bends rather than replaces.
 //
 // The contact level has two sources and the method wins: a provider implements
 // GetSpeechStyle, a built-in contact says the same through the speechStyle override field.
@@ -460,12 +477,11 @@ func AiNpcCoreRules(contactId: String) -> array<ref<AiNpcRule>> {
     // Two lines that name themselves, hence raw.
     ArrayPush(rules, AiNpcRawRuleOf("LANGUAGE", AiNpcGetLanguagePrompt(contactId)));
 
-    let speech = AiNpcGetSpeechStyle(contactId);
-    if NotEquals(StrLen(speech), 0) {
-        ArrayPush(rules, AiNpcRuleOf("SPEECH", speech));
-    }
+    // No SPEECH rubric: a character's register is rendered in <character>, next to the
+    // description it belongs to -- see AiNpcCharacterRender.reds. This block describes the
+    // chat, and how one person talks was the one line in it that described a person.
 
-    // After SPEECH, so the language rule and the register stay adjacent. Empty in English.
+    // Empty in English.
     let gender = AiNpcGenderStatement();
     if NotEquals(StrLen(gender), 0) {
         ArrayPush(rules, AiNpcRuleOf("V", gender));

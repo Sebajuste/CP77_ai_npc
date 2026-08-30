@@ -131,7 +131,7 @@ class Character(object):
         return self.sheet.get("allowsMemory", True)
 
     def knows_life_path(self):
-        """Whether <player> tells this contact where V comes from. Mirrors the provider."""
+        """Whether <target> tells this contact where V comes from. Mirrors the provider."""
         return self.sheet.get("knowsPlayerLifePath", True)
 
     def is_romance_capable(self):
@@ -189,7 +189,9 @@ class Sections(object):
 
     # ── the sections ─────────────────────────────────────────────────────────
 
-    LOCKED_RULES = {"system_rules": ("FORM", "TIME", "LENGTH"),
+    # SPEECH is locked because it MOVED: the register is rendered in <character> now, and a
+    # rubric taken here would state it twice.
+    LOCKED_RULES = {"system_rules": ("FORM", "TIME", "LENGTH", "SPEECH"),
                     "interactions": ("PROMISES",)}
     RULE_BUDGET = 600
     RULE_TOTAL_BUDGET = 2000
@@ -417,7 +419,7 @@ class Sections(object):
         return configured or self.player_description()
 
     def player_description(self):
-        """V, as <player> describes {them}. Mirrors AiNpcPlayerDescriptionFor."""
+        """V, as <target> describes {them}. Mirrors AiNpcPlayerDescriptionFor."""
         player = self.fixture["player"]
         if player["description"]:
             return player["description"]
