@@ -453,14 +453,19 @@ func AiNpcTestRuleComposition(t: ref<AiNpcTestRunner>) -> Void {
     t.EqInt("rules/before LENGTH, which stays last",
         AiNpcRuleIndexOf(added, "LENGTH"), ArraySize(added) - 1);
 
-    // The three the mod keeps refuse every contribution, silently as far as the merge is
-    // concerned: reporting is the caller's job because it is the half allowed to log.
+    // The locked keys refuse every contribution, silently as far as the merge is concerned:
+    // reporting is the caller's job because it is the half allowed to log.
+    //
+    // Three of them describe the chat and one -- SPEECH -- describes the character and MOVED;
+    // both reasons are asserted where they live, in tests\AiNpcTestRecipe.reds.
     let refused = AiNpcRulesWith("system_rules", rules, AiNpcRuleOf("FORM", "two flat sentences"));
     t.EqString("rules/a locked key is refused", refused[1].text, "core form");
-    t.Check("rules/and the mod owns three of them",
-        AiNpcRuleIsLocked("system_rules", "FORM") && AiNpcRuleIsLocked("system_rules", "TIME") && AiNpcRuleIsLocked("system_rules", "LENGTH"));
+    t.Check("rules/and the mod owns four of them",
+        AiNpcRuleIsLocked("system_rules", "FORM") && AiNpcRuleIsLocked("system_rules", "TIME")
+        && AiNpcRuleIsLocked("system_rules", "LENGTH") && AiNpcRuleIsLocked("system_rules", "SPEECH"));
     t.Check("rules/everything else is contributable",
-        !AiNpcRuleIsLocked("system_rules", "YOU") && !AiNpcRuleIsLocked("system_rules", "SETTING") && !AiNpcRuleIsLocked("system_rules", "SPEECH"));
+        !AiNpcRuleIsLocked("system_rules", "YOU") && !AiNpcRuleIsLocked("system_rules", "SETTING")
+        && !AiNpcRuleIsLocked("system_rules", "NEVER"));
 
     // The lock is by name, so one spelling is the whole of it: "form" would otherwise be a
     // second rubric contradicting FORM from the line above LENGTH.
@@ -503,7 +508,7 @@ LANGUAGE RESPONSE: fr
     // An empty rubric is absent rather than a heading with nothing under it, which is what
     // AiNpcSection does one level up for the same reason.
     let blank: array<ref<AiNpcRule>>;
-    ArrayPush(blank, AiNpcRuleOf("SPEECH", ""));
+    ArrayPush(blank, AiNpcRuleOf("SCOPE", ""));
     t.EqString("rules/an empty rubric says nothing", AiNpcRenderRules("system_rules", blank), "");
 
     let reach: array<ref<AiNpcRule>>;
