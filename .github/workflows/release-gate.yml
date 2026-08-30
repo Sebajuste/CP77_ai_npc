@@ -1,0 +1,38 @@
+# The gate on the way into main.
+#
+# lint.yml says what a runner can prove: the text checks, and nothing about whether the mod
+# compiles or runs. This job closes the half that a runner cannot reach, the only way it can be
+# closed -- by reading a measurement somebody took on a real launch, committed to the branch,
+# and refusing it when it is red, when it describes a different state of src\, or when it names
+# a version the sources no longer state. tools\release-gate.ps1 holds all of that, so the same
+# refusal can be had here before opening the pull request.
+#
+# It runs ONLY on pull requests into main, because that is the only moment the question is
+# asked. develop receives work in progress; main means release.
+#
+# Make this a required check in main's branch protection, or it is advice rather than a gate.
+name: release gate
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  may-this-be-a-release:
+    name: may this be a release
+    runs-on: windows-latest
+    steps:
+      # Full history: the gate recomputes the last commit touching src\ rather than trusting
+      # the evidence file for it, and a shallow checkout cannot answer that.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # Windows PowerShell 5.1, the shell these scripts are written and tested against.
+      - name: tools/lint.ps1
+        shell: powershell
+        run: .\tools\lint.ps1
+
+      - name: tools/release-gate.ps1
+        shell: powershell
+        run: .\tools\release-gate.ps1
