@@ -20,8 +20,13 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+import build                                            # noqa: E402
 import checks                                          # noqa: E402
+import extract                                         # noqa: E402
+import fixture as fixtures                             # noqa: E402
 import language                                        # noqa: E402
+import passes                                          # noqa: E402
+import recipe as recipes                               # noqa: E402
 
 
 # (langue attendue, nom du personnage, replique). Sortie reelle de claude/sonnet, gelee.
@@ -136,6 +141,93 @@ def named_leaves_a_real_reply_alone():
     return check("named: aucun faux positif sur les repliques", not hits, "; ".join(hits))
 
 
+# ── La recette, les gardes, les passes ──────────────────────────────────────
+#
+# Trois questions qu aucun modele ne tranche : le gabarit livre rend-il bien tout, une
+# recette retire-t-elle vraiment ce qu elle nomme, et la table des passes dit-elle encore ce
+# que le mod envoie. La troisieme est la seule qui ne coute rien et qui rattrape le plus :
+# une passe ajoutee au mod arrete le banc au lieu de le laisser mesurer l ancienne.
+
+
+def _corpus():
+    if not hasattr(_corpus, "value"):
+        _corpus.value = extract.load()
+    return _corpus.value
+
+
+def _fixtures():
+    if not hasattr(_fixtures, "value"):
+        directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures")
+        _fixtures.value = []
+        for name in sorted(os.listdir(directory)):
+            if not name.endswith(".json") or name.endswith(".oracle.json"):
+                continue
+            try:
+                _fixtures.value.append(fixtures.load(os.path.join(directory, name)))
+            except fixtures.FixtureError:
+                continue
+    return _fixtures.value
+
+
+def _system(data, recipe):
+    return build.build(_corpus(), data, recipe)["system"]
+
+
+def shipped_default_renders_everything():
+    """Le gabarit livre EST le defaut du mod, donc il rend chaque bloc a chaque partie.
+
+    Le jour ou il cesse de le faire, `tools\lint.ps1` le dit cote redscript et ceci le dit
+    cote hors ligne -- et c est la moitie qui compte pour un banc, parce qu un prompt de
+    reference amputer se compare a tout sans rien prouver.
+    """
+    corpus = _corpus()
+    shipped = recipes.load(corpus, name="default")
+    full = recipes.full(corpus)
+    differ = [key for key in full.blocks
+              if shipped.blocks[key]["parts"] != full.blocks[key]["parts"]]
+    return check("gabarit livre: chaque bloc, chaque partie", not differ, ", ".join(differ))
+
+
+def a_dropped_block_leaves_the_prompt():
+    """Chaque bloc qu une recette a le droit de retirer doit disparaitre du prompt.
+
+    Un bloc que le fichier nomme et que le constructeur rend quand meme est le defaut que
+    tout ce dispositif existe pour empecher : la recette a l air de marcher, et le prompt
+    mesure est celui d avant.
+    """
+    corpus = _corpus()
+    schema = recipes.schema(corpus)
+    full = recipes.full(corpus)
+    unheard = []
+    for entry in schema.entries:
+        if entry.required:
+            continue
+        trimmed = full.with_block(entry.key, [])
+        trimmed.name = "sans-" + entry.key
+        if not any(_system(data, trimmed) != _system(data, full) for data in _fixtures()):
+            unheard.append(entry.key)
+    return check("une recette retire ce qu elle nomme", not unheard,
+                 "aucune fixture ne perd: " + ", ".join(unheard))
+
+
+def a_required_block_is_refused():
+    """<system> et <explicitness> repondent au joueur, pas a une recette de conversation."""
+    corpus = _corpus()
+    text = '{"active": "x", "recipes": {"x": {"system": "none"}}}'
+    errors = recipes.book(corpus, text).errors("x")
+    return check("bloc obligatoire: refus nomme", len(errors) == 1,
+                 "; ".join(str(issue) for issue in errors) or "aucun refus")
+
+
+def passes_still_match_the_mod():
+    """La table des passes hors ligne contre celle qu AiNpcPass.reds a rendue."""
+    try:
+        passes.check(_corpus())
+    except passes.PassError as error:
+        return check("passes: memes noms, memes sources", False, str(error))
+    return check("passes: memes noms, memes sources", True)
+
+
 def main():
     try:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -146,7 +238,11 @@ def main():
                                    detect_decides_often_enough,
                                    named_sees_every_alphabet,
                                    named_ignores_a_clause,
-                                   named_leaves_a_real_reply_alone)]
+                                   named_leaves_a_real_reply_alone,
+                                   shipped_default_renders_everything,
+                                   a_dropped_block_leaves_the_prompt,
+                                   a_required_block_is_refused,
+                                   passes_still_match_the_mod)]
     failed = results.count(False)
     print("\n%d/%d" % (len(results) - failed, len(results)))
     return 1 if failed else 0

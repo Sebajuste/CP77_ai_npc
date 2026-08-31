@@ -55,6 +55,11 @@ if (-not $python) {
     if ($LASTEXITCODE -ne 0) { $failed++ }
     & $python.Source "$PSScriptRoot\prompt\verify.py"
     if ($LASTEXITCODE -ne 0) { $failed++ }
+    # The pure functions of that tooling: the language detector, and -- since the prompt
+    # became a recipe -- that the shipped template still renders everything, that a recipe
+    # removes what it names, and that the offline pass table still matches the mod's.
+    & $python.Source "$PSScriptRoot\prompt\tests.py"
+    if ($LASTEXITCODE -ne 0) { $failed++ }
 }
 
 Write-Output ""

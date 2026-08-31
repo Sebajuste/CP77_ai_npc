@@ -11,8 +11,10 @@ garder une copie.
 ```
 fixtures\*.json  ──►  build  ──►  out\<version>\*.json  ──►  send  ──►  runs\<version>\...
    (une conversation)      (le prompt)                      (les réponses)
+                    ▲             ▲
+              corpus.json         └── passe + recette : quelle requête, et ce qu'elle rend
                     ▲
-              corpus.json  ◄── extract ◄── src\r6\scripts\ai_npc\*.reds
+                extract  ◄── src\r6\scripts\ai_npc\*.reds
 ```
 
 Le jeu n'est dans aucune de ces flèches. Un lancement ne sert qu'à **capturer** un prompt de
@@ -27,10 +29,14 @@ blocs qu'assemble `AiNpcBuildSystemPrompt`, et `build.py` **parcourt cet ordre**
 tenir une copie. Un bloc ajouté, déplacé ou supprimé dans le mod l'est aussi hors ligne à la
 prochaine extraction.
 
-Ce qui est reconstruit ici est le prompt **par défaut** : chaque bloc entier, chaque partie.
-C'est ce que le mod envoie à l'installation, et `tools\lint.ps1` échoue si le gabarit livré
-cesse un jour de tout rendre. Un `recipes.json` écrit par un joueur n'est pas une fixture et
-n'est pas reconstruit — ce serait vérifier une configuration plutôt que le mod.
+Ce qui est reconstruit **par défaut** est le prompt par défaut : chaque bloc entier, chaque
+partie. C'est ce que le mod envoie à l'installation, c'est contre lui que `verify.py` compare
+octet pour octet, et `tools\lint.ps1` échoue si le gabarit livré cesse un jour de tout rendre.
+
+Une recette nommée est autre chose, et c'est une entrée du banc, pas du contrôle de
+non-régression : `--recipe` construit le prompt qu'un joueur obtiendrait avec ce `recipes.json`,
+pour qu'on puisse mesurer ce que coûte un prompt allégé et ce qu'il perd. Le contrôle, lui, ne
+bouge pas — il compare toujours le rendu entier.
 
 Trois garde-fous, tous bruyants :
 
@@ -39,6 +45,8 @@ Trois garde-fous, tous bruyants :
 | Une construction redscript jamais vue | `extract.py` s'arrête, fichier et ligne à l'appui |
 | Le corpus n'a pas été réextrait | `extract.py --check` échoue (dans `tools\test.ps1`) |
 | Le prompt hors ligne diverge du vrai | `verify.py` échoue, en montrant le premier octet qui diffère |
+| Un bloc cesse de répondre à sa recette | `tests.py` échoue en le nommant (dans `tools\test.ps1`) |
+| Une passe est ajoutée ou renommée dans le mod | `passes.check` arrête le banc au lieu de mesurer l'ancienne |
 
 `verify.py` est l'oracle : il reconstruit `panam-on-the-profile` et le compare **octet pour
 octet** au prompt que le jeu a réellement envoyé (`ai_npc_lab\unprompted\prompts\panam_palmer.json`).
@@ -51,24 +59,76 @@ scission FORM/LENGTH, le registre par personnage dans SPEECH, le bloc `<intent>`
 ne prouvait plus rien, et son appariement a été retiré plutôt que gelé : un oracle qui échoue
 en permanence cesse d'être lu. La fixture, elle, reste au jeu de test.
 
+## Les recettes et les passes
+
+Depuis que l'assemblage du prompt est une **recette** et qu'une **passe** dit quel constructeur
+écrit chacun des deux messages, le constructeur hors ligne suit les deux.
+
+Une recette se lit là où le mod la lit : le gabarit livré (`AiNpcRecipeTemplate.reds`, qui *est*
+le défaut du mod) ou un `recipes.json`. Le vocabulaire — quels blocs, quelles parties, lesquels
+sont obligatoires — vient d'`AiNpcRecipeSchema.reds` par le corpus, donc rien n'en est recopié
+ici. Les refus sont ceux du mod, mot pour mot, à une différence près : hors ligne une erreur
+**arrête** la construction de la recette visée, parce qu'un prompt mal lu mesurerait une requête
+que personne n'envoie.
+
+```powershell
+python tools\prompt\generate.py --recipe compact
+python tools\prompt\generate.py --recipes D:\...\recipes.json --recipe mine
+```
+
+Comment un bloc sait qu'il doit disparaître : l'extraction garde la **garde** que les sources
+ont écrite autour de lui (`if AiNpcRecipeHas(...)`, `if AiNpcRecipeWants(...)`) et le
+constructeur la pose à la recette. C'est la seule condition qu'`extract.py` conserve — voir
+`guard.py`, qui dit aussi les deux formes qu'il refuse de deviner. Ce qui reste d'une condition
+que le lecteur ne comprend pas est gardé avec elle et doit être répondu par le constructeur,
+sinon la construction s'arrête : `commandsDedicated` de la fixture est exactement cela, la
+moitié de `AiNpcRecipeHas(recipe, "commands") && !AiNpcActionsAreDedicated()`.
+
+Les passes vivent dans `passes.py`, une par requête que le mod fait :
+
+| passe | instruction | question |
+|---|---|---|
+| `speaking` | les onze blocs | le fil, passé au personnage en milieu de phrase |
+| `thinking` | l'instruction de compaction | le corps de la requête mémoire |
+| `repair` | le bloc `<commands>` | la balise cassée, et quoi en faire |
+| `actions` | le bloc `<commands>` | le fil, la réponse écrite, et une question |
+| `test` | deux littéraux | deux littéraux |
+
+`generate.py` bâtit les deux qu'une fixture décrit seule (`--pass speaking|thinking`). `repair`
+et `actions` lisent une réponse **déjà écrite** — la sortie d'une course, pas l'entrée d'une
+fixture — donc elles se bâtissent là où ces réponses vivent : `ai_npc_lab\action-bench`. `test`
+n'a pas de prompt à mesurer.
+
+`passes.check(corpus)` compare cette table à ce qu'`AiNpcPass.reds` rend vraiment. Une passe
+ajoutée au mod arrête le banc plutôt que de le laisser mesurer l'ancienne.
+
 ## Utilisation
 
 ```powershell
 python tools\prompt\extract.py                      # corpus.json depuis les .reds
 python tools\prompt\generate.py                     # tous les prompts
+python tools\prompt\generate.py --pass thinking     # la compaction
 python tools\prompt\generate.py --print judy-sfw-boundary
 python tools\prompt\verify.py                       # fidélité contre une capture
+python tools\prompt\tests.py                        # les fonctions pures de ce dossier
 
 python ai_npc_lab\prompt-bench\send.py --provider claude --models haiku sonnet --samples 3
 $env:OPENROUTER_API_KEY = "..."
 python ai_npc_lab\prompt-bench\send.py --provider openrouter --models deepseek/deepseek-chat --samples 3
 python ai_npc_lab\prompt-bench\report.py                       # le tableau
+python ai_npc_lab\prompt-bench\report.py --configs             # une ligne par configuration
 python ai_npc_lab\prompt-bench\report.py --replies             # les réponses, groupées par fixture
 ```
 
+Un prompt est écrit sous `out\<version>\<fixture>.<passe>[.<recette>].json` : deux prompts bâtis
+depuis une même fixture sont deux requêtes différentes, et un banc qui les mélangerait ferait la
+moyenne d'un prompt allégé et d'un prompt entier.
+
 Deux sorties, un seul contrat. Un provider HTTP reçoit exactement ce que poste
-`AiNpcLlmChatBody` : `{model, messages:[system, user]}`, sans `temperature` ni `max_tokens` —
-ajouter un réglage ici mesurerait un mod qui n'existe pas. `--provider claude` lance la **CLI
+`AiNpcLlmChatBody` : `{model, messages:[system, user]}`, plus ce que le **slot** de la requête
+recopie dessus. Aucun réglage n'est inventé pour autant : le banc lit le bloc `slots` d'un
+`settings.json` et le résout comme `AiNpcSlotFrom` — un paramètre part parce qu'un fichier de
+réglages le demande, jamais parce qu'un drapeau de banc existe. `--provider claude` lance la **CLI
 Claude en sous-processus** (`claudecli.py`), avec la même coupure : le prompt système par
 `--system-prompt`, l'historique par stdin. La réponse revient dans la même forme des deux
 côtés, donc comparer les deux compare bien des modèles.

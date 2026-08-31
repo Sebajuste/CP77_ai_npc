@@ -442,12 +442,13 @@ class Sections(object):
             out += resolve(parts[2], self.env({"trimmed": appearance}))
         return out
 
-    def quest_context(self):
+    def quest_context(self, with_name=True, with_objective=True):
         """The <quest> block: heading, account, live objective. Mirrors AiNpcQuestBlock.
 
         The sheet supplies the account alone. The other two parts come from the game -- the
         journal's own title for the quest, and what V is doing at this second -- so offline
-        they come from the fixture.
+        they come from the fixture, and a recipe that drops either one asks for it here the
+        way AiNpcQuestContext does: by not reading it.
         """
         key = self.fixture["quest"]["key"]
         if not key:
@@ -456,12 +457,12 @@ class Sections(object):
         if not account:
             return ""
 
-        name = self.fixture["quest"].get("name", "")
+        name = self.fixture["quest"].get("name", "") if with_name else ""
         heading = resolve(self.texts["questHeading"],
                           self.env({"questName": name})) if name else ""
         block = heading + self.texts["questAccountLabel"] + account
 
-        objective = self.fixture["quest"]["objective"]
+        objective = self.fixture["quest"]["objective"] if with_objective else ""
         if not objective:
             return block
         return block + " " + resolve(self.texts["situationClause"],

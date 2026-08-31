@@ -16,11 +16,16 @@ The scanner is deliberately blunt: it walks the token stream of one function and
 every `return`, every assignment and every `+=`. It understands no control flow, which is
 why what it produces is then picked apart by name here, in the open, rather than trusted
 wholesale.
+
+ONE CONDITION SURVIVES THAT BLUNTNESS, and it is the recipe: a `+=` written inside
+`if AiNpcRecipeHas(...)` comes back wrapped in the answer it depends on. See guard.py, which
+holds the whole of that rule and the two shapes it refuses to guess at.
 """
 
 import io
 import os
 
+from guard import read_condition, wrap
 from redsvalue import RedsParseError, function_body
 
 
@@ -64,9 +69,36 @@ def harvest(source, function_name, where):
 
     out = Harvest()
     case_label = None
+    # The `if` blocks open around the cursor, innermost last, and the brace depth each one
+    # was opened at. A statement is recorded under every guard still standing over it.
+    guards = []
+    depth = 0
 
     while reader.peek().kind != "end":
         token = reader.peek()
+
+        if token.kind == "ident" and token.value == "if":
+            reader.next()
+            guards.append((depth + 1, _condition_of(reader, where)))
+            depth += 1
+            continue
+
+        if token.kind == "punct" and token.value == "{":
+            reader.next()
+            depth += 1
+            continue
+
+        if token.kind == "punct" and token.value == "}":
+            reader.next()
+            depth -= 1
+            while guards and guards[-1][0] > depth:
+                closed = guards.pop()[1]
+                if closed.touches_recipe() and reader.peek().kind == "ident" \
+                        and reader.peek().value == "else":
+                    reader.fail("%s: an `else` on a recipe guard. This reader reads what a "
+                                "recipe asks for, and the other branch would be prompt text "
+                                "nothing offline knows about." % (function_name,))
+            continue
 
         if token.kind == "ident" and token.value == "case":
             reader.next()
@@ -105,7 +137,7 @@ def harvest(source, function_name, where):
             reader.next()                                   # '='
             tree = reader.expression()
             reader.expect_punct(";")
-            out.assigns.setdefault(name, []).append(tree)
+            out.assigns.setdefault(name, []).append(_under(guards, tree))
             continue
 
         # `ArrayPush(list, value)`, flattened the same way an append is: the conditions
@@ -119,7 +151,7 @@ def harvest(source, function_name, where):
             tree = reader.expression()
             reader.expect_punct(")")
             reader.expect_punct(";")
-            out.pushes.setdefault(name, []).append(tree)
+            out.pushes.setdefault(name, []).append(_under(guards, tree))
             continue
 
         if token.kind == "ident" and _is_append(reader):
@@ -128,12 +160,34 @@ def harvest(source, function_name, where):
             reader.next()                                   # '='
             tree = reader.expression()
             reader.expect_punct(";")
-            out.appends.setdefault(name, []).append(tree)
+            out.appends.setdefault(name, []).append(_under(guards, tree))
             continue
 
         reader.next()
 
     return out
+
+
+def _condition_of(reader, where):
+    """The tokens between `if` and the `{` it opens, read as a guard."""
+    tokens = []
+    parens = 0
+    while True:
+        token = reader.peek()
+        if token.kind == "end":
+            reader.fail("%s: an `if` with no block" % (where,))
+        if token.kind == "punct" and token.value == "(":
+            parens += 1
+        if token.kind == "punct" and token.value == ")":
+            parens -= 1
+        if token.kind == "punct" and token.value == "{" and parens == 0:
+            reader.next()
+            return read_condition(tokens, where)
+        tokens.append(reader.next())
+
+
+def _under(guards, tree):
+    return wrap([guard for _depth, guard in guards], tree)
 
 
 def _is_assignment(reader):
@@ -187,6 +241,23 @@ SOURCES = {
                          "AiNpcMemorySectionTone", "AiNpcMemoryPactHorizonWord"),
     "AiNpcCharacterRender.reds": ("AiNpcCharacterSpeechKey",),
     "AiNpcVersion.reds": ("AiNpcVersion",),
+    # The recipe vocabulary: which blocks exist, which parts each one has, and the file the
+    # mod ships as its own default. Read rather than mirrored, so a block added to the schema
+    # is a block the offline builder can be asked for on the next extraction.
+    "AiNpcRecipeSchema.reds": ("AiNpcRecipeSchema", "AiNpcRecipePartAll"),
+    "AiNpcRecipeTemplate.reds": ("AiNpcRecipeTemplate",),
+    "AiNpcTargetRender.reds": ("AiNpcTargetSources", "AiNpcTargetDefaultSource"),
+    # The passes, and the two message sources each one renders. The per-pass answer is an
+    # if-chain this scanner cannot key, so what is harvested is the SET the schema is built
+    # from -- which is what AiNpcPassInstructionSources computes from the same returns.
+    "AiNpcPass.reds": ("AiNpcPassInstructionSource", "AiNpcPassAskSource"),
+    "AiNpcRequestLog.reds": ("AiNpcLaneSpeaking", "AiNpcLaneThinking", "AiNpcLaneRepair",
+                             "AiNpcLaneActions", "AiNpcLaneTest"),
+    # The two passes whose prompt is a literal rather than a block walk: the bracket repair
+    # and the action selector. Both are the whole of what their request sends.
+    "AiNpcRepair.reds": ("AiNpcRepairAsk",),
+    "AiNpcActionSelector.reds": ("AiNpcActionSelectorAsk", "AiNpcActionSelectorWindow",
+                                 "AiNpcActionSelectorNone"),
 }
 
 
@@ -280,12 +351,47 @@ def read_all(script_dir):
         # mirrored rather than copied.
         "nowParts": harvested["AiNpcRenderNow"].appends.get("body", []),
 
+        # The recipe vocabulary. The schema is a list of ArrayPush calls, resolved by
+        # recipe.py against the same constructors the .reds uses; the template is the JSON
+        # text the mod writes to disk and parses back as its own default.
+        "recipeSchema": harvested["AiNpcRecipeSchema"].pushes.get("schema", []),
+        "recipePartAll": final("AiNpcRecipePartAll"),
+        "recipeTemplate": final("AiNpcRecipeTemplate"),
+        "targetSources": _string_array(final("AiNpcTargetSources")),
+        "targetDefaultSource": final("AiNpcTargetDefaultSource"),
+
+        # The lanes, which are also the pass names, and the sources each half of a request
+        # may name. Deduped in source order: that is exactly what AiNpcPassInstructionSources
+        # returns, from these same returns.
+        "lanes": {name: final(name) for name in SOURCES["AiNpcRequestLog.reds"]},
+        "passInstructionSources": _sources_of(harvested["AiNpcPassInstructionSource"]),
+        "passAskSources": _sources_of(harvested["AiNpcPassAskSource"]),
+
+        "repairAsk": final("AiNpcRepairAsk"),
+        "selectorAsk": final("AiNpcActionSelectorAsk"),
+        "selectorWindow": int(final("AiNpcActionSelectorWindow")["num"]),
+        "selectorNone": final("AiNpcActionSelectorNone"),
+
         # Every literal the system prompt frames its blocks with, in order. The offline
         # builder mirrors the assembly, and checks each frame token it writes against this
         # list -- so a tag renamed in AiNpcBuildSystemPrompt stops the build instead of
         # producing a prompt with the old tag in it.
         "frame": harvested["AiNpcBuildSystemPromptWith"].appends.get("prompt", []),
     }
+
+
+def _sources_of(harvested):
+    """Every source one pass-source function names, deduped in source order.
+
+    The function is a chain of `if Equals(pass, ...)` this scanner cannot key by pass, and
+    it does not need to be: what the schema is built from is the SET, and
+    AiNpcPassInstructionSources derives it from these same returns.
+    """
+    out = []
+    for _label, tree in harvested.returns:
+        if isinstance(tree, str) and tree and tree not in out:
+            out.append(tree)
+    return out
 
 
 def _pick_tone_args(tree):
