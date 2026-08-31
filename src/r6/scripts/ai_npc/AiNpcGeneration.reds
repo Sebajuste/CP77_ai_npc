@@ -30,6 +30,11 @@ public class AiNpcGeneration {
     // Who this generation is for. Written once, by a constructor.
     private let m_contactId: String;
 
+    // Par quel medium. Capture ici et pour la meme raison que le contact : la livraison arrive
+    // un DelayCallback et un aller-retour plus tard, et un joueur qui a raccroche entre-temps
+    // verrait sinon une ligne parlee peinte dans le fil SMS.
+    private let m_channel: AiNpcChannelId;
+
     // "" is the player, the only author with no mod id, so the empty string is a real answer
     // here rather than a missing one.
     private let m_askedBy: String;
@@ -61,9 +66,11 @@ public class AiNpcGeneration {
     private let m_repair: ref<AiNpcRepair>;
 
     // V wrote something and the character is answering it.
-    public static func ForPlayer(contactId: String, playerLine: String) -> ref<AiNpcGeneration> {
+    public static func ForPlayer(contactId: String, playerLine: String,
+                                opt channel: AiNpcChannelId) -> ref<AiNpcGeneration> {
         let self = AiNpcGeneration.Addressed(contactId);
         self.m_ask = playerLine;
+        self.m_channel = channel;
         return self;
     }
 
@@ -96,6 +103,10 @@ public class AiNpcGeneration {
 
     public func Contact() -> String {
         return this.m_contactId;
+    }
+
+    public func Channel() -> AiNpcChannelId {
+        return this.m_channel;
     }
 
     // "" is the player. Anything else is the mod that asked.

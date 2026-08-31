@@ -770,14 +770,10 @@ public class AiNpcTerminalChat extends AiNpcChatRenderer {
             return;
         }
 
-        // Echoing V's line, ending the typing state and scrolling down are the session's; the
-        // lane call is ours, because a session may not reach for a system.
-        if !this.m_session.AcceptTyped(text) {
-            return;
-        }
+        // La meme sequence que le telephone, et c'est le canal qui la porte -- voir
+        // AiNpcChannel.Send, ou l'ordre entre l'envoi et le depot est explique une fois.
         AiNpcLog(s"Terminal: sending to '\(contactId)'.");
-        http.TriggerPostRequest(contactId, text);
-        AiNpcAppendMessage(contactId, text, true);
+        AiNpcChannelOf(AiNpcChannelId.Text).Send(this.m_session, text);
 
         this.m_field.Clear();
         this.SyncBusyState();

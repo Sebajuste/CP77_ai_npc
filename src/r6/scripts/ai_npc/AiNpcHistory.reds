@@ -16,11 +16,13 @@ func AiNpcMessageNew(text: String, fromPlayer: Bool) -> ref<AiNpcMessage> {
     return AiNpcMessageNewAt(text, fromPlayer, AiNpcTimeUnknown());
 }
 
-func AiNpcMessageNewAt(text: String, fromPlayer: Bool, gameTimeSeconds: Int32) -> ref<AiNpcMessage> {
+func AiNpcMessageNewAt(text: String, fromPlayer: Bool, gameTimeSeconds: Int32,
+                       opt channel: AiNpcChannelId) -> ref<AiNpcMessage> {
     let message = new AiNpcMessage();
     message.text = text;
     message.fromPlayer = fromPlayer;
     message.gameTimeSeconds = gameTimeSeconds;
+    message.channel = channel;
     return message;
 }
 
@@ -88,9 +90,11 @@ func AiNpcHistoryAppend(messages: array<ref<AiNpcMessage>>, text: String, fromPl
     return AiNpcHistoryAppendAt(messages, text, fromPlayer, AiNpcTimeUnknown());
 }
 
-func AiNpcHistoryAppendAt(messages: array<ref<AiNpcMessage>>, text: String, fromPlayer: Bool, gameTimeSeconds: Int32) -> array<ref<AiNpcMessage>> {
+func AiNpcHistoryAppendAt(messages: array<ref<AiNpcMessage>>, text: String, fromPlayer: Bool,
+                          gameTimeSeconds: Int32, opt channel: AiNpcChannelId) -> array<ref<AiNpcMessage>> {
     let result = AiNpcHistoryCopy(messages);
-    ArrayPush(result, AiNpcMessageNewAt(AiNpcTrimLeadingBlanks(text), fromPlayer, gameTimeSeconds));
+    ArrayPush(result, AiNpcMessageNewAt(AiNpcTrimLeadingBlanks(text), fromPlayer, gameTimeSeconds,
+        channel));
     return result;
 }
 

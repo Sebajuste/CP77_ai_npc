@@ -63,7 +63,8 @@ public class AiNpcHttpSystem extends ScriptableSystem {
 
   // The contact is a parameter, not a lookup: this is the one place a generation is addressed,
   // and everything downstream reads the generation rather than asking again.
-  public func TriggerPostRequest(contactId: String, playerMessage: String) {
+  public func TriggerPostRequest(contactId: String, playerMessage: String,
+                                 opt channel: AiNpcChannelId) {
     if Equals(StrLen(contactId), 0) {
       AiNpcLog("Refused to generate a reply for an empty contact id.");
       return;
@@ -79,7 +80,7 @@ public class AiNpcHttpSystem extends ScriptableSystem {
 
     // Addressing the generation and refilling its repair budget are one act, so neither can
     // happen without the other.
-    this.m_generation = AiNpcGeneration.ForPlayer(contactId, playerMessage);
+    this.m_generation = AiNpcGeneration.ForPlayer(contactId, playerMessage, channel);
 
     // Asked before a prompt is built, so a contact that answers for itself costs no tokens,
     // needs no API key and cannot be argued out of character.
@@ -384,7 +385,9 @@ public class AiNpcHttpSystem extends ScriptableSystem {
     }
 
     let text = AiNpcBudgetWarningMessage();
-    AiNpcDeliverOrNotify(contactId, text);
+    // La ligne operateur est celle du mod, pas du personnage : elle reste ecrite, quel que
+    // soit le canal de la generation qui a echoue.
+    AiNpcChannelOf(AiNpcChannelId.Text).Deliver(contactId, text);
     AiNpcAppendMessage(contactId, text, false, "", true);
   }
 
@@ -423,7 +426,7 @@ public class AiNpcHttpSystem extends ScriptableSystem {
     // The cause, second and only on request. Not through HandleMessage: a url filed as
     // something the contact wrote would come back in the next prompt as dialogue.
     if AiNpcDebugEnabled() {
-      AiNpcDeliverOrNotify(this.m_generation.Contact(),
+      AiNpcChannelOf(AiNpcChannelId.Text).Deliver(this.m_generation.Contact(),
         AiNpcDiagnosticMessage(provider, this.m_generation.Url(), detail));
     }
   }
@@ -472,7 +475,12 @@ public class AiNpcHttpSystem extends ScriptableSystem {
 
     // Where it goes is AiNpcNotification's question: a special case for the phone here is what
     // would make a request lane know what a widget is.
-    AiNpcDeliverOrNotify(contactId, processedText);
+    // Un seul texte : nettoye une fois par le canal, puis livre, peint et classe. Le meme
+    // nettoyage passe sur les phrases que le streaming remet a la voix -- voir
+    // AiNpcStreamDeliver -- parce que n'en nettoyer qu'un prononcerait ce que l'autre a retire.
+    let channel = AiNpcChannelOf(this.m_generation.Channel());
+    processedText = channel.Clean(processedText);
+    channel.Deliver(contactId, processedText);
 
     // After the delivery and BEFORE the history write, which is not an accident: the ask this
     // pass builds quotes the reply itself, and a thread that already held it would show the
@@ -489,7 +497,7 @@ public class AiNpcHttpSystem extends ScriptableSystem {
     // failed, but marked so a listener can tell the operator apart from the person. The action
     // repair and the fact bridge refuse a carrier line outright; this line belongs in the
     // thread, so it is labelled instead.
-    AiNpcAppendMessage(contactId, processedText, false, "", carrier);
+    AiNpcAppendMessage(contactId, processedText, false, "", carrier, this.m_generation.Channel());
     this.ToggleIsGenerating(false);
 
     // A mod that asked her to write first learns here, not at the send: what it asked for was
@@ -552,7 +560,7 @@ public class AiNpcHttpSystem extends ScriptableSystem {
   // Addressed with the turn's contact: by the time the dots are due, "who is selected" is a
   // question about a different screen.
   public func ToggleTypingIndicator(value: Bool) {
-    AiNpcPublishTyping(this.m_generation.Contact(), value);
+    AiNpcPublishTyping(this.m_generation.Contact(), value, this.m_generation.Channel());
   }
 
   public func GetIsGenerating() -> Bool {

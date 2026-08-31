@@ -265,7 +265,14 @@ public class AiNpcCallSystem extends ScriptableSystem {
         if NotEquals(this.m_state, AiNpcCallState.Connected) {
             return;
         }
-        AiNpcLog(s"Call: '\(this.m_contactId)' says '\(text)'. \(AiNpcAudio.Speak(text))");
+        // Nettoyee par le canal avant d'etre dite, comme la replique complete l'est avant d'etre
+        // classee. Les deux chemins passent par la meme fonction pure : n'en nettoyer qu'un
+        // prononcerait la didascalie que l'autre a retiree.
+        let spoken = AiNpcChannelOf(AiNpcChannelId.Call).Clean(text);
+        if Equals(StrLen(spoken), 0) {
+            return;
+        }
+        AiNpcLog(s"Call: '\(this.m_contactId)' says '\(spoken)'. \(AiNpcAudio.Speak(spoken))");
     }
 
     // The ring, armed late on purpose -- see the head of AiNpcCallVanilla.reds.

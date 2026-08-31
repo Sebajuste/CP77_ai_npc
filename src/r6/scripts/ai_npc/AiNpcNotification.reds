@@ -44,36 +44,9 @@ func AiNpcFindPhoneController() -> wref<NewHudPhoneGameController> {
     return found;
 }
 
-// One line, to whoever can show it.
+// Ce qui livrait une ligne vit maintenant dans AiNpcChannelText : la question n'est plus « qui
+// peint ceci » mais « que fait CE canal quand personne ne peint », et la reponse differe --
+// l'ecrit pousse une notification, le parle ne pousse rien.
 //
-// The single delivery decision, and it is one question: did anybody paint this? Every surface
-// that can render is offered it, most recently opened first, and each decides for itself
-// whether the message belongs on it. Nobody rendering is not an error and never was -- it is
-// what an SMS notification is for.
-//
-// The contact is a parameter for the same reason it is one everywhere below the send, and
-// here it is at its sharpest: this is the path taken when the chat is NOT open on the sender.
-// Title the notification from the current selection instead and a reply from Panam, arriving
-// while the player is reading Judy's thread, is announced as Judy's.
-func AiNpcDeliverOrNotify(contactId: String, text: String) -> Void {
-    if AiNpcPublishReply(contactId, text) {
-        return;
-    }
-
-    // The mod that owns the correspondent gets first refusal on the notification, because the
-    // push below is the VANILLA phone's and addresses a contact by display name. A contact
-    // that lives in another mod's phone framework is addressed there by hash, and a vanilla
-    // notification for it leads nowhere when the player taps it. See
-    // AiNpcContactProvider.Notify -- and note the write already happened, above and always.
-    let provider = AiNpcProviderFor(contactId);
-    if IsDefined(provider) && provider.Notify(text) {
-        return;
-    }
-
-    let phone = AiNpcFindPhoneController();
-    if !IsDefined(phone) {
-        AiNpcLog(s"No phone controller: '\(contactId)' had a line and nowhere to say it.");
-        return;
-    }
-    phone.PushCustomSMSNotification(contactId, AiNpcGetCharacterName(contactId), text);
-}
+// Ce qui reste ici est la recherche du controleur, ecrite une fois, parce qu'elle appartient au
+// telephone et a personne d'autre.

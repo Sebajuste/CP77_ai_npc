@@ -84,7 +84,8 @@ func AiNpcStoredMemory(contactId: String) -> ref<AiNpcMemory> {
 // to the LISTENERS and stops there: a listener needs it to tell its own writes from everyone
 // else's, which is what stops a mod that answers messages from answering itself, and what was
 // said stays said whether or not that mod is still installed.
-func AiNpcAppendMessage(contactId: String, message: String, fromPlayer: Bool, opt sourceId: String, opt systemNotice: Bool) -> Bool {
+func AiNpcAppendMessage(contactId: String, message: String, fromPlayer: Bool, opt sourceId: String,
+                        opt systemNotice: Bool, opt channel: AiNpcChannelId) -> Bool {
     if Equals(StrLen(contactId), 0) {
         AiNpcLog("Dropped a message with no contact id rather than filing it under a guess.");
         return false;
@@ -105,7 +106,7 @@ func AiNpcAppendMessage(contactId: String, message: String, fromPlayer: Bool, op
         AiNpcLog(s"Repaired a malformed character in a message for '\(contactId)' before filing it.");
     }
 
-    store.Append(contactId, filed, fromPlayer);
+    store.Append(contactId, filed, fromPlayer, channel);
     AiNpcPublishMessage(contactId, filed, fromPlayer, sourceId, systemNotice);
     return true;
 }

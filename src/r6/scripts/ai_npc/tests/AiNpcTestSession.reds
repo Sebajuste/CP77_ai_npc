@@ -93,11 +93,11 @@ func AiNpcTestSessionPolicy(t: ref<AiNpcTestRunner>) -> Void {
     t.EqInt("session/window never starts before the start", AiNpcHistoryWindowStart(5, 40), 0);
 
     t.EqBool("session/a reply for the shown contact is accepted",
-             AiNpcSessionAccepts("panam", "panam"), true);
+             AiNpcSessionAccepts("panam", "panam", AiNpcChannelId.Text, AiNpcChannelId.Text), true);
     t.EqBool("session/a reply for someone else is refused",
-             AiNpcSessionAccepts("panam", "judy"), false);
+             AiNpcSessionAccepts("panam", "judy", AiNpcChannelId.Text, AiNpcChannelId.Text), false);
     t.EqBool("session/a surface showing nothing accepts nothing",
-             AiNpcSessionAccepts("", "panam"), false);
+             AiNpcSessionAccepts("", "panam", AiNpcChannelId.Text, AiNpcChannelId.Text), false);
 
     let session = new AiNpcChatSession();
     let mock = new AiNpcMockRenderer();
@@ -106,21 +106,21 @@ func AiNpcTestSessionPolicy(t: ref<AiNpcTestRunner>) -> Void {
     session.Show("panam");
 
     t.EqBool("session/delivery to another contact is refused",
-             session.Deliver("judy", "hey"), false);
+             session.Deliver("judy", "hey", AiNpcChannelId.Text), false);
     t.EqInt("session/a refused delivery paints nothing", ArraySize(mock.lines), 0);
 
     t.EqBool("session/delivery to the shown contact is accepted",
-             session.Deliver("panam", "abcdefghij"), true);
+             session.Deliver("panam", "abcdefghij", AiNpcChannelId.Text), true);
     t.EqInt("session/a long reply is split at the renderer budget", ArraySize(mock.lines), 2);
     t.EqString("session/the split keeps the order", mock.lines[0], "N:abcd");
     t.EqInt("session/a live reply animates", mock.animated, 2);
 
     let before: Int32 = mock.scrolls;
     mock.atBottom = false;
-    session.Deliver("panam", "hi");
+    session.Deliver("panam", "hi", AiNpcChannelId.Text);
     t.EqInt("session/a reader scrolled up is left alone", mock.scrolls, before);
     mock.atBottom = true;
-    session.Deliver("panam", "hi");
+    session.Deliver("panam", "hi", AiNpcChannelId.Text);
     t.EqInt("session/a reader at the bottom follows", mock.scrolls, before + 1);
 
     let fill = new AiNpcChatSession();
@@ -147,11 +147,11 @@ func AiNpcTestSessionPolicy(t: ref<AiNpcTestRunner>) -> Void {
     modes.SetBusy(false);
     t.EqString("session/the state comes back when it ends", modeMock.lastMode, "Typing");
 
-    modes.SetTypingIndicator("judy", true);
+    modes.SetTypingIndicator("judy", true, AiNpcChannelId.Text);
     t.EqInt("session/dots for another contact are ignored", modeMock.typingOn, 0);
-    modes.SetTypingIndicator("panam", true);
+    modes.SetTypingIndicator("panam", true, AiNpcChannelId.Text);
     t.EqInt("session/dots for the shown contact are shown", modeMock.typingOn, 1);
-    modes.SetTypingIndicator("judy", false);
+    modes.SetTypingIndicator("judy", false, AiNpcChannelId.Text);
     t.EqInt("session/dots off is obeyed whoever it is for", modeMock.typingOff, 1);
 
     let send = new AiNpcChatSession();
@@ -171,7 +171,7 @@ func AiNpcTestSessionPolicy(t: ref<AiNpcTestRunner>) -> Void {
 
     let orphan = new AiNpcChatSession();
     orphan.Show("panam");
-    t.EqBool("session/no renderer refuses delivery", orphan.Deliver("panam", "hey"), false);
+    t.EqBool("session/no renderer refuses delivery", orphan.Deliver("panam", "hey", AiNpcChannelId.Text), false);
     orphan.Fill(AiNpcTestHistory(["V:hi"]));
     t.EqBool("session/no renderer survives a fill", orphan.HasRenderer(), false);
 
@@ -181,7 +181,7 @@ func AiNpcTestSessionPolicy(t: ref<AiNpcTestRunner>) -> Void {
     dead.Show("panam");
     deadMock.alive = false;
     t.EqBool("session/a dead renderer is no renderer", dead.HasRenderer(), false);
-    t.EqBool("session/a dead renderer refuses delivery", dead.Deliver("panam", "hey"), false);
+    t.EqBool("session/a dead renderer refuses delivery", dead.Deliver("panam", "hey", AiNpcChannelId.Text), false);
     t.EqInt("session/a dead renderer is never painted into", ArraySize(deadMock.lines), 0);
 }
 
@@ -242,7 +242,8 @@ func AiNpcTestSessionRegistryPolicy(t: ref<AiNpcTestRunner>) -> Void {
     both = AiNpcSessionsWith(both, behind);
     both = AiNpcSessionsWith(both, front);
     let bothOrdered = AiNpcSessionsMostRecentFirst(both);
-    t.Check("sessions/first refusal renders", AiNpcDeliverReply(bothOrdered, "panam", "hi"));
+    t.Check("sessions/first refusal renders",
+        AiNpcDeliverReply(bothOrdered, "panam", "hi", AiNpcChannelId.Text));
     t.EqInt("sessions/the front session painted",
             ArraySize((front.GetRenderer() as AiNpcMockRenderer).lines), 1);
     t.EqInt("sessions/the session behind was not asked",
@@ -256,7 +257,7 @@ func AiNpcTestSessionRegistryPolicy(t: ref<AiNpcTestRunner>) -> Void {
     chain = AiNpcSessionsWith(chain, accepts);
     chain = AiNpcSessionsWith(chain, refuses);
     let chainOrdered = AiNpcSessionsMostRecentFirst(chain);
-    t.Check("sessions/a refusal falls through", AiNpcDeliverReply(chainOrdered, "judy", "hi"));
+    t.Check("sessions/a refusal falls through", AiNpcDeliverReply(chainOrdered, "judy", "hi", AiNpcChannelId.Text));
     t.EqInt("sessions/the refusing session painted nothing",
             ArraySize((refuses.GetRenderer() as AiNpcMockRenderer).lines), 0);
     t.EqInt("sessions/the next session rendered it",
@@ -267,10 +268,10 @@ func AiNpcTestSessionRegistryPolicy(t: ref<AiNpcTestRunner>) -> Void {
     allRefuse = AiNpcSessionsWith(allRefuse, AiNpcFakeSession("panam"));
     let allRefuseOrdered = AiNpcSessionsMostRecentFirst(allRefuse);
     t.EqBool("sessions/nobody rendering means nobody rendered",
-        AiNpcDeliverReply(allRefuseOrdered, "river", "hi"), false);
+        AiNpcDeliverReply(allRefuseOrdered, "river", "hi", AiNpcChannelId.Text), false);
 
     let none: array<ref<AiNpcChatSession>>;
-    t.EqBool("sessions/no session means no render", AiNpcDeliverReply(none, "panam", "hi"), false);
+    t.EqBool("sessions/no session means no render", AiNpcDeliverReply(none, "panam", "hi", AiNpcChannelId.Text), false);
     let noneOrdered = AiNpcSessionsMostRecentFirst(none);
     t.EqInt("sessions/ordering an empty list is empty", ArraySize(noneOrdered), 0);
 }

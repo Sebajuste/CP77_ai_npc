@@ -74,11 +74,12 @@ func AiNpcShownContactId(ordered: array<ref<AiNpcChatSession>>) -> String {
 }
 
 // False means nobody rendered it, which is the caller's cue to notify instead.
-func AiNpcDeliverReply(ordered: array<ref<AiNpcChatSession>>, contactId: String, text: String) -> Bool {
+func AiNpcDeliverReply(ordered: array<ref<AiNpcChatSession>>, contactId: String, text: String,
+                       channel: AiNpcChannelId) -> Bool {
     let count = ArraySize(ordered);
     let i = 0;
     while i < count {
-        if ordered[i].Deliver(contactId, text) {
+        if ordered[i].Deliver(contactId, text, channel) {
             return true;
         }
         i += 1;
@@ -154,16 +155,16 @@ func AiNpcGetChatSession() -> ref<AiNpcChatSession> {
 // The three signals the HTTP lane emits, so that the lane never holds a surface, a widget or
 // an opinion about what is on screen. AiNpcPublishReply is the only one that answers.
 
-func AiNpcPublishReply(contactId: String, text: String) -> Bool {
-    return AiNpcDeliverReply(AiNpcChatSessions(), contactId, text);
+func AiNpcPublishReply(contactId: String, text: String, channel: AiNpcChannelId) -> Bool {
+    return AiNpcDeliverReply(AiNpcChatSessions(), contactId, text, channel);
 }
 
-func AiNpcPublishTyping(contactId: String, value: Bool) -> Void {
+func AiNpcPublishTyping(contactId: String, value: Bool, channel: AiNpcChannelId) -> Void {
     let sessions = AiNpcChatSessions();
     let count = ArraySize(sessions);
     let i = 0;
     while i < count {
-        sessions[i].SetTypingIndicator(contactId, value);
+        sessions[i].SetTypingIndicator(contactId, value, channel);
         i += 1;
     }
 }

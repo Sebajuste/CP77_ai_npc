@@ -710,7 +710,9 @@ if ($registrarHits -eq 0) {
 # The allowed files are the ones that genuinely start, observe or stop a request. Everything
 # else asks a named question -- AiNpcSetPendingContext, AiNpcIsGenerating -- and a question that
 # does not exist yet is the signal that something else has moved into the lane.
-$laneAllowed = @("AiNpcHttp.reds", "AiNpcSystem.reds", "AiNpcChatSession.reds",
+# AiNpcChannel.reds est le point d'entree d'un tour depuis que les surfaces ne l'ecrivent plus
+# chacune : il demarre une requete, ce que cette regle autorise en toutes lettres.
+$laneAllowed = @("AiNpcHttp.reds", "AiNpcChannel.reds", "AiNpcSystem.reds", "AiNpcChatSession.reds",
                  "AiNpcTerminalChat.reds", "AiNpcPhoneWidgets.reds", "AiNpcLaneCallback.reds",
                  "AiNpcSpeechQueue.reds", "AiNpcConversationApi.reds", "AiNpcUtilities.reds",
                  "AiNpcClientRegistry.reds")

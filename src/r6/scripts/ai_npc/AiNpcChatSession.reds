@@ -51,8 +51,14 @@ func AiNpcHistoryWindowStart(count: Int32, limit: Int32) -> Int32 {
 
 // The system-event marker is bookkeeping the prompt builder writes into the history as if the
 // player had spoken. Filtered on the player's side only: it is never authored by a character.
-func AiNpcIsDisplayableMessage(message: ref<AiNpcMessage>) -> Bool {
+func AiNpcIsDisplayableMessage(message: ref<AiNpcMessage>, surface: AiNpcChannelId) -> Bool {
     if !IsDefined(message) {
+        return false;
+    }
+    // Une surface ne peint que son propre canal. C'est ici que ce qui a ete dit de vive voix
+    // reste hors du fil ecrit, et le filtre est au bout de la lecture -- le store, lui, garde
+    // une seule chronologie.
+    if NotEquals(message.channel, surface) {
         return false;
     }
     if message.fromPlayer && Equals(message.text, AiNpcSystemEventMarker()) {
@@ -63,8 +69,15 @@ func AiNpcIsDisplayableMessage(message: ref<AiNpcMessage>) -> Bool {
 
 // Refusing is not a failure: it is what sends the reply on to the SMS notification, where a
 // reply for somebody else belongs. A surface showing nothing accepts nothing.
-func AiNpcSessionAccepts(shownContactId: String, targetContactId: String) -> Bool {
+// Le canal de la reponse compte autant que le contact : la session du telephone est encore
+// enregistree quand un appel se termine, et une reponse parlee en retard atterrirait dans le
+// fil SMS avec ce test pour seul obstacle.
+func AiNpcSessionAccepts(shownContactId: String, targetContactId: String,
+                         surface: AiNpcChannelId, reply: AiNpcChannelId) -> Bool {
     if Equals(StrLen(shownContactId), 0) {
+        return false;
+    }
+    if NotEquals(surface, reply) {
         return false;
     }
     return Equals(shownContactId, targetContactId);
@@ -132,7 +145,7 @@ public class AiNpcChatSession extends IScriptable {
         let count: Int32 = ArraySize(messages);
         let i: Int32 = AiNpcHistoryWindowStart(count, renderer.HistoryLimit());
         while i < count {
-            if AiNpcIsDisplayableMessage(messages[i]) {
+            if AiNpcIsDisplayableMessage(messages[i], renderer.Channel()) {
                 this.Paint(messages[i].text, messages[i].fromPlayer, false);
             }
             i += 1;
@@ -163,11 +176,11 @@ public class AiNpcChatSession extends IScriptable {
     //
     // Whether the view follows the conversation is decided BEFORE the message lands: a player
     // who had scrolled up to read something older is not dragged back down.
-    public final func Deliver(contactId: String, text: String) -> Bool {
-        if !AiNpcSessionAccepts(this.m_shownContactId, contactId) {
+    public final func Deliver(contactId: String, text: String, channel: AiNpcChannelId) -> Bool {
+        if !this.HasRenderer() {
             return false;
         }
-        if !this.HasRenderer() {
+        if !AiNpcSessionAccepts(this.m_shownContactId, contactId, this.m_renderer.Channel(), channel) {
             return false;
         }
         let follow: Bool = this.m_renderer.IsAtBottom();
@@ -181,11 +194,13 @@ public class AiNpcChatSession extends IScriptable {
 
     // The dots are the one signal that also means "stop": a false must be obeyed whoever it
     // was addressed to, because the generation it belonged to has ended either way.
-    public final func SetTypingIndicator(contactId: String, value: Bool) -> Void {
+    public final func SetTypingIndicator(contactId: String, value: Bool,
+                                        channel: AiNpcChannelId) -> Void {
         if !this.HasRenderer() {
             return;
         }
-        if AiNpcSessionAccepts(this.m_shownContactId, contactId) || !value {
+        if AiNpcSessionAccepts(this.m_shownContactId, contactId, this.m_renderer.Channel(), channel)
+                || !value {
             this.m_renderer.SetTypingIndicator(value);
         }
     }

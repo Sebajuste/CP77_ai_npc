@@ -294,21 +294,10 @@ public class AiNpcSystem extends ScriptableService {
             return;
         }
 
-        // Read once and passed down: the request and V's own line are one exchange and must
-        // not be able to land in two different threads.
-        let contactId = session.GetShownContactId();
-        if !session.AcceptTyped(message) {
-            AiNpcLog(s"Nothing to send. Screen: \(this.PhoneState().GetScreen()), NPC selected: \(this.npcSelected)");
-            return;
-        }
-
-        let http = GetAiNpcHttpSystem();
-        if IsDefined(http) {
-            http.TriggerPostRequest(contactId, message);
-            // After the send, never before: the lane reads the transcript from the store and
-            // is passed V's line separately, so appending first sends it twice.
-            AiNpcAppendMessage(contactId, message, true);
-        }
+        // La sequence -- lire le contact, echo, appeler la voie, classer -- appartient au
+        // canal, qui l'ecrit une fois pour toutes les surfaces. Le telephone dit seulement par
+        // quel medium il parle.
+        AiNpcChannelOf(AiNpcChannelId.Text).Send(session, message);
     }
 
     private func ResetConversation(playSound: Bool) {

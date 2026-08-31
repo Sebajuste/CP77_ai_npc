@@ -73,6 +73,15 @@ public abstract class AiNpcChatRenderer extends IScriptable {
         return 0;
     }
 
+    // Which channel this surface paints. The default is Text, so the phone and the terminal
+    // need no edit: they paint what they have always painted.
+    //
+    // Beside SplitBudget and HistoryLimit, and for the same reason -- a renderer answers each of
+    // these for ITSELF, and the holo's answer reaches neither of the other two.
+    public func Channel() -> AiNpcChannelId {
+        return AiNpcChannelId.Text;
+    }
+
     // False once the widgets are gone. Dropping a dead renderer is better than asking it,
     // so this covers only the window between the tree going away and the session noticing.
     public func Alive() -> Bool {

@@ -10,6 +10,20 @@
 
 module AiNpc
 
+// Par quel medium une ligne a ete dite. La valeur part sur le disque, dans le journal, ce qui
+// est exactement la raison d'etre de ce fichier : inserer un membre au milieu relirait les
+// conversations deja ecrites sous un autre canal.
+//
+// Text vaut 0 et c'est toute la migration : chaque ligne deja stockee, chaque defaut, chaque
+// renderer muet se relisent en Text, qui est ce qu'ils ont toujours ete.
+//
+// Call, pas Voice : l'axe est le medium et non le son. Une conversation en face a face serait
+// parlee elle aussi, et il faut qu'il lui reste un nom.
+enum AiNpcChannelId {
+    Text = 0,
+    Call = 1
+}
+
 enum AiNpcConversationType {
     Normal = 0,
     NSFW = 1,

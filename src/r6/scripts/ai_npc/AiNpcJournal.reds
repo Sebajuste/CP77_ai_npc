@@ -63,6 +63,9 @@ public class AiNpcJournalOp {
     public let text: String;
     // Absolute in-game seconds; AiNpcTimeUnknown() when the caller had no clock to read.
     public let gameTimeSeconds: Int32;
+    // Append only. Text is the zero, so a line written before this field existed reads back as
+    // what it was.
+    public let channel: AiNpcChannelId;
 
     // Snapshot only: the whole message list for this contact, replacing what the replay had
     // built. It is what makes a fork cheap to open and cheap to read.
@@ -81,7 +84,8 @@ func AiNpcJournalOpAppend(seq: Int32, contactId: String, text: String, fromPlaye
     return AiNpcJournalOpAppendAt(seq, contactId, text, fromPlayer, AiNpcTimeUnknown());
 }
 
-func AiNpcJournalOpAppendAt(seq: Int32, contactId: String, text: String, fromPlayer: Bool, gameTimeSeconds: Int32) -> ref<AiNpcJournalOp> {
+func AiNpcJournalOpAppendAt(seq: Int32, contactId: String, text: String, fromPlayer: Bool,
+                            gameTimeSeconds: Int32, opt channel: AiNpcChannelId) -> ref<AiNpcJournalOp> {
     let op = new AiNpcJournalOp();
     op.seq = seq;
     op.contactId = contactId;
@@ -89,6 +93,7 @@ func AiNpcJournalOpAppendAt(seq: Int32, contactId: String, text: String, fromPla
     op.text = text;
     op.fromPlayer = fromPlayer;
     op.gameTimeSeconds = gameTimeSeconds;
+    op.channel = channel;
     return op;
 }
 
@@ -139,6 +144,15 @@ func AiNpcJournalOpToJson(op: ref<AiNpcJournalOp>) -> ref<JsonObject> {
         if NotEquals(op.gameTimeSeconds, AiNpcTimeUnknown()) {
             entry.SetKeyInt64("g", Cast<Int64>(op.gameTimeSeconds));
         }
+        // "ch" et pas "c" : "c" est deja le contact, deux lignes plus haut. Meme cle dans les
+        // deux serialisations, celle-ci et celle des instantanes, pour qu'un lecteur n'ait
+        // qu'un nom a retenir.
+        //
+        // Omise quand la ligne est ecrite, comme "g" l'est quand l'heure est inconnue : un
+        // journal sans ligne parlee est byte pour byte celui d'avant ce champ.
+        if NotEquals(op.channel, AiNpcChannelId.Text) {
+            entry.SetKeyInt64("ch", Cast<Int64>(EnumInt(op.channel)));
+        }
     }
     if Equals(op.kind, AiNpcJournalKindSnapshot()) {
         entry.SetKey("m", AiNpcMessagesToJson(op.snapshot));
@@ -168,6 +182,8 @@ func AiNpcJournalOpFromJson(json: ref<JsonObject>) -> ref<AiNpcJournalOp> {
     if json.HasKey("g") {
         op.gameTimeSeconds = Cast<Int32>(json.GetKeyInt64("g"));
     }
+    // Absente = Text, ce qui est le cas de toute ligne ecrite avant ce champ.
+    op.channel = AiNpcChannelFromInt(Cast<Int32>(json.GetKeyInt64("ch")));
 
     if Equals(op.kind, AiNpcJournalKindSnapshot()) {
         op.snapshot = AiNpcMessagesFromJson(json.GetKey("m") as JsonArray);
@@ -334,7 +350,8 @@ func AiNpcJournalApply(conversations: array<ref<AiNpcConversation>>, op: ref<AiN
     let conversation = result[index];
     if Equals(op.kind, AiNpcJournalKindAppend()) {
         conversation.messages = AiNpcHistoryTrim(
-            AiNpcHistoryAppendAt(conversation.messages, op.text, op.fromPlayer, op.gameTimeSeconds),
+            AiNpcHistoryAppendAt(conversation.messages, op.text, op.fromPlayer, op.gameTimeSeconds,
+                op.channel),
             maxTurns);
     } else {
         if Equals(op.kind, AiNpcJournalKindUndo()) {
@@ -406,6 +423,9 @@ func AiNpcMessagesToJson(messages: array<ref<AiNpcMessage>>) -> ref<JsonArray> {
         if AiNpcMessageHasTime(messages[i]) {
             entry.SetKeyInt64("g", Cast<Int64>(messages[i].gameTimeSeconds));
         }
+        if NotEquals(messages[i].channel, AiNpcChannelId.Text) {
+            entry.SetKeyInt64("ch", Cast<Int64>(EnumInt(messages[i].channel)));
+        }
         result.AddItem(entry);
         i += 1;
     }
@@ -428,7 +448,8 @@ func AiNpcMessagesFromJson(json: ref<JsonArray>) -> array<ref<AiNpcMessage>> {
             if entry.HasKey("g") {
                 stamp = Cast<Int32>(entry.GetKeyInt64("g"));
             }
-            ArrayPush(result, AiNpcMessageNewAt(entry.GetKeyString("t"), entry.GetKeyBool("p"), stamp));
+            ArrayPush(result, AiNpcMessageNewAt(entry.GetKeyString("t"), entry.GetKeyBool("p"), stamp,
+                AiNpcChannelFromInt(Cast<Int32>(entry.GetKeyInt64("ch")))));
         }
         i += 1u;
     }

@@ -220,13 +220,14 @@ public class AiNpcConversationStore extends ScriptableSystem {
         return ArrayContains(facts, AiNpcMemoryClampEntry(text));
     }
 
-    public func Append(contactId: String, text: String, fromPlayer: Bool) -> Void {
+    public func Append(contactId: String, text: String, fromPlayer: Bool,
+                       opt channel: AiNpcChannelId) -> Void {
         this.EnsureResolved();
         // The clock is read at the one impure edge and travels with the operation, so the
         // replay stamps the message with the time it was written, not the time the save was
         // loaded. AiNpcJournalApply stays pure.
         this.RecordOp(AiNpcJournalOpAppendAt(0, contactId, AiNpcTrimLeadingBlanks(text), fromPlayer,
-            AiNpcGetCurrentGameTimeSeconds()));
+            AiNpcGetCurrentGameTimeSeconds(), channel));
     }
 
     // Undo and Clear check the conversation exists first, so a stray call on a contact nobody

@@ -95,6 +95,11 @@ func AiNpcRunAllTests() -> ref<AiNpcTestRunner> {
     AiNpcTestKeyRepeat(t);
     AiNpcTestSessionRegistryPolicy(t);
     AiNpcTestSessionPolicy(t);
+    AiNpcTestChannelValue(t);
+    AiNpcTestChannelFilter(t);
+    AiNpcTestChannelAccepts(t);
+    AiNpcTestChannelJournal(t);
+    AiNpcTestChannelClean(t);
     AiNpcTestCallTransitions(t);
     AiNpcTestCallOpensOnce(t);
     AiNpcTestPhoneState(t);
