@@ -71,8 +71,9 @@ Canonical order, which is also the order of the rendered prompt.
 | `character` | `<character>` | `bio`, `speech`, `additions` | yes |
 | `target` | `<target>` | — (option: `source`) | yes |
 | `relationship` | `<relationship>` | — | yes |
-| `world` | `<interactions>` `<world_background>` `<mechanics>` | `interactions`, `background`, `mechanics` | yes |
-| `commands` | `<commands>` | — | yes |
+| `interactions` | `<interactions>` | `reach`, `real`, `promises`, plus a source | yes |
+| `world` | `<world_background>` | `background` | yes |
+| `actions` | `<actions>` | — | yes |
 | `memory` | `<memory>` | `chronicle`, `facts`, `open`, `agreed`, `tone` | yes |
 | `intent` | `<intent>` | `own`, `extensions` | yes |
 | `quest` | `<quest>` | `name`, `context`, `objective` | yes |

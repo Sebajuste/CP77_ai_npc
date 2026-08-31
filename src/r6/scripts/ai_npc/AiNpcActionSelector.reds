@@ -31,9 +31,8 @@ func AiNpcActionSelectorNone() -> String {
 
 func AiNpcActionSelectorAsk(transcript: String, npcName: String, reply: String) -> String {
     return transcript + npcName + ": " + AiNpcTranscriptLine(reply) + "\n\n"
-        + "Read the last message only. If it carries out one of the commands above, write that "
-        + "command alone, on one line, with no other text. If it does not, write "
-        + AiNpcActionSelectorNone() + ".";
+        + "Read the last message only, and answer for it alone, on one line, with no other "
+        + "text.";
 }
 
 /// Reading the answer ///

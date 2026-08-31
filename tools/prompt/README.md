@@ -81,8 +81,9 @@ ont écrite autour de lui (`if AiNpcRecipeHas(...)`, `if AiNpcRecipeWants(...)`)
 constructeur la pose à la recette. C'est la seule condition qu'`extract.py` conserve — voir
 `guard.py`, qui dit aussi les deux formes qu'il refuse de deviner. Ce qui reste d'une condition
 que le lecteur ne comprend pas est gardé avec elle et doit être répondu par le constructeur,
-sinon la construction s'arrête : `commandsDedicated` de la fixture est exactement cela, la
-moitié de `AiNpcRecipeHas(recipe, "commands") && !AiNpcActionsAreDedicated()`.
+sinon la construction s'arrête. Aucune fixture n'a plus à répondre d'une moitié pareille :
+ce qu'un réglage du menu décidait est devenu le choix d'une recette, et une recette est ce que
+la garde interroge.
 
 Les passes vivent dans `passes.py`, une par requête que le mod fait :
 

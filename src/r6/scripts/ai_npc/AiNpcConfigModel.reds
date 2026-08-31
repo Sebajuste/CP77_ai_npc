@@ -282,7 +282,6 @@ public class AiNpcArcBeat {
 public class AiNpcPromptConfig {
     public let interactions: array<ref<AiNpcRule>>;
     public let worldBackground: String;
-    public let worldMechanics: String;
     public let rules: array<ref<AiNpcRule>>;
     public let speechStyle: String;
     public let languages: array<String>;      // parallel arrays: languages[i] is the

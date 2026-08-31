@@ -15,7 +15,7 @@
 module AiNpc
 
 func AiNpcActionBlockOpen() -> String {
-    return "<commands>";
+    return "<actions>";
 }
 
 // The block, or "" when this contact has no command it can use right now -- absent rather than
@@ -108,11 +108,11 @@ func AiNpcActionBlockAround(lines: String, opt definitions: String) -> String {
     // reference it cannot resolve, and the offline block silently lost its header. `definitions`
     // is "" when no command declared a parameter, so it concatenates either way.
     return AiNpcActionBlockOpen()
-        + "Write a command exactly as written, on the last line of your message, only when "
-        + "what it describes has been agreed; fill its slots from the parameters below.\n"
+        + "Write a command exactly as written, on the last line of your message; fill its "
+        + "slots from the parameters below.\n"
         + lines
         + definitions
-        + "</commands>";
+        + "</actions>";
 }
 
 // What the repair pass is handed: the vocabulary alone, with no persona and no transcript.
@@ -120,10 +120,10 @@ func AiNpcActionBlockAround(lines: String, opt definitions: String) -> String {
 // prose -- asking a model to fix prose against an empty rulebook is how a good reply gets
 // replaced by a worse one.
 //
-// The recipe is handed in rather than read: this is the same block <commands> renders in the
+// The recipe is handed in rather than read: this is the same block <actions> renders in the
 // prompt, so it has to be the same recipe. Reading one here made the two answers divergeable.
 func AiNpcActionVocabularyFor(contactId: String, recipe: ref<AiNpcRecipe>) -> String {
-    if !AiNpcRecipeHas(recipe, "commands") {
+    if !AiNpcRecipeHas(recipe, "actions") {
         return "";
     }
     let ctx = AiNpcBuildContactContext(contactId);

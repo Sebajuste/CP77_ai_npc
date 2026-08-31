@@ -43,7 +43,7 @@ func AiNpcPassInstructionSource(pass: String) -> String {
         return "memory";
     }
     if Equals(pass, AiNpcLaneRepair()) {
-        return "commands";
+        return "actions";
     }
     if Equals(pass, AiNpcLaneTest()) {
         return "test";
@@ -51,7 +51,7 @@ func AiNpcPassInstructionSource(pass: String) -> String {
     // The same table the repair is sent, and for the same reason: it is the whole of what the
     // mod will honour, so what a model is shown and what may fire are one object.
     if Equals(pass, AiNpcLaneActions()) {
-        return "commands";
+        return "actions";
     }
     return "";
 }
@@ -112,8 +112,14 @@ func AiNpcPassAskSources() -> array<String> {
 // The recipe the shipped template writes for each pass, and the name a preset binds. Checked
 // against the template by tools\lint.ps1: a name that no recipe declares is a binding that
 // points at nothing.
+// The speaking pass is the one whose recipe the player picks from the menu: Command Handling
+// names which of the two shipped conversation recipes is bound. It is the LAST place that
+// setting is read -- everything downstream asks the recipe.
 func AiNpcPassRecipeName(pass: String) -> String {
     if Equals(pass, AiNpcLaneSpeaking()) {
+        if Equals(AiNpcActionModeSetting(), AiNpcActionMode.Dedicated) {
+            return "dedicated";
+        }
         return "default";
     }
     if Equals(pass, AiNpcLaneThinking()) {

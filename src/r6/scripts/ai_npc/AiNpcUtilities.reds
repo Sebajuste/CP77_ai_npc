@@ -67,10 +67,6 @@ func AiNpcActionModeSetting() -> AiNpcActionMode {
     return settings.actionMode;
 }
 
-func AiNpcActionsAreDedicated() -> Bool {
-    return Equals(AiNpcActionModeSetting(), AiNpcActionMode.Dedicated);
-}
-
 public static func AiNpcRetryActionsEnabled() -> Bool {
     let settings = AiNpcSettingsService.Get();
     return IsDefined(settings) && settings.retryActions;

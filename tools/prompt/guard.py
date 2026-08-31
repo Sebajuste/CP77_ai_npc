@@ -13,11 +13,11 @@ So a `+=` inside `if AiNpcRecipeHas(...)` or `if AiNpcRecipeWants(...)` comes ba
 
 and everything not so guarded comes back exactly as it did before, condition and all.
 
-WHAT STANDS BESIDE A RECIPE CALL IS KEPT WITH IT. `AiNpcRecipeHas(recipe, "commands") &&
-!AiNpcActionsAreDedicated()` is one condition, and keeping half of it would render the
-command block in a configuration where the mod moves it to another request. The other half
-is kept as its source text, in `clauses`, and the builder must bind a truth for it by that
-same text or stop -- which is the loud failure this whole directory is built around.
+WHAT STANDS BESIDE A RECIPE CALL IS KEPT WITH IT. A recipe call and a condition the scanner
+cannot read are one condition, and keeping half of it would render a block in a configuration
+where the mod does not. The other half is kept as its source text, in `clauses`, and the
+builder must bind a truth for it by that same text or stop -- which is the loud failure this
+whole directory is built around.
 
 Two shapes raise rather than being guessed at: a recipe call under `!`, and one under `||`.
 Both would silently invert what a block renders -- and both raise ONLY when something the

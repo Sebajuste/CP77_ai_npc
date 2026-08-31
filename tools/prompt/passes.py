@@ -46,9 +46,9 @@ class Pass(object):
 PASSES = (
     Pass("speaking", "conversation", "conversation"),
     Pass("thinking", "memory", "memory"),
-    Pass("repair", "commands", "repair"),
+    Pass("repair", "actions", "repair"),
     Pass("test", "test", "test"),
-    Pass("actions", "commands", "selector"),
+    Pass("actions", "actions", "selector"),
 )
 
 # Les passes qu'une fixture decrit a elle seule. `repair` et `actions` lisent une reponse
@@ -167,9 +167,9 @@ def vocabulary(corpus, fixture, recipe=None):
     a bracket in a reply is prose, and there is nothing for either pass to be about.
     """
     builder = build.Builder(corpus, fixture, recipe)
-    if not builder.recipe.has("commands"):
+    if not builder.recipe.has("actions"):
         return ""
-    return builder.sections.command_block()
+    return builder.sections.interactions(builder.recipe) + builder.sections.action_block()
 
 
 def _sheet(corpus, fixture):

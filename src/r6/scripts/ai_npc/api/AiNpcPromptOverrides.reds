@@ -33,7 +33,6 @@ public class AiNpcPromptOverrides {
     public let interactions: array<ref<AiNpcRule>>;
     public let worldBackground: String;    // <world_background> -- the world, NOT V
     public let playerDescription: String;  // <target> -- who V is, to this contact only
-    public let worldMechanics: String;     // <mechanics>
     // NO TONE LANE. <explicitness> states what the PLAYER consented to in Mod Settings, and
     // a contact rewriting it would answer a question that was never put to it. A character
     // who does not swear says so in its SPEECH rubric, which is where a register lives.

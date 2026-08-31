@@ -253,14 +253,13 @@ public class AiNpcConfigService extends ScriptableService {
         }
 
         let allowed = [
-            "version", "interactions", "worldBackground", "worldMechanics",
+            "version", "interactions", "worldBackground",
             "rules", "speechStyle", "languages"
         ];
         this.ReportUnknownKeys(root, allowed, this.PROMPTS_FILE, "");
 
         this.m_prompts.interactions = this.ReadRules(root, "interactions", "interactions", this.PROMPTS_FILE, "");
         this.m_prompts.worldBackground = this.ReadPromptString(root, "worldBackground", this.PROMPTS_FILE);
-        this.m_prompts.worldMechanics = this.ReadPromptString(root, "worldMechanics", this.PROMPTS_FILE);
         this.m_prompts.rules = this.ReadRules(root, "rules", "system_rules", this.PROMPTS_FILE, "");
         this.RefuseGuidelines(root, this.PROMPTS_FILE, "");
         this.m_prompts.speechStyle = this.ReadPromptString(root, "speechStyle", this.PROMPTS_FILE);
@@ -540,7 +539,7 @@ public class AiNpcConfigService extends ScriptableService {
 
         let allowed = [
             "rules", "interactions", "worldBackground", "playerDescription",
-            "worldMechanics", "language", "comment"
+            "language", "comment"
         ];
         this.ReportUnknownKeys(raw, allowed, fileName, s"\(def.contactId).prompts.");
 
@@ -551,7 +550,6 @@ public class AiNpcConfigService extends ScriptableService {
         over.worldBackground = this.ReadPromptString(raw, "worldBackground", fileName);
         // Contact level only: the global answer is settings.json "playerDescription".
         over.playerDescription = this.ReadPromptString(raw, "playerDescription", fileName);
-        over.worldMechanics = this.ReadPromptString(raw, "worldMechanics", fileName);
         over.language = this.ReadPromptString(raw, "language", fileName);
 
 

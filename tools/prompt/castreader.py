@@ -47,7 +47,7 @@ DEF_FIELDS = {
 # No tone lane at all -- <explicitness> is the player's setting and nothing may rewrite it.
 OVERRIDE_FIELDS = (
     "rules", "interactions", "speechStyle", "language", "playerDescription",
-    "worldBackground", "worldMechanics",
+    "worldBackground",
 )
 
 VARIANT_FIELDS = ("when", "bio", "relationship", "liveContext", "speechStyle", "intent")

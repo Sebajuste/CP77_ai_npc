@@ -17,6 +17,7 @@ variable: the same fixture and the same corpus give the same bytes on any day.
 
 import re
 
+from guard import guard_of, node_of, satisfied
 from resolve import evaluate, Env, resolve
 from template import expand, gendered_word
 from transcript import clock_label
@@ -337,17 +338,38 @@ class Sections(object):
     def gender_statement(self):
         return self.by_language(self.texts["genderStatement"])
 
-    def world_interactions(self):
-        """<interactions>, composed like <system_rules>. PROMISES is the mod's own."""
-        return self.composed_block("interactions", self.core_interaction_rules(),
+    def interactions(self, recipe):
+        """<interactions>, composed like <system_rules>. PROMISES is the mod's own.
+
+        Mirrors AiNpcRenderInteractions: the recipe says which rubrics are rendered, and its
+        source says which wording the one that asks for an output takes.
+        """
+        return self.composed_block("interactions", self.core_interaction_rules(recipe),
                                    self.override("interactions") or [],
                                    self.fixture["prompts"].get("interactions", []),
                                    self.fixture["extensionInteractions"])
 
-    def core_interaction_rules(self):
-        env = self.env({}, {"AiNpcRuleOf": lambda key, text: {"key": key, "text": text,
-                                                              "labelled": True}})
-        return [evaluate(tree, env) for tree in self.texts["coreInteractionRules"]]
+    def reach_rule(self, source):
+        """AiNpcReachRule: one wording per prompt the block can be built for."""
+        if source == "dedicated":
+            return self.texts["reachDedicated"]
+        if source == "commands":
+            return self.texts["reachCommands"]
+        return self.texts["reachConversation"]
+
+    def core_interaction_rules(self, recipe):
+        source = recipe.source_of("interactions") or self.texts["interactionDefaultSource"]
+        env = self.env({"source": source},
+                       {"AiNpcRuleOf": lambda key, text: {"key": key, "text": text,
+                                                          "labelled": True},
+                        "AiNpcReachRule": self.reach_rule})
+        out = []
+        for node in self.texts["coreInteractionRules"]:
+            when = guard_of(node)
+            if when and not satisfied(when, recipe, {}, "<interactions>"):
+                continue
+            out.append(evaluate(node_of(node), env))
+        return out
 
     def world_background(self):
         """The world, plus whatever another mod added to it.
@@ -379,18 +401,6 @@ class Sections(object):
     def _fragment(self, key):
         """AiNpcWorldKnowledgeFragment: the entries of one audience, raw, one per line."""
         return "".join(text + "\n" for text in self.fixture[key] if text)
-
-    def world_mechanics(self):
-        """<mechanics>: prose about how the world works, and nothing about any command.
-
-        Mirrors AiNpcGetWorldMechanics, which carries no built-in text: it used to hold the
-        eddie-transfer block as well, and a contact that opted out of transfers lost this whole
-        section with it -- including an override written about something else.
-        """
-        override = self.override("worldMechanics")
-        if override:
-            return self.expand(override)
-        return self.configured("", self.prompts("worldMechanics"))
 
     def tone_prompt(self):
         """The explicitness tier, with the crude table of the fixture's language folded in.
@@ -481,8 +491,8 @@ class Sections(object):
                 return quest_intent
         return self.character.field("intent")
 
-    def command_block(self):
-        """<commands>: every command this contact has, rendered from its declaration.
+    def action_block(self):
+        """<actions>: every command this contact has, rendered from its declaration.
 
         Mirrors AiNpcRenderActionBlock over the table AiNpcResolveClaims builds. The order is
         the registry's -- ascending full id -- which puts ai_npc's own command first and a

@@ -45,7 +45,7 @@ inflated every row by 10%. The transcript is not free, and neither is the memory
 | `<system>` guidelines | 1527 | 30.4% | 57 |
 | `<memory>` (12 facts) | 535 | 10.7% | 44 |
 | the transcript | 411 | 8.2% | -- |
-| `<mechanics>` commands | 381 | 7.6% | 43 |
+| `<actions>` commands | 381 | 7.6% | 43 |
 | `<interactions>` | 191 | 3.8% | 41 |
 | `<explicitness>` | 96 | 1.9% | 40 |*
 | `<language>` | 60 | 1.2% | 40 |
@@ -82,12 +82,11 @@ One toggle per feature in Mod Settings. Off means the feature is **absent**, not
 ### The rule that makes it work
 
 **A toggle removes the prompt text AND the code that reads the answer.** Both, always, and
-this is not a style preference -- the mod already states why, in `AiNpcGetWorldMechanics`:
+this is not a style preference -- the mod already states why, in `AiNpcRenderActionBlock`:
 
-> A contact that opts out of generic transfers gets no mechanics block unless it wrote one
-> itself. [...] Announcing a command that will be refused costs ~200 tokens a message and
-> lets the model promise eddies that never arrive, which reads to the player as a broken mod
-> rather than as a policy.
+> IsOffered is asked HERE and nowhere else on the prompt side. A claim that answers false is
+> not written, and that is the cheapest refusal there is: a model told about a command it will
+> be refused argues for it instead of talking.
 
 Half a toggle is worse than no toggle. Prompt without parser: the character promises what
 will never happen. Parser without prompt: dead code waiting for a tag nobody was told to
@@ -99,7 +98,7 @@ write. The pattern already exists for one case; the setting generalises it.
 |---|---|---|---|
 | **World detail** | `<world_background>` | -- | characters stop knowing Night City: they apply present-day reflexes to chrome, sex work and violence, and start explaining the setting instead of living in it |
 | **Memory** | `<memory>` | the compaction pass in `AiNpcMemoryService` | a character forgets anything older than the transcript window; the last N messages are all there is. Costs 106 tk at 4 facts and 535 at 12; the cap is 20, so about 550 at saturation |
-| **Actions** | `<mechanics>`, the provider's action fragment | tag parsing and dispatch in `AiNpcHttpSystem.HandleMessage` | no transfers, no meetings -- conversation only |
+| **Actions** | `<actions>`, the provider's action fragment | tag parsing and dispatch in `AiNpcHttpSystem.HandleMessage` | no transfers, no meetings -- conversation only |
 | **Quest & ambient context** | `<quest>`, the live and pending context inside `<now>` | `AiNpcFactEvent`, `AiNpcWeather`, the quest lookup | characters no longer react to what V just did, nor to the weather |
 | **V's appearance** | `<target>` | -- | characters stop describing V; it is one settings.json line (`appearance`), so this only decides whether it is sent |
 

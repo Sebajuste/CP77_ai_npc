@@ -103,9 +103,6 @@ class Builder(object):
         the mod would not have.
         """
         return {
-            # Mod Settings > Command Handling. Dedicated moves the vocabulary out of this
-            # prompt and into the action pass's own request; Embedded is the shipped default.
-            "!AiNpcActionsAreDedicated()": not self.fixture["commandsDedicated"],
             # Offline a contact always has a sheet, which is what a provider answers with.
             "IsDefined(provider)": True,
             "NotEquals(StrLen(live),0)": bool(self.sections.live_context()),
@@ -119,11 +116,10 @@ class Builder(object):
             "AiNpcRenderCharacter": lambda _c, _r: self._character(),
             "AiNpcRenderTarget": lambda _c, _r: self._target(),
             "AiNpcGetRelationship": lambda _c: self.sections.relationship(),
-            "AiNpcGetWorldInteractions": lambda _c: self.sections.world_interactions(),
+            "AiNpcRenderInteractions": lambda _c, _r: self._interactions(),
             "AiNpcGetWorldBackground": lambda _c: self.sections.world_background(),
-            "AiNpcGetWorldMechanics": lambda _c: self.sections.world_mechanics(),
             "AiNpcBuildActionTable": lambda _c: None,
-            "AiNpcRenderActionBlock": lambda _ctx, _table: self.sections.command_block(),
+            "AiNpcRenderActionBlock": lambda _ctx, _table: self.sections.action_block(),
             "AiNpcRenderMemoryBlock": lambda _c, _r: self._memory(),
             "AiNpcRenderIntent": lambda _c, _ctx, _key, override, _r: self._intent(override),
             "AiNpcQuestContext": lambda _c, _key, _r: self._quest(),
@@ -145,6 +141,10 @@ class Builder(object):
     # template renders every block at every part, and tools\lint.ps1 fails if it ever stops
     # doing so. A player's own recipes.json is not a fixture and is not reconstructed --
     # what this tool checks is the prompt the mod builds out of the box.
+
+    def _interactions(self):
+        """AiNpcRenderInteractions: the rubrics the recipe keeps, in the wording it names."""
+        return self.sections.interactions(self.recipe)
 
     def _character(self):
         """AiNpcRenderCharacter: the bio, what another mod appended, then the register."""

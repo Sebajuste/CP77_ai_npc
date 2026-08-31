@@ -135,6 +135,7 @@ def schema(corpus):
     part_all = sections.get("recipePartAll", PART_ALL_FALLBACK)
     lists = {
         "AiNpcTargetSources": sections["targetSources"],
+        "AiNpcInteractionSources": sections["interactionSources"],
         "AiNpcPassInstructionSources": sections["passInstructionSources"],
         "AiNpcPassAskSources": sections["passAskSources"],
     }
@@ -161,6 +162,8 @@ def _entry_of(node, part_all, lists):
         return BlockSchema(key, [part_all], required=True)
     if call == "AiNpcRecipeSourced":
         return BlockSchema(key, [part_all], sources=_list_of(args[1], lists))
+    if call == "AiNpcRecipePartedSource":
+        return BlockSchema(key, args[1]["array"], sources=_list_of(args[2], lists))
     if call == "AiNpcRecipeMessage":
         return BlockSchema(key, [part_all], required=True, sources=_list_of(args[1], lists))
     raise RecipeError(

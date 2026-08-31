@@ -410,7 +410,7 @@ One rule, which also fixes a pre-existing problem rather than working around it:
 > **Blocks are assembled in order of increasing volatility.**
 
 ```
-corpus      rules, character, relationship, interactions, background, mechanics, language
+corpus      rules, character, relationship, interactions, background, language
                                                      invariant   ~1400 tk   <- cacheable prefix
 <memory>    the compacted past                       every ~10 turns  ~200 tk
 <mission>   tracked quest state                      every message
