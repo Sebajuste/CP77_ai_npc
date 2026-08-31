@@ -150,7 +150,6 @@ public class AiNpcCallSystem extends ScriptableSystem {
 
         if Equals(to, AiNpcCallState.Connected) {
             AiNpcVanillaRingStop();
-            AiNpcVanillaCallStart(contactId, true);
             AiNpcCallShowChoices(AiNpcCallWriteLabel(), AiNpcCallHangUpLabel());
         }
 
