@@ -164,6 +164,44 @@ that is a result worth having.
 
 ---
 
+## Measured in game, 2026-08-31: it works, and the window is two seconds
+
+One conversation with Judy: two replies on `OpenRouter`, the third on `OpenRouterStream`.
+
+```
+20:02:04   the request leaves
+20:02:11   first sentence delivered          +7 s
+20:02:13   second sentence, then the end     +9 s
+```
+
+**The token trap is cleared.** The streamed reply carries its usage block —
+`prompt_tokens: 4770`, `completion_tokens: 83`, `total_tokens: 4853` — so the daily cap and the
+usage ledger see exactly what the classic lane gives them. The streamed block does omit `cost`,
+which the classic one carries; nothing reads it (`AiNpcResponses.reds` takes the three token
+fields and the cached count, and no more), so nothing is lost.
+
+**And the window is two seconds, not the three the voice needs.** With a cloned voice at 1.4×
+real time, a first sentence worth five seconds of audio costs about 3.5 s to synthesise: speech
+would start around +10.5 s instead of +12.5 s. Streaming *moves* the wait; it does not hide it.
+
+**Why, and it is not the transport's fault.** The first sentence delivered was 140 characters.
+Seven of those nine seconds were spent writing that sentence, not waiting for the first token —
+the splitter waits for a full stop, and the model writes long.
+
+Two ways to widen the window, neither of which touches the transport:
+
+- **split on more than a full stop.** A comma or a semicolon past a length threshold would cut
+  the 140-character opening in two and hand the voice something to say seconds earlier. The
+  splitter is pure and already under test, so this is a fixture and a threshold.
+- **ask the model for shorter opening sentences.** That is a prompt change, and this project
+  does not reword a prompt alone.
+
+Measure again after either: the number that matters is the gap between the first sentence and
+the complete reply, and it is written down here so the next decision argues with a figure rather
+than a memory.
+
+---
+
 ## Status, 2026-08-31: built, green offline, never launched
 
 All four steps are in. Nothing below has been proved in game, and the last section of this brief
