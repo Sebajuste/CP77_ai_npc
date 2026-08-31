@@ -49,11 +49,12 @@ internal sealed class ArchiveIndex : IDisposable
 
     public static ArchiveIndex Open(string path) => new(path);
 
-    public bool Contains(string depotPath) => _entries.ContainsKey(Fnv1a64.OfDepotPath(depotPath));
+    public byte[] ReadRaw(string depotPath) => ReadRawByHash(Fnv1a64.OfDepotPath(depotPath));
 
-    public byte[] ReadRaw(string depotPath)
+    // Un fichier ne se designe que par le FNV1a64 de son chemin : l'archive n'a jamais rien
+    // d'autre. C'est ce qui permet d'extraire depuis une recette, sans dictionnaire.
+    public byte[] ReadRawByHash(ulong hash)
     {
-        var hash = Fnv1a64.OfDepotPath(depotPath);
         if (!_entries.TryGetValue(hash, out var range))
         {
             return null;
@@ -61,7 +62,7 @@ internal sealed class ArchiveIndex : IDisposable
         var segment = _segments[range.First];
         if (segment.ZSize != segment.Size)
         {
-            throw new NotSupportedException(depotPath + " est compresse ; ce lecteur ne sert qu'aux .wem");
+            throw new NotSupportedException(hash.ToString("x16") + " est compresse ; ce lecteur ne sert qu'aux .wem");
         }
         return Read(segment.Offset, (int)segment.Size);
     }

@@ -70,11 +70,13 @@ internal sealed class VoiceSource : IDisposable
         return _voiceLines;
     }
 
-    public byte[] ReadRaw(string depotPath)
+    public byte[] ReadRaw(string depotPath) => ReadRawByHash(Fnv1a64.OfDepotPath(depotPath));
+
+    public byte[] ReadRawByHash(ulong hash)
     {
         foreach (var archive in _archives)
         {
-            var raw = archive.ReadRaw(depotPath);
+            var raw = archive.ReadRawByHash(hash);
             if (raw is not null)
             {
                 return raw;

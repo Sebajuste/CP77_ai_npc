@@ -15,13 +15,16 @@ param(
     [string] $WolvenKit = 'C:\Users\sebaj\Documents\CP77_mods\WolvenKit-8.20.0',
     [string] $Out = 'dist\voices',
     [string] $Cache = 'tools\voice-extract\cache',
+    [string] $Recipe = 'tools\voice-extract\voices-recipe.json',
     [string] $Language = 'fr',
     [switch] $List,
     [switch] $ShowLines,
     [string] $Pattern,
     [string] $Exclude,
     [int] $Rate = 48000,
-    [switch] $Raw
+    [switch] $Raw,
+    [switch] $FromRecipe,
+    [string] $Against
 )
 
 $ErrorActionPreference = 'Stop'
@@ -41,6 +44,7 @@ function Resolve-Under($base, $path) {
 
 $argv = @('--game', $Game, '--wolvenkit', $WolvenKit,
           '--out', (Resolve-Under $root $Out), '--cache', (Resolve-Under $root $Cache),
+          '--recipe', (Resolve-Under $root $Recipe),
           '--language', $Language)
 if ($List) { $argv += '--list' }
 if ($ShowLines) { $argv += '--show-lines' }
@@ -48,6 +52,8 @@ if ($Pattern) { $argv += @('--pattern', $Pattern) }
 if ($Exclude) { $argv += @('--exclude', $Exclude) }
 $argv += @('--rate', $Rate)
 if ($Raw) { $argv += '--raw' }
+if ($FromRecipe) { $argv += '--from-recipe' }
+if ($Against) { $argv += @('--against', (Resolve-Under $root $Against)) }
 if ($Characters) { $argv += $Characters }
 
 & $exe @argv

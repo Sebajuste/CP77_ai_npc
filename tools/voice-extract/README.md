@@ -15,8 +15,9 @@ powershell -File tools\voice-extract\voice-extract.ps1 -ShowLines  # dit ce qu'i
 python tools\voice-extract\check-clips.py dist\voices              # verifie ce qui est sorti
 ```
 
-Options : `-Game`, `-WolvenKit`, `-Out`, `-Cache`, `-Language`, `-Pattern`, `-Exclude`,
-`-Rate`, `-Raw`. Les valeurs par defaut sont celles de cette machine.
+Options : `-Game`, `-WolvenKit`, `-Out`, `-Cache`, `-Recipe`, `-Language`, `-Pattern`,
+`-Exclude`, `-Rate`, `-Raw`, `-FromRecipe`, `-Against`. Les valeurs par defaut sont celles de
+cette machine.
 
 `-Raw` ecrit en plus chaque replique retenue seule, telle qu'elle sort du jeu, dans
 `<sortie>
@@ -34,6 +35,29 @@ Le cache pese 130 Mo et ne se refait pas ; les extraits pesent 14 Mo au total.
 
 Le joueur copie ensuite `dist\voices\` vers `<jeu>\r6\storages\AiNpc\voices\` **lui-meme**.
 L'outil ne le fait pas et ne le fera pas.
+
+## La recette : refaire les extraits sans WolvenKit
+
+Une passe normale ecrit, en plus des `.wav`, un `voices-recipe.json` dans `toolsoice-extract\`.
+Il contient **le resultat du choix** — les hachages des repliques retenues — et les seuils avec
+lesquels on les assemble. Rien d'autre.
+
+```
+toolsoice-extractoice-extract.ps1 -FromRecipe -Out distoices-recette
+```
+
+Ce mode **n'ouvre pas le dictionnaire** : chaque replique est demandee a l'archive par son
+FNV1a64, qui est la seule chose qu'une archive connaisse. `-Against <dossier>` compare ce qu'il
+produit a une sortie de reference, octet pour octet.
+
+**Verifie le 2026-08-31, dictionnaire deplace hors du disque** : les dix extraits francais et les
+dix anglais ressortent identiques. Le fichier fait 25 Ko pour vingt voix et 149 repliques.
+
+C'est ce qui rend une extraction cote joueur possible : il ne lui reste qu'a lire l'archive,
+decoder et coller. Le detail de ce qui resterait a porter est dans `docs\PLAN_VOICE_LANE.md` § 5.
+
+Une passe restreinte a la main (`-Pattern`, `-Exclude`) **n'ecrit pas la recette** : c'est un
+essai, et un choix qu'on ne pourrait pas refaire depuis le casting n'a rien a y faire.
 
 ## Ce que ca demande
 

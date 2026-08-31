@@ -12,6 +12,9 @@ internal sealed class Options
 
     public string Cache { get; private set; } = "tools/voice-extract/cache";
 
+    // Dans tools/ et non dans la sortie : la recette est une source, pas un livrable.
+    public string RecipeFile { get; private set; } = "tools/voice-extract/voices-recipe.json";
+
     public string Language { get; private set; } = "fr";
 
     public bool ListOnly { get; private set; }
@@ -26,6 +29,12 @@ internal sealed class Options
 
     public bool Raw { get; private set; }
 
+    // Refaire les extraits depuis la recette, sans dictionnaire.
+    public bool FromRecipe { get; private set; }
+
+    // Le dossier auquel comparer, octet pour octet.
+    public string Against { get; private set; }
+
     public List<string> Characters { get; } = new();
 
     public static Options Parse(string[] args)
@@ -39,6 +48,7 @@ internal sealed class Options
                 case "--wolvenkit": options.WolvenKit = args[++i]; break;
                 case "--out": options.Out = args[++i]; break;
                 case "--cache": options.Cache = args[++i]; break;
+                case "--recipe": options.RecipeFile = args[++i]; break;
                 case "--language": options.Language = args[++i]; break;
                 case "--list": options.ListOnly = true; break;
                 case "--show-lines": options.ShowLines = true; break;
@@ -46,6 +56,8 @@ internal sealed class Options
                 case "--exclude": options.Exclude = args[++i]; break;
                 case "--rate": options.Rate = int.Parse(args[++i]); break;
                 case "--raw": options.Raw = true; break;
+                case "--from-recipe": options.FromRecipe = true; break;
+                case "--against": options.Against = args[++i]; break;
                 default:
                     if (args[i].StartsWith("--"))
                     {

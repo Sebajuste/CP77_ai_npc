@@ -44,13 +44,35 @@ internal static class ClipBuilder
             kept.Add(new KeptLine(depotPath, native));
         }
 
+        return new VoiceReference(Assemble(taken, recipe), kept, examined);
+    }
+
+    // La moitie qui ne choisit rien : coller, plafonner, mettre a niveau. C'est tout ce qu'un
+    // extracteur guide par une recette a besoin de savoir faire, et c'est pourquoi elle est
+    // separee -- la selection demande le dictionnaire, l'assemblage non.
+    public static PcmClip Assemble(IEnumerable<PcmClip> lines, ClipRecipe recipe)
+    {
+        var taken = new List<float>();
+        var gap = new float[(int)(recipe.GapSeconds * recipe.SampleRate)];
+        foreach (var line in lines)
+        {
+            if (taken.Count > 0)
+            {
+                taken.AddRange(gap);
+            }
+            taken.AddRange(line.Samples);
+        }
+        return Assemble(taken, recipe);
+    }
+
+    private static PcmClip Assemble(List<float> taken, ClipRecipe recipe)
+    {
         var ceiling = (int)(recipe.MaxSeconds * recipe.SampleRate);
         if (taken.Count > ceiling)
         {
             taken.RemoveRange(ceiling, taken.Count - ceiling);
         }
-        var clip = new PcmClip(taken.ToArray(), recipe.SampleRate);
-        return new VoiceReference(Levelled(clip, recipe), kept, examined);
+        return Levelled(new PcmClip(taken.ToArray(), recipe.SampleRate), recipe);
     }
 
     private static PcmClip Levelled(PcmClip clip, ClipRecipe recipe)
