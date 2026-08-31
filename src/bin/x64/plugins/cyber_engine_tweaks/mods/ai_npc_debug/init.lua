@@ -235,6 +235,8 @@ local setup = {
     status = "",            -- DescribeSetup, verbatim
     providers = "",         -- DescribeProviders, verbatim
     providerNames = {},     -- the buttons, read out of that same text
+    presets = "",           -- DescribeModelPresets, verbatim
+    presetNames = {},       -- read the same way, out of that same text
     fields = {},            -- the current provider's editable settings
     output = "",            -- the last thing that happened
     test = "",              -- the last test result
@@ -275,6 +277,21 @@ local function setupRefresh()
         local providers = callSetup("DescribeProviders")
         setup.providers = providers or ""
         setup.providerNames = parseProviderNames(setup.providers)
+    end
+
+    -- Read the same way and for the same reason: the presets are described by redscript, and a
+    -- second list here would go stale the first time one is renamed. No fallback button: a
+    -- player with no presets still has the Model box below, which is the older way in.
+    if setup.presets == "" then
+        local presets = callSetup("DescribeModelPresets")
+        setup.presets = presets or ""
+        setup.presetNames = {}
+        for _, line in ipairs(split(setup.presets, "\n")) do
+            local name = string.match(line, "^(%S+)")
+            if name then
+                table.insert(setup.presetNames, name)
+            end
+        end
     end
 
     local rows
@@ -410,6 +427,27 @@ local function drawSetup()
         ImGui.TextWrapped(setup.providers)
     end
 
+    if #setup.presetNames > 0 then
+        ImGui.Separator()
+        ImGui.Text("Model preset")
+        for i, name in ipairs(setup.presetNames) do
+            if i > 1 then
+                ImGui.SameLine()
+            end
+            if ImGui.Button(name .. "##preset") then
+                local text, err = callSetup("ApplyModelPreset", name)
+                setup.output = text or err
+                setup.test = ""
+                setup.testing = false
+                setupRefresh()
+            end
+        end
+        ImGui.TextWrapped("    A preset is written into settings.json in clear, and is yours to edit afterwards.")
+        if ImGui.CollapsingHeader("What do the presets cost?") then
+            ImGui.TextWrapped(setup.presets)
+        end
+    end
+
     if #setup.fields > 0 then
         ImGui.Separator()
         for i, f in ipairs(setup.fields) do
@@ -471,6 +509,7 @@ end
 -- Console use, for when the window is not the fastest way there:
 --   print(GetMod("ai_npc_debug").setup())
 --   print(GetMod("ai_npc_debug").provider("OpenRouter"))
+--   print(GetMod("ai_npc_debug").preset("normal"))
 --   print(GetMod("ai_npc_debug").set("openRouterApiKey", "sk-or-v1-..."))
 --   print(GetMod("ai_npc_debug").test())
 --   print(GetMod("ai_npc_debug").status())
@@ -512,6 +551,12 @@ end
 -- looking.
 function api.provider(name)
     local text, err = callSetup("SetProvider", name)
+    setup.loaded = false
+    return text or err
+end
+
+function api.preset(name)
+    local text, err = callSetup("ApplyModelPreset", name)
     setup.loaded = false
     return text or err
 end

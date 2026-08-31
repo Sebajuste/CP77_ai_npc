@@ -92,6 +92,19 @@ def gap_marker(from_seconds, now_seconds):
     return "(%d days later, %s)" % (days, clock)
 
 
+def trim(messages, max_turns):
+    """AiNpcHistoryTrim: the last N turns, widened back onto the message a reply answers."""
+    if max_turns <= 0:
+        return []
+    size = len(messages)
+    start = 0
+    if size > max_turns * 2:
+        start = size - max_turns * 2
+        if not messages[start]["fromPlayer"]:
+            start -= 1
+    return messages[start:]
+
+
 def history(messages, npc_name, now_seconds):
     """Every stored message, with the markers between them and the trailing one."""
     out = []

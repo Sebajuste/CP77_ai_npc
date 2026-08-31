@@ -270,8 +270,14 @@ func AiNpcContactQuestKey(contactId: String) -> String {
 // The journal read happens above and the answer is handed to a pure function. The key is a
 // parameter rather than read again, because the intention section needs the same one: one
 // journal walk per message, and one log line rather than two saying the same thing.
-func AiNpcQuestContext(contactId: String, questKey: String) -> String {
-    if Equals(StrLen(questKey), 0) {
+// The three parts a recipe may keep are gathered here and handed to the pure assembler below,
+// which is why the recipe stops at this edge: what the journal answers is read or not read,
+// and AiNpcQuestBlock goes on being a function of the three strings it is given.
+//
+// Dropping `context` empties the block whatever else is kept, and that is right rather than
+// surprising: a heading over an account nobody wrote says nothing at all.
+func AiNpcQuestContext(contactId: String, questKey: String, recipe: ref<AiNpcRecipe>) -> String {
+    if Equals(StrLen(questKey), 0) || !AiNpcRecipeHas(recipe, "quest") {
         return "";
     }
 
@@ -279,8 +285,19 @@ func AiNpcQuestContext(contactId: String, questKey: String) -> String {
     if !IsDefined(journalManager) {
         return "";
     }
-    return AiNpcQuestContextFor(contactId, questKey, AiNpcTrackedQuestName(journalManager),
-                                AiNpcTrackedObjective(journalManager));
+
+    let name = "";
+    if AiNpcRecipeWants(recipe, "quest", "name") {
+        name = AiNpcTrackedQuestName(journalManager);
+    }
+    let objective = "";
+    if AiNpcRecipeWants(recipe, "quest", "objective") {
+        objective = AiNpcTrackedObjective(journalManager);
+    }
+    if !AiNpcRecipeWants(recipe, "quest", "context") {
+        return "";
+    }
+    return AiNpcQuestContextFor(contactId, questKey, name, objective);
 }
 
 // The title of the quest whatever is tracked belongs to, as the journal spells it. Not the

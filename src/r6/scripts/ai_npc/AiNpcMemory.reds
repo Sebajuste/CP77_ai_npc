@@ -773,8 +773,75 @@ func AiNpcMemoryRender(memory: ref<AiNpcMemory>) -> String {
 // The same, dated against a clock the caller reads and hands in, so this stays pure and a
 // memory can be rendered in a test without a session. "3 days ago" rather than a timestamp;
 // a memory with no stamp says nothing, since a wrong "ago" is worse than no "ago".
+//
+// Every part, which is what a null recipe asks for -- see AiNpcRecipe.reds.
 func AiNpcMemoryRenderAt(memory: ref<AiNpcMemory>, nowSeconds: Int32) -> String {
+    return AiNpcMemoryRenderParts(memory, nowSeconds, null);
+}
+
+// The block a recipe asked for. The parts are the sections a compaction produces, so a player
+// trimming the prompt trims what the model wrote rather than a shape invented here.
+//
+// THE HEADER IS NOT A PART. It names the memory as a memory, and a block that arrives without
+// it is read as more instructions and answered; its second sentence states precedence over the
+// character description, which is what stops a persona's "you do not know V's age" outranking
+// the age V gave three hundred messages ago. So it is emitted whenever anything else is, and
+// no recipe can drop it -- but it is not emitted ALONE either, which is why the sections are
+// built first and the header prepended to them.
+func AiNpcMemoryRenderParts(memory: ref<AiNpcMemory>, nowSeconds: Int32,
+                            recipe: ref<AiNpcRecipe>) -> String {
     if AiNpcMemoryIsEmpty(memory) {
+        return "";
+    }
+
+    let body = "";
+
+    // Oldest and blurriest first, then the sharp lines, then the live loops: resolution
+    // improves as the block approaches the present.
+    if AiNpcRecipeWants(recipe, "memory", "chronicle") && NotEquals(StrLen(memory.chronicle), 0) {
+        body += AiNpcMemorySectionChronicle() + " " + memory.chronicle + "\n";
+    }
+
+    let i = 0;
+    if AiNpcRecipeWants(recipe, "memory", "facts") && ArraySize(memory.facts) > 0 {
+        body += AiNpcMemorySectionFacts() + "\n";
+        while i < ArraySize(memory.facts) {
+            body += "- " + memory.facts[i] + "\n";
+            i += 1;
+        }
+    }
+
+    if AiNpcRecipeWants(recipe, "memory", "open") && ArraySize(memory.threads) > 0 {
+        body += AiNpcMemorySectionOpen() + "\n";
+        i = 0;
+        while i < ArraySize(memory.threads) {
+            body += "- " + memory.threads[i].text + "\n";
+            i += 1;
+        }
+    }
+
+    if AiNpcRecipeWants(recipe, "memory", "agreed") && ArraySize(memory.pacts) > 0 {
+        body += AiNpcMemorySectionAgreed() + "\n";
+        i = 0;
+        while i < ArraySize(memory.pacts) {
+            // Computed here, not stored: an agreement can fall due while the phone is shut,
+            // and rendering is the only moment it is guaranteed to be read. The marker is
+            // English like the section headers; the entry stays in the conversation's
+            // language.
+            let marker = "";
+            if AiNpcMemoryPactLapsed(memory.pacts[i], nowSeconds) {
+                marker = "(overdue) ";
+            }
+            body += "- " + marker + memory.pacts[i].text + "\n";
+            i += 1;
+        }
+    }
+
+    if AiNpcRecipeWants(recipe, "memory", "tone") && NotEquals(StrLen(memory.tone), 0) {
+        body += AiNpcMemorySectionTone() + " " + memory.tone + "\n";
+    }
+
+    if Equals(StrLen(body), 0) {
         return "";
     }
 
@@ -793,52 +860,7 @@ func AiNpcMemoryRenderAt(memory: ref<AiNpcMemory>, nowSeconds: Int32) -> String 
         result += "The most recent of it was " + elapsed + ".\n";
     }
 
-    // Oldest and blurriest first, then the sharp lines, then the live loops: resolution
-    // improves as the block approaches the present.
-    if NotEquals(StrLen(memory.chronicle), 0) {
-        result += AiNpcMemorySectionChronicle() + " " + memory.chronicle + "\n";
-    }
-
-    let i = 0;
-    if ArraySize(memory.facts) > 0 {
-        result += "FACTS:\n";
-        while i < ArraySize(memory.facts) {
-            result += "- " + memory.facts[i] + "\n";
-            i += 1;
-        }
-    }
-
-    if ArraySize(memory.threads) > 0 {
-        result += "OPEN:\n";
-        i = 0;
-        while i < ArraySize(memory.threads) {
-            result += "- " + memory.threads[i].text + "\n";
-            i += 1;
-        }
-    }
-
-    if ArraySize(memory.pacts) > 0 {
-        result += AiNpcMemorySectionAgreed() + "\n";
-        i = 0;
-        while i < ArraySize(memory.pacts) {
-            // Computed here, not stored: an agreement can fall due while the phone is shut,
-            // and rendering is the only moment it is guaranteed to be read. The marker is
-            // English like the section headers; the entry stays in the conversation's
-            // language.
-            let marker = "";
-            if AiNpcMemoryPactLapsed(memory.pacts[i], nowSeconds) {
-                marker = "(overdue) ";
-            }
-            result += "- " + marker + memory.pacts[i].text + "\n";
-            i += 1;
-        }
-    }
-
-    if NotEquals(StrLen(memory.tone), 0) {
-        result += "TONE: " + memory.tone + "\n";
-    }
-
-    return result;
+    return result + body;
 }
 
 /// The compaction request ///

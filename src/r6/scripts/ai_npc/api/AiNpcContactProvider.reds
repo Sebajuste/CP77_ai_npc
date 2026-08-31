@@ -147,7 +147,7 @@ public class AiNpcContactProvider extends IScriptable {
 
     // Whether this contact could know where V comes from.
     //
-    // <player> states three things: the life path, the gender and whatever the player wrote
+    // <target> states three things: the life path, the gender and whatever the player wrote
     // as an appearance. The last two are true of anyone who has ever seen V; the first is
     // biography, and "V is a streetkid (life path)" is a thing a client who found V on a
     // profile has no way to know -- and a gameplay word besides. Answer false and the clause

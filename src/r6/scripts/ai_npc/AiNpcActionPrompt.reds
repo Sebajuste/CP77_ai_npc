@@ -119,7 +119,13 @@ func AiNpcActionBlockAround(lines: String, opt definitions: String) -> String {
 // Empty means this contact was never given a command, and a bracket in its reply is therefore
 // prose -- asking a model to fix prose against an empty rulebook is how a good reply gets
 // replaced by a worse one.
-func AiNpcActionVocabularyFor(contactId: String) -> String {
+//
+// The recipe is handed in rather than read: this is the same block <commands> renders in the
+// prompt, so it has to be the same recipe. Reading one here made the two answers divergeable.
+func AiNpcActionVocabularyFor(contactId: String, recipe: ref<AiNpcRecipe>) -> String {
+    if !AiNpcRecipeHas(recipe, "commands") {
+        return "";
+    }
     let ctx = AiNpcBuildContactContext(contactId);
     return AiNpcRenderActionBlock(ctx, AiNpcBuildActionTable(contactId));
 }

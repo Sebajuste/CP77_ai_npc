@@ -32,6 +32,11 @@ public class AiNpcHttpSystem extends ScriptableSystem {
   // that survived it would report the reply's size against the retry's cost.
   private let m_record: ref<AiNpcRequestRecord>;
 
+  // The slot the request in flight was sent on, held for the same reason the record is: the
+  // watchdog that has to name a deadline runs long after the send, and a lane waits on one
+  // request at a time.
+  private let m_slot: ref<AiNpcSlot>;
+
   /// Lifecycle ///
 
   private func OnAttach() {
@@ -218,41 +223,29 @@ public class AiNpcHttpSystem extends ScriptableSystem {
     }
 
     // Consumed here, not inside the builder: building a prompt must have no side effect, and
-    // spending a mod's seeded context is an act. Bound to locals rather than passed straight
-    // in, because the record measures the two halves and the serialised body cannot be split.
-    let systemText = AiNpcBuildSystemPrompt(this.m_generation.Contact(),
+    // spending a mod's seeded context is an act.
+    let builder = AiNpcPassConversation.Of(this.m_generation.Contact(),
       AiNpcTakePendingContext(this.m_generation.Contact()),
-      this.m_generation.Intent());
-
-    // The only place the choice is made. Measured 2026-08-23 on a captured prompt: a reason
-    // placed in <now> is an afterthought in half the replies and dropped in the other half,
-    // while the same reason in V's slot is the subject every time. <now> holds what she
-    // knows; this slot holds why she is writing.
-    let userText = this.m_generation.SpeaksFirst()
-      ? AiNpcBuildUnpromptedTranscript(this.m_generation.Contact(), this.m_generation.Ask())
-      : AiNpcBuildTranscript(this.m_generation.Contact(), this.m_generation.Ask());
-    let body = AiNpcLlmChatBody(provider, systemText, userText);
-
-    this.m_record = AiNpcRequestRecord.Sent(AiNpcLaneSpeaking(), this.m_generation.Contact(),
-      provider, systemText, userText);
+      this.m_generation.Intent(),
+      this.m_generation.Ask(),
+      this.m_generation.SpeaksFirst());
 
     // One send for both transports, and this lane is not told which one runs. Naming the CLI
     // type in one file limits the blast radius of a plugin that failed to load.
     this.m_chatSerial += 1;
-    if !AiNpcSendChat(provider, body, this, n"OnOpenAIResponse",
-        AiNpcCliRequestId(AiNpcCliLaneChat(), this.m_chatSerial)) {
+    let request = AiNpcPassSend(builder, provider, this.m_generation.Contact(), this,
+      n"OnOpenAIResponse", AiNpcCliRequestId(AiNpcCliLaneChat(), this.m_chatSerial));
+    if !IsDefined(request) {
       // Refused before anything left, reported through the single failure exit so the
       // indicator comes down and the input is released.
       this.HandleRequestFailure("the transport refused the request - is ai_npc.dll installed?");
       return;
     }
 
-    // Debug Mode's, not Enable Logs': the whole prompt and the whole player message once per
-    // turn. Enable Logs gets the record line instead, safe to paste into a bug report.
-    if AiNpcDebugEnabled() {
-      AiNpcLog(s"== Chat POST \(this.m_generation.Url()) ==");
-      AiNpcLog(body);
-    }
+    // Both outlive the send: the deadline is armed below, and the cost is charged when the
+    // answer lands.
+    this.m_slot = request.slot;
+    this.m_record = request.record;
     this.ToggleIsGenerating(true);
   }
 
@@ -310,6 +303,13 @@ public class AiNpcHttpSystem extends ScriptableSystem {
       return;
     }
 
+    // Delivered, and named. A truncated reply is worth reading -- it is the message minus its
+    // end -- but the end is where an [ACTION:...] command sits, so a turn that agreed to
+    // something and then does nothing has its explanation here rather than nowhere.
+    if AiNpcReplyWasTruncated(root) {
+      AiNpcLog(s"The reply for '\(this.m_generation.Contact())' was cut off by the output budget (max_tokens on slot '\(AiNpcSlotNameOf(this.m_slot))'). Any command it was about to write is gone; the text is delivered as far as it got.");
+    }
+
     // What remains is pacing, not network. Left armed, a reply that arrived late in its own
     // budget would be cut short by its own timer during the delay below.
     this.m_watchdog.Disarm();
@@ -339,7 +339,7 @@ public class AiNpcHttpSystem extends ScriptableSystem {
     if !this.m_watchdog.IsCurrent(waitId) {
       return;
     }
-    let seconds = Cast<Int32>(AiNpcLlmRequestTimeout(AiNpcProviderSetting()));
+    let seconds = Cast<Int32>(AiNpcLlmRequestTimeout(AiNpcProviderSetting(), this.m_slot));
     this.HandleRequestFailure(s"no answer within \(seconds)s - the request was dropped or the provider never replied");
   }
 
@@ -435,27 +435,36 @@ public class AiNpcHttpSystem extends ScriptableSystem {
   // `carrier` marks the one text delivered here that the contact did not write: the operator
   // line a failed request ends on. It takes the same path, but anything that means "the
   // character answered" has to tell the two apart.
-  private func HandleMessage(contactId: String, text: String, opt carrier: Bool) {
-    // Every command in one pass, against the same table the prompt was rendered from. What
-    // comes back says which brackets were run, which name a real command the model fumbled,
-    // and which name nothing at all -- three cases the caller has to treat differently.
-    let outcome = AiNpcApplyActions(contactId, text);
-    let processedText = outcome.text;
+  // `authored` marks a line a mod wrote for a character that answers from its own script. It
+  // never reached a model, so nothing about it is worth a second request.
+  private func HandleMessage(contactId: String, text: String, opt carrier: Bool, opt authored: Bool) {
+    let processedText = text;
 
-    // A fumbled command is worth a second, tiny request; an invented one usually is not, but
-    // both are offered in that order and the pass decides. Never for a carrier line, which this
-    // mod wrote rather than a model.
-    let candidates = outcome.RepairCandidates();
-    if !carrier && this.TryRepairActions(contactId, processedText, candidates) {
-      return;
+    // In Dedicated mode the reply was written without the command vocabulary, so a bracket in
+    // it would be prose -- the same rule a recipe that drops <commands> already follows. The
+    // selection happens after delivery instead, in a request of its own.
+    if !AiNpcActionsAreDedicated() {
+      // Every command in one pass, against the same table the prompt was rendered from. What
+      // comes back says which brackets were run, which name a real command the model fumbled,
+      // and which name nothing at all -- three cases the caller has to treat differently.
+      let outcome = AiNpcApplyActions(contactId, text);
+      processedText = outcome.text;
+
+      // A fumbled command is worth a second, tiny request; an invented one usually is not, but
+      // both are offered in that order and the pass decides. Never for a carrier line, which
+      // this mod wrote rather than a model.
+      let candidates = outcome.RepairCandidates();
+      if !carrier && this.TryRepairActions(contactId, processedText, candidates) {
+        return;
+      }
+
+      // The repair could not run -- the day's budget is spent, the credentials have stopped
+      // working, the player turned it off. A command that EXISTS still must not reach the
+      // player: they would read an unclosable bracket while the prose around it says the thing
+      // happened. A tag naming no command stays, because the load report names those and hiding
+      // one here would hide the report.
+      processedText = AiNpcStripActionTags(processedText, outcome.fumbled);
     }
-
-    // The repair could not run -- the day's budget is spent, the credentials have stopped
-    // working, the player turned it off. A command that EXISTS still must not reach the player:
-    // they would read an unclosable bracket while the prose around it says the thing happened.
-    // A tag naming no command stays, because the load report names those and hiding one here
-    // would hide the report.
-    processedText = AiNpcStripActionTags(processedText, outcome.fumbled);
 
     // The dots come down on every path, before the delivery decision: the generation has ended
     // whatever happens to the text next.
@@ -464,6 +473,17 @@ public class AiNpcHttpSystem extends ScriptableSystem {
     // Where it goes is AiNpcNotification's question: a special case for the phone here is what
     // would make a request lane know what a widget is.
     AiNpcDeliverOrNotify(contactId, processedText);
+
+    // After the delivery and BEFORE the history write, which is not an accident: the ask this
+    // pass builds quotes the reply itself, and a thread that already held it would show the
+    // model the same line twice. The player is not waiting on any of it -- the message is on
+    // screen, and what is at stake is whether a command fires behind it.
+    if !carrier && !authored {
+      let actions = AiNpcActionService.Get();
+      if IsDefined(actions) {
+        actions.Examine(contactId, processedText);
+      }
+    }
 
     // Filed under the contact either way, since the history keeps the gap where a reply
     // failed, but marked so a listener can tell the operator apart from the person. The action
@@ -520,10 +540,13 @@ public class AiNpcHttpSystem extends ScriptableSystem {
   // automated correspondent always the same. The regularity is the tell, and the player
   // noticing it is the point of a scripted contact.
   private func DelayedScriptedMessage(contactId: String, text: String) {
+    // Authored, so it is delivered and filed like any other line and examined by nothing: a
+    // contact that answers from its own script never reaches a model, and a selector run on its
+    // words would be a request the mod pays for on a conversation it generated none of.
     let delaySystem = GameInstance.GetDelaySystem(GetGameInstance());
     let isAffectedByTimeDilation: Bool = false;
 
-    delaySystem.DelayCallback(AiNpcMessageDelayCallback.Create(contactId, text), AiNpcScriptedReplyDelay(), isAffectedByTimeDilation);
+    delaySystem.DelayCallback(AiNpcMessageDelayCallback.CreateAuthored(contactId, text), AiNpcScriptedReplyDelay(), isAffectedByTimeDilation);
   }
 
   // Addressed with the turn's contact: by the time the dots are due, "who is selected" is a
@@ -548,9 +571,12 @@ public class AiNpcHttpSystem extends ScriptableSystem {
   // judged against a rulebook that did not contain it, and the model was asked to correct a
   // word it had never been shown.
   private func TryRepairActions(contactId: String, text: String, candidates: array<String>) -> Bool {
-    let vocabulary = AiNpcActionVocabularyFor(contactId);
+    // Built before the claim, because the claim is made against the vocabulary this pass would
+    // send: the builder is the one place that renders it, and the tag it aims at comes out of
+    // the claim itself.
+    let builder = AiNpcPassRepair.Of(contactId);
     let provider = AiNpcProviderSetting();
-    let tag = this.m_generation.Repair().Claim(text, candidates, vocabulary,
+    let tag = this.m_generation.Repair().Claim(text, candidates, builder.Instruction(),
       AiNpcRetryActionsEnabled(),
       Equals(StrLen(AiNpcLlmCredentialIssue(provider)), 0),
       AiNpcHasTokenBudgetLeft());
@@ -558,33 +584,33 @@ public class AiNpcHttpSystem extends ScriptableSystem {
     if Equals(StrLen(tag), 0) {
       return false;
     }
+    builder.tag = tag;
 
     // False means not deferred, and the caller delivers the reply as written: it is already in
     // hand and only one bracket is wrong, so a transport that was not there must not cost the
     // player the message.
-    return this.RepairPostRequest(tag, vocabulary, provider);
+    return this.RepairPostRequest(builder, provider);
   }
 
-  // The send, and only the send. What goes in the body is AiNpcRepairAsk's.
-  private func RepairPostRequest(tag: String, vocabulary: String, provider: AiNpcProvider) -> Bool {
+  // The send, and only the send. What goes in the two messages is the builder's.
+  private func RepairPostRequest(builder: ref<AiNpcPassRepair>, provider: AiNpcProvider) -> Bool {
     this.m_generation.SendingTo(AiNpcLlmChatUrl(provider));
 
-    let ask = AiNpcRepairAsk(tag);
-    this.m_record = AiNpcRequestRecord.Sent(AiNpcLaneRepair(), this.m_generation.Contact(),
-      provider, vocabulary, ask);
-
     this.m_repairSerial += 1;
-    if !AiNpcSendChat(provider, AiNpcLlmChatBody(provider, vocabulary, ask), this,
-        n"OnRepairResponse", AiNpcCliRequestId(AiNpcCliLaneRepair(), this.m_repairSerial)) {
-      AiNpcLog(s"Repair for \(tag) could not be sent; delivering as written.");
+    let request = AiNpcPassSend(builder, provider, this.m_generation.Contact(), this,
+      n"OnRepairResponse", AiNpcCliRequestId(AiNpcCliLaneRepair(), this.m_repairSerial));
+    if !IsDefined(request) {
+      AiNpcLog(s"Repair for \(builder.tag) could not be sent; delivering as written.");
       return false;
     }
+    this.m_slot = request.slot;
+    this.m_record = request.record;
 
     // Re-arms the watchdog, which the first answer disarmed: without it the lane would sit in
     // its generating state for good if the repair never came back, send button greyed.
     this.ToggleIsGenerating(true);
     this.ToggleTypingIndicator(true);
-    AiNpcLog(s"== Repair POST \(this.m_generation.Url()) for \(tag) ==");
+    AiNpcLog(s"Repair sent for \(builder.tag).");
     return true;
   }
 
@@ -617,6 +643,9 @@ public class AiNpcHttpSystem extends ScriptableSystem {
     this.m_record.Answered(reply);
 
     if reply.IsOk() && IsDefined(root) {
+      if AiNpcReplyWasTruncated(root) {
+        AiNpcLog("The repair was cut off by the output budget (max_tokens); delivering as written.");
+      }
       corrected = AiNpcFirstActionTag(AiNpcExtractChatText(root));
     } else {
       AiNpcLog(s"Repair failed (status \(reply.StatusCode())); delivering as written.");
@@ -633,7 +662,7 @@ public class AiNpcHttpSystem extends ScriptableSystem {
   public func ToggleIsGenerating(value: Bool) {
     if value {
       AiNpcArmTimeout(AiNpcSpeakingTimeoutCallback.Create(this.m_watchdog.Arm()),
-        AiNpcLlmRequestTimeout(AiNpcProviderSetting()));
+        AiNpcLlmRequestTimeout(AiNpcProviderSetting(), this.m_slot));
     } else {
       this.m_watchdog.Disarm();
     }
@@ -660,15 +689,25 @@ public class AiNpcHttpSystem extends ScriptableSystem {
 public class AiNpcMessageDelayCallback extends AiNpcSpeakingLaneCallback {
   public let contactId: String;
   public let text: String;
+  // Whether a mod wrote this line instead of a model. Carried on the callback rather than
+  // worked out on arrival: by the time the timer fires, nothing in the lane still knows where
+  // the text came from.
+  public let authored: Bool;
 
   protected func Run(lane: ref<AiNpcHttpSystem>) -> Void {
-    lane.HandleMessage(this.contactId, this.text);
+    lane.HandleMessage(this.contactId, this.text, false, this.authored);
   }
 
   public static func Create(contactId: String, text: String) -> ref<AiNpcMessageDelayCallback> {
     let self = new AiNpcMessageDelayCallback();
     self.contactId = contactId;
     self.text = text;
+    return self;
+  }
+
+  public static func CreateAuthored(contactId: String, text: String) -> ref<AiNpcMessageDelayCallback> {
+    let self = AiNpcMessageDelayCallback.Create(contactId, text);
+    self.authored = true;
     return self;
   }
 }

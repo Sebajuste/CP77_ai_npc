@@ -52,7 +52,8 @@ KEYS = (
     "evelynDead", "evelynRescued", "cloudsSettled", "leftNightCity",
     "johnnyRevealed", "johnnyDateDone", "confidedInV",
     "player", "quest", "now", "messages", "ask", "speaksFirst", "reason", "intent",
-    "memory", "memoryEnabled", "pendingContext", "weather", "extensionContext",
+    "memory", "memoryEnabled", "commandsDedicated", "pendingContext", "weather",
+    "extensionContext",
     "extensionRules", "extensionInteractions", "extensionIntent",
     "extensionActions", "worldKnowledge", "characterAdditions",
     "prompts", "overrides", "sheet",
@@ -146,6 +147,11 @@ def load(path):
         # happened is the failure this condition exists to stop.
         "confidedInV": bool(raw.get("confidedInV", False)),
         "memoryEnabled": bool(raw.get("memoryEnabled", True)),
+        # Mod Settings > Command Handling, whose default is Embedded: the command vocabulary
+        # is rendered into the conversation prompt. Dedicated moves it into the action pass's
+        # own request, so the character is asked for prose and nothing else -- which is a
+        # different prompt, and the reason this is a field rather than an assumption.
+        "commandsDedicated": bool(raw.get("commandsDedicated", False)),
         "pendingContext": raw.get("pendingContext", ""),
         # The word AiNpcWeatherLine puts in <now>. "" removes the line, which the game never
         # does -- kept so its absence can be measured.

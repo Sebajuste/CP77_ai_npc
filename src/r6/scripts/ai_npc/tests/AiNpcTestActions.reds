@@ -252,7 +252,7 @@ func AiNpcTestActionTagInventory(t: ref<AiNpcTestRunner>) -> Void {
     /// The transfer, which is now a command like any other ///
 
     t.EqString("transfer/the built-in declares one pattern",
-        AiNpcTransferPattern(), "[ACTION:GIVE_EDDIES:{amount}]");
+        AiNpcTransferPattern(), "[ACTION:GIVE_EDDIES:{give_amount_eddies}]");
     t.EqString("transfer/its head is what an opt-out names",
         AiNpcTransferHead(), "[ACTION:GIVE_EDDIES:");
 

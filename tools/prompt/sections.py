@@ -131,7 +131,7 @@ class Character(object):
         return self.sheet.get("allowsMemory", True)
 
     def knows_life_path(self):
-        """Whether <player> tells this contact where V comes from. Mirrors the provider."""
+        """Whether <target> tells this contact where V comes from. Mirrors the provider."""
         return self.sheet.get("knowsPlayerLifePath", True)
 
     def is_romance_capable(self):
@@ -189,7 +189,9 @@ class Sections(object):
 
     # ── the sections ─────────────────────────────────────────────────────────
 
-    LOCKED_RULES = {"system_rules": ("FORM", "TIME", "LENGTH"),
+    # SPEECH is locked because it MOVED: the register is rendered in <character> now, and a
+    # rubric taken here would state it twice.
+    LOCKED_RULES = {"system_rules": ("FORM", "TIME", "LENGTH", "SPEECH"),
                     "interactions": ("PROMISES",)}
     RULE_BUDGET = 600
     RULE_TOTAL_BUDGET = 2000
@@ -417,7 +419,7 @@ class Sections(object):
         return configured or self.player_description()
 
     def player_description(self):
-        """V, as <player> describes {them}. Mirrors AiNpcPlayerDescriptionFor."""
+        """V, as <target> describes {them}. Mirrors AiNpcPlayerDescriptionFor."""
         player = self.fixture["player"]
         if player["description"]:
             return player["description"]
@@ -440,12 +442,13 @@ class Sections(object):
             out += resolve(parts[2], self.env({"trimmed": appearance}))
         return out
 
-    def quest_context(self):
+    def quest_context(self, with_name=True, with_objective=True):
         """The <quest> block: heading, account, live objective. Mirrors AiNpcQuestBlock.
 
         The sheet supplies the account alone. The other two parts come from the game -- the
         journal's own title for the quest, and what V is doing at this second -- so offline
-        they come from the fixture.
+        they come from the fixture, and a recipe that drops either one asks for it here the
+        way AiNpcQuestContext does: by not reading it.
         """
         key = self.fixture["quest"]["key"]
         if not key:
@@ -454,12 +457,12 @@ class Sections(object):
         if not account:
             return ""
 
-        name = self.fixture["quest"].get("name", "")
+        name = self.fixture["quest"].get("name", "") if with_name else ""
         heading = resolve(self.texts["questHeading"],
                           self.env({"questName": name})) if name else ""
         block = heading + self.texts["questAccountLabel"] + account
 
-        objective = self.fixture["quest"]["objective"]
+        objective = self.fixture["quest"]["objective"] if with_objective else ""
         if not objective:
             return block
         return block + " " + resolve(self.texts["situationClause"],

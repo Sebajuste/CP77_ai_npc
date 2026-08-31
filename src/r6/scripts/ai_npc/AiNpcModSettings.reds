@@ -80,6 +80,17 @@ public class AiNpcSettingsService extends ScriptableService {
     @runtimeProperty("ModSettings.description", "Some replies end on a command the game cannot read, which the player sees as a raw bracketed command in the message. Sends one short extra request asking the character to write that command again. The message itself is kept as written.")
     public let retryActions: Bool = false;
 
+    // Above "Retry Broken Commands" in effect, not in the list: Dedicated makes that setting
+    // moot, because a reply written without the command vocabulary has no bracket to fumble.
+    @runtimeProperty("ModSettings.mod", "AI NPC")
+    @runtimeProperty("ModSettings.category", "General")
+    @runtimeProperty("ModSettings.category.order", "1")
+    @runtimeProperty("ModSettings.displayName", "Command Handling")
+    @runtimeProperty("ModSettings.description", "How a character's actions reach the game. Embedded is how the mod has always worked: the list of commands is part of the conversation, the character writes one inside its reply, and the mod takes it out again before you read the message. Dedicated sends a second, much smaller request after each reply, which sees only the commands and the last few messages -- so the character writes plainly and never has to remember a syntax. It costs one extra request per reply and nothing has been measured about it yet.")
+    @runtimeProperty("ModSettings.displayValues.Embedded", "Embedded in the conversation (default)")
+    @runtimeProperty("ModSettings.displayValues.Dedicated", "Dedicated request per reply")
+    public let actionMode: AiNpcActionMode = AiNpcActionMode.Embedded;
+
     @runtimeProperty("ModSettings.mod", "AI NPC")
     @runtimeProperty("ModSettings.category", "General")
     @runtimeProperty("ModSettings.category.order", "1")

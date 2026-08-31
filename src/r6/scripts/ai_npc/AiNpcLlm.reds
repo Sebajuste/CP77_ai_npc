@@ -67,6 +67,21 @@ func AiNpcLlmChatUrl(provider: AiNpcProvider) -> String {
     }
 }
 
+// What the request says it wants, once, for the body and for the log line that has to name
+// the same thing.
+//
+// A CLI lane keeps its own: the slot format is OpenRouter's namespace -- `deepseek/...`
+// against `sonnet` -- so a slot naming a model must not reach a `claude` process. Everything
+// else about a slot applies to those lanes, because the plugin is handed the body an HTTP
+// lane would have posted.
+func AiNpcLlmSlotModel(provider: AiNpcProvider, slot: ref<AiNpcSlot>) -> String {
+    let own = AiNpcLlmChatModel(provider);
+    if AiNpcProviderIsCli(provider) {
+        return own;
+    }
+    return AiNpcSlotModelOr(slot, own);
+}
+
 func AiNpcLlmChatModel(provider: AiNpcProvider) -> String {
     switch provider {
         case AiNpcProvider.OpenRouter:
@@ -90,7 +105,13 @@ func AiNpcLlmChatModel(provider: AiNpcProvider) -> String {
 //
 // On a CLI lane this is the backstop, not the deadline: the plugin runs its own shorter clock
 // and answers with a typed "timed out", and this only fires when the plugin never answers.
-func AiNpcLlmRequestTimeout(provider: AiNpcProvider) -> Float {
+//
+// A slot may say otherwise, and `timeoutSeconds` is reserved for exactly that: it is the one
+// thing about a request that never goes on the wire, so it has no path out of the body.
+func AiNpcLlmRequestTimeout(provider: AiNpcProvider, slot: ref<AiNpcSlot>) -> Float {
+    if IsDefined(slot) && slot.timeoutSeconds > 0 {
+        return Cast<Float>(slot.timeoutSeconds);
+    }
     if AiNpcProviderIsCli(provider) {
         return 240.0;
     }
@@ -150,19 +171,22 @@ func AiNpcLlmChatMessage(role: String, content: String) -> ref<AiNpcChatMessageD
     return message;
 }
 
-// One system message, one user message. A JSON string rather than a DTO because the backends
-// do not share a shape -- OpenRouter carries a routing preference nothing else accepts -- and
-// that choice is what callers must not have to make twice.
+// The instruction and the ask, in the two roles the protocol names: "system" and "user" are
+// the wire's words, and they are the only place those words are right. A JSON string rather
+// than a DTO because the backends do not share a shape -- OpenRouter carries a routing
+// preference nothing else accepts -- and that choice is what callers must not have to make
+// twice.
 //
 // The plain shape is what the CLI lanes are handed too: the plugin receives the body an HTTP
 // lane would have posted and answers in the same dialect, so the mod keeps one request builder
 // and one response parser for every backend.
-func AiNpcLlmChatBody(provider: AiNpcProvider, systemText: String, userText: String) -> String {
+func AiNpcLlmChatBody(provider: AiNpcProvider, slot: ref<AiNpcSlot>,
+                      instructionText: String, askText: String) -> String {
     if Equals(provider, AiNpcProvider.OpenRouter) {
         let request = new AiNpcOpenRouterRequestDTO();
-        request.model = AiNpcLlmChatModel(provider);
-        ArrayPush(request.messages, AiNpcLlmChatMessage("system", systemText));
-        ArrayPush(request.messages, AiNpcLlmChatMessage("user", userText));
+        request.model = AiNpcLlmSlotModel(provider, slot);
+        ArrayPush(request.messages, AiNpcLlmChatMessage("system", instructionText));
+        ArrayPush(request.messages, AiNpcLlmChatMessage("user", askText));
 
         let preferred = AiNpcGetOpenRouterProvider();
         if NotEquals(preferred, "Auto") && StrLen(preferred) > 0 {
@@ -172,36 +196,25 @@ func AiNpcLlmChatBody(provider: AiNpcProvider, systemText: String, userText: Str
             request.provider = routing;
             AiNpcLog("OpenRouter: Routing preference set to " + preferred);
         }
-        return AiNpcLlmWithTuning(ToJson(request));
+        return AiNpcLlmWithSlot(ToJson(request), slot);
     }
 
     let request = new AiNpcOpenAIRequestDTO();
-    request.model = AiNpcLlmChatModel(provider);
-    ArrayPush(request.messages, AiNpcLlmChatMessage("system", systemText));
-    ArrayPush(request.messages, AiNpcLlmChatMessage("user", userText));
-    return AiNpcLlmWithTuning(ToJson(request));
+    request.model = AiNpcLlmSlotModel(provider, slot);
+    ArrayPush(request.messages, AiNpcLlmChatMessage("system", instructionText));
+    ArrayPush(request.messages, AiNpcLlmChatMessage("user", askText));
+    return AiNpcLlmWithSlot(ToJson(request), slot);
 }
 
-// Added after serialisation rather than as DTO fields, because a DTO field is always emitted:
-// `"max_tokens": 0` is not unset, it is a value, and it is rejected with a 400. A key that must
-// sometimes not exist cannot be a field on a class whose serialiser writes every field.
-//
-// Applies to both body shapes, so the two cannot end up tunable one way and not the other.
-func AiNpcLlmWithTuning(body: ref<JsonVariant>) -> String {
+// The slot's parameters, applied to both body shapes so the two cannot end up tunable one way
+// and not the other. What the overlay does and why it copies rather than reads is
+// AiNpcSlot.reds; this is only where it meets a serialised request.
+func AiNpcLlmWithSlot(body: ref<JsonVariant>, slot: ref<AiNpcSlot>) -> String {
     let root = body as JsonObject;
     if !IsDefined(root) {
         return body.ToString();
     }
-
-    let maxTokens = AiNpcGetMaxTokens();
-    if maxTokens > 0 {
-        root.SetKeyInt64("max_tokens", Cast<Int64>(maxTokens));
-    }
-
-    let effort = AiNpcGetReasoningEffort();
-    if NotEquals(StrLen(effort), 0) {
-        root.SetKeyString("reasoning_effort", effort);
-    }
+    AiNpcSlotOverlay(root, slot);
     return root.ToString();
 }
 

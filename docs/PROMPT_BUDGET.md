@@ -101,10 +101,22 @@ write. The pattern already exists for one case; the setting generalises it.
 | **Memory** | `<memory>` | the compaction pass in `AiNpcMemoryService` | a character forgets anything older than the transcript window; the last N messages are all there is. Costs 106 tk at 4 facts and 535 at 12; the cap is 20, so about 550 at saturation |
 | **Actions** | `<mechanics>`, the provider's action fragment | tag parsing and dispatch in `AiNpcHttpSystem.HandleMessage` | no transfers, no meetings -- conversation only |
 | **Quest & ambient context** | `<quest>`, the live and pending context inside `<now>` | `AiNpcFactEvent`, `AiNpcWeather`, the quest lookup | characters no longer react to what V just did, nor to the weather |
-| **V's appearance** | `<player>` | -- | characters stop describing V; it is one settings.json line (`appearance`), so this only decides whether it is sent |
+| **V's appearance** | `<target>` | -- | characters stop describing V; it is one settings.json line (`appearance`), so this only decides whether it is sent |
 
 Not toggleable, because the mod is not itself without them: `<system>`, `<explicitness>`,
 `<language>`, `<character>`, and the transcript.
+
+### What the recipe changed
+
+The table above was written when the only lever was a toggle, and a toggle is coarse: it takes
+a whole block or leaves it. `recipes.json` is the fine one -- it takes **parts** of a block, so
+`<memory>` can keep its consolidated facts and drop the chronicle, the open loops and the
+agreements, and `<character>` can keep the bio and drop the register. What it cannot take is
+`<system>` or `<explicitness>`, for reasons that are not about cost.
+
+It does not replace the toggles: a toggle also stops something RUNNING -- the compaction pass,
+the fact watches -- and a recipe only decides what is written into the prompt. The measurements
+above are unchanged, and none of them was retaken for the recipe.
 
 ### Self-documentation, and its one trap
 

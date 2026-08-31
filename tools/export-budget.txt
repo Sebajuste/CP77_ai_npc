@@ -5,6 +5,7 @@
 7 AiNpcActionPattern.reds
 4 AiNpcActionPrompt.reds
 6 AiNpcActionRegistry.reds
+1 AiNpcActionService.reds
 6 AiNpcActionTable.reds
 5 AiNpcActionTag.reds
 3 AiNpcCast.reds
@@ -20,8 +21,8 @@
 1 AiNpcCastSongbird.reds
 1 AiNpcCastTakemura.reds
 1 AiNpcCastViktor.reds
-12 AiNpcChatRegistry.reds
 3 AiNpcChatDoor.reds
+12 AiNpcChatRegistry.reds
 1 AiNpcChatRenderer.reds
 5 AiNpcChatSession.reds
 13 AiNpcClientRegistry.reds
@@ -56,7 +57,7 @@
 6 AiNpcJson.reds
 8 AiNpcKeyboard.reds
 5 AiNpcKeyRepeat.reds
-3 AiNpcLaneCallback.reds
+4 AiNpcLaneCallback.reds
 23 AiNpcLanguage.reds
 15 AiNpcLlm.reds
 66 AiNpcMemory.reds

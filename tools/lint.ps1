@@ -1578,6 +1578,293 @@ if (-not $versionMatch.Success) {
     }
 }
 
+# --- N+10. The prompt recipe uses one vocabulary ------------------------------------------
+# A recipe names blocks and parts as STRINGS, in three places that have no way to compare
+# themselves: the schema table, the renderers that ask for a part, and the template the mod
+# ships. A typo in any of them compiles, runs, and removes a section from the prompt without
+# a word -- which is the exact failure the parser's own "unknown key" line exists to prevent,
+# and the parser cannot see a typo made in redscript.
+#
+# Three agreements, and all three are read out of the sources:
+#
+#   * every block and part a renderer asks for is declared in AiNpcRecipeSchema;
+#   * every block a recipe may drop is asked about by somebody -- a schema entry nothing
+#     renders is a block a player can turn off with no effect;
+#   * the shipped template names every block and every part. That one is load-bearing beyond
+#     documentation: the template IS the default, so a part it forgets is a part a fresh
+#     install stops rendering, and it is also what makes tools\prompt's offline builder --
+#     which renders every block -- equal to what the mod sends out of the box.
+$schemaText = Read-Code (Join-Path $modSrc "AiNpcRecipeSchema.reds")
+$recipeBlocks = @{}
+foreach ($m in [regex]::Matches($schemaText, 'AiNpcRecipeBlockSchemaOf\("(\w+)",\s*\[([^\]]*)\]\)')) {
+    $parts = @()
+    foreach ($p in [regex]::Matches($m.Groups[2].Value, '"(\w+)"')) { $parts += $p.Groups[1].Value }
+    $recipeBlocks[$m.Groups[1].Value] = $parts
+}
+$requiredBlocks = @()
+# A block with no parts of its own carries one named by the schema, and a file never writes
+# that name -- it writes "full" or true. So it is declared here and skipped below.
+foreach ($m in [regex]::Matches($schemaText, 'AiNpcRecipe(Required|Sourced|Whole|Message)\("(\w+)"')) {
+    if ($m.Groups[1].Value -ne "Whole") { $requiredBlocks += $m.Groups[2].Value }
+    $recipeBlocks[$m.Groups[2].Value] = @("all")
+}
+
+$recipeProblems = @()
+if ($recipeBlocks.Count -eq 0) {
+    $recipeProblems += "AiNpcRecipeSchema declares no block - the rule is reading nothing"
+}
+
+# What the renderers ask for.
+$asked = @{}
+foreach ($m in [regex]::Matches($allText, 'AiNpcRecipe(?:Has|SourceOf)\([^,]+,\s*"(\w+)"\)')) {
+    $asked[$m.Groups[1].Value] = $true
+    if (-not $recipeBlocks.ContainsKey($m.Groups[1].Value)) {
+        $recipeProblems += "a renderer asks about block `"$($m.Groups[1].Value)`", which AiNpcRecipeSchema does not declare"
+    }
+}
+foreach ($m in [regex]::Matches($allText, 'AiNpcRecipeWants\([^,]+,\s*"(\w+)",\s*"([\w-]+)"\)')) {
+    $block = $m.Groups[1].Value
+    $part  = $m.Groups[2].Value
+    $asked[$block] = $true
+    if (-not $recipeBlocks.ContainsKey($block)) {
+        $recipeProblems += "a renderer asks about block `"$block`", which AiNpcRecipeSchema does not declare"
+    } elseif ($recipeBlocks[$block] -notcontains $part) {
+        $recipeProblems += "a renderer asks for `"$block`" part `"$part`", which is not one of: $($recipeBlocks[$block] -join ', ')"
+    }
+}
+
+foreach ($block in $recipeBlocks.Keys) {
+    if ($requiredBlocks -contains $block) { continue }
+    if (-not $asked.ContainsKey($block)) {
+        $recipeProblems += "no renderer asks about block `"$block`" - a player could drop it with no effect"
+    }
+}
+
+# What the template says. Read as text rather than parsed: the assertion is that the words are
+# there, and the redscript literal escapes its own quotes.
+$templateText = Read-Code (Join-Path $modSrc "AiNpcRecipeTemplate.reds")
+foreach ($block in $recipeBlocks.Keys) {
+    if ($templateText -notmatch ('\\"' + $block + '\\":')) {
+        $recipeProblems += "the shipped template never names block `"$block`", so a fresh install would not render it"
+    }
+    foreach ($part in $recipeBlocks[$block]) {
+        if ($part -eq "all") { continue }
+        if ($templateText -notmatch ('\\"' + $part + '\\"')) {
+            $recipeProblems += "the shipped template never names `"$block`" part `"$part`""
+        }
+    }
+}
+
+if ($recipeProblems) {
+    Report-Fail "the prompt recipe uses one vocabulary" ($recipeProblems -join "`n")
+} else {
+    $partCount = 0
+    foreach ($block in $recipeBlocks.Keys) { $partCount += $recipeBlocks[$block].Count }
+    Report-Pass "the prompt recipe uses one vocabulary ($($recipeBlocks.Count) block(s), $partCount part(s))"
+}
+
+# --- the slots ------------------------------------------------------------------------
+#
+# Three agreements, and all three are about the same thing: the overlay COPIES what the file
+# says onto the request body. The moment the mod reads one of those keys by name, or grows a
+# typed setting beside them, the format stops being "whatever the provider accepts" and
+# becomes another list somebody has to extend for every parameter a provider ships.
+$slotProblems = @()
+
+# A body built without naming a slot is a request on the dialogue model whatever sent it --
+# and a log line that says so, which is the one thing that makes a 400 diagnosable.
+foreach ($m in [regex]::Matches($allText, 'AiNpcLlmChatBody\(([^)]*)\)')) {
+    if ($m.Groups[1].Value -notmatch '[Ss]lot') {
+        $slotProblems += "a call to AiNpcLlmChatBody names no slot: $($m.Value)"
+    }
+}
+
+# The wire names, written once each, where the two settings that predate the format are
+# translated. Anywhere else they are the mod reading a slot key by name.
+# Assertions are exempt, as everywhere else: naming a parameter is how a test says which one
+# it is checking. What the rule is about is the mod reading one.
+$shipParts = @()
+foreach ($f in $files) { if (-not (Test-IsSelfTest $f)) { $shipParts += (Read-Code $f.FullName) } }
+$shipText = ($shipParts -join "`n")
+$aliasText = Read-Code (Join-Path $modSrc "AiNpcSlot.reds")
+# The key as a KEY -- a standalone string literal -- not the word inside a sentence: a log line
+# that tells a player which setting cut their reply short has to name it, and that is the
+# opposite of the mod reading it.
+foreach ($wire in @("max_tokens", "reasoning_effort", "temperature", "top_p")) {
+    $literal = '"' + $wire + '"'
+    $hits = ([regex]::Matches($shipText, [regex]::Escape($literal))).Count
+    $here = ([regex]::Matches($aliasText, [regex]::Escape($literal))).Count
+    if ($hits -gt $here) {
+        $slotProblems += "the wire parameter `"$wire`" is named outside the alias table - the overlay copies, it does not inspect"
+    }
+}
+
+# The reserved keys are ours and never reach a provider. One declaration, or a second file
+# strips a key this one still sends.
+# The quoted key, not the resolved field: reading slot.timeoutSeconds is what the reserved
+# key is FOR. What must be written once is the name the file uses.
+$reserved = ([regex]::Matches($shipText, '"timeoutSeconds"')).Count
+$reservedHere = ([regex]::Matches($aliasText, '"timeoutSeconds"')).Count
+if ($reserved -gt $reservedHere) {
+    $slotProblems += "the reserved key list is written in more than one place"
+}
+
+# The wire's word for the second message, which the mod does not use for anything else.
+foreach ($m in [regex]::Matches($allText, '\buserText\b')) {
+    $slotProblems += "userText is the wire's name for the ask, not an identifier"
+}
+
+if ($slotProblems) {
+    Report-Fail "a slot is copied, never read" (($slotProblems | Select-Object -Unique) -join "`n")
+} else {
+    Report-Pass "a slot is copied, never read"
+}
+
+# --- the presets -----------------------------------------------------------------------
+#
+# A preset writes a block of settings.json in clear, and two of its halves cross a file
+# boundary: the recipe it names into the shipped template, and the preset names themselves into
+# the CET window, which reads its buttons out of the first word of DescribeModelPresets().
+$presetProblems = @()
+
+# Read once, and used again by the pass-pipeline rule below.
+$passText = Read-Code (Join-Path $modSrc "AiNpcPass.reds")
+$recipeNames = @()
+$passBody = [regex]::Match($passText, '(?s)func AiNpcPassRecipeName\(pass: String\)[^\{]*\{(?<body>.*?)\n\}')
+if (-not $passBody.Success) {
+    $presetProblems += "AiNpcPassRecipeName not found - a preset would bind recipes nothing checks"
+} else {
+    foreach ($m in [regex]::Matches($passBody.Groups["body"].Value, 'return "(\w+)"')) {
+        $recipeNames += $m.Groups[1].Value
+    }
+}
+foreach ($name in $recipeNames) {
+    if ($templateText -notmatch ('\\"' + $name + '\\": \{')) {
+        $presetProblems += "a pass binds recipe `"$name`", which the shipped template does not declare - the preset would write a binding that points at nothing"
+    }
+}
+
+# Every preset must reach the window, and its name must be one word: the overlay takes the
+# first word of each line as a button.
+$presetText = Read-Code (Join-Path $modSrc "AiNpcModelPreset.reds")
+$presetNames = @()
+foreach ($m in [regex]::Matches($presetText, 'AiNpcModelPresetOf\("([^"]+)",\s*"([^"]+)"')) {
+    $presetNames += $m.Groups[1].Value
+    if ($m.Groups[1].Value -match '\s') {
+        $presetProblems += "preset name '$($m.Groups[1].Value)' is not one word - the CET window would draw a button nobody can press"
+    }
+    if ($m.Groups[2].Value -notmatch '/') {
+        $presetProblems += "preset '$($m.Groups[1].Value)' names '$($m.Groups[2].Value)', which is not a provider-qualified model id"
+    }
+}
+if ($presetNames.Count -eq 0) {
+    $presetProblems += "no preset is declared - the window's preset row would be empty"
+}
+$setupText = Read-Code (Join-Path $modSrc "AiNpcSetup.reds")
+if ($setupText -notmatch 'func DescribeModelPresets') {
+    $presetProblems += "DescribeModelPresets() not found - the CET window could not offer a preset"
+}
+if ($setupText -notmatch 'func ApplyModelPreset') {
+    $presetProblems += "ApplyModelPreset() not found - the window could describe presets it cannot apply"
+}
+$luaPath = Join-Path $root "src\bin\x64\plugins\cyber_engine_tweaks\mods\ai_npc_debug\init.lua"
+if (Test-Path $luaPath) {
+    $luaText = [System.IO.File]::ReadAllText($luaPath)
+    foreach ($call in @("DescribeModelPresets", "ApplyModelPreset")) {
+        if ($luaText -notmatch [regex]::Escape($call)) {
+            $presetProblems += "the CET window never calls $call - the presets would exist and be unreachable"
+        }
+    }
+}
+
+if ($presetProblems) {
+    Report-Fail "a preset writes what the mod declares" (($presetProblems | Select-Object -Unique) -join "`n")
+} else {
+    Report-Pass "a preset writes what the mod declares ($($presetNames.Count) preset(s), $($recipeNames.Count) recipe binding(s))"
+}
+
+# --- the pass pipeline -------------------------------------------------------------------
+#
+# One request is assembled in one place. Every pass resolves a slot, renders two messages,
+# serialises, records and sends; that column is AiNpcPassSend's, and a lane that wrote it again
+# would be a sixth copy free to drift -- which is exactly how the recipe came to be read from
+# two places at once.
+#
+# Two agreements:
+#
+#   * the four steps of the column are called from AiNpcPassSend.reds and nowhere else;
+#   * the recipe has ONE door. AiNpcPassRecipe is called by AiNpcPassBuilder.Recipe(), which
+#     asks for its own pass, so a builder cannot render against another pass's recipe. Anything
+#     else reaching for a recipe by name can.
+#
+# The service methods are named here too, and that is the half the rule was missing: the free
+# function is the door, but GetPassRecipe is the hinge, and redscript compiles a call to a
+# private method from another file without a word. Guarding the door and leaving the hinge
+# open is a rule that reads as enforced and is not.
+$pipelineProblems = @()
+
+$spine = @{
+    "AiNpcLlmChatBody("        = @("AiNpcPassSend.reds", "AiNpcLlm.reds")
+    "AiNpcSendChat("           = @("AiNpcPassSend.reds", "AiNpcTransport.reds")
+    "AiNpcRequestRecord.Sent(" = @("AiNpcPassSend.reds", "AiNpcRequestLog.reds")
+    "AiNpcPassRecipe("         = @("AiNpcPassBuilder.reds", "AiNpcConfig.reds")
+    "GetPassRecipe("           = @("AiNpcConfig.reds")
+    "GetPassSlotName("         = @("AiNpcConfig.reds")
+}
+foreach ($call in $spine.Keys) {
+    foreach ($f in $files) {
+        if (Test-IsSelfTest $f) { continue }
+        if ($spine[$call] -contains $f.Name) { continue }
+        if ((Read-Code $f.FullName) -match [regex]::Escape($call)) {
+            $pipelineProblems += "$($f.Name) calls $call) - that step is written in one place, $($spine[$call][0])"
+        }
+    }
+}
+
+# The active recipe is reachable only through a pass. A renderer that read it directly would
+# describe whichever recipe is active rather than the one the request is being sent under.
+foreach ($f in $files) {
+    if ((Read-Code $f.FullName) -match 'AiNpcPromptRecipe') {
+        $pipelineProblems += "$($f.Name) names AiNpcPromptRecipe - a recipe is read through its pass, never off the active one"
+    }
+}
+
+# Every pass makes requests, so every pass has a builder. One, and its own.
+$namesBody = [regex]::Match($passText,'(?s)func AiNpcPassNames\(\)[^\{]*\{(?<body>.*?)\n\}')
+$declaredLanes = @()
+if (-not $namesBody.Success) {
+    $pipelineProblems += "AiNpcPassNames not found - the rule is reading nothing"
+} else {
+    foreach ($m in [regex]::Matches($namesBody.Groups["body"].Value, 'AiNpcLane\w+\(\)')) {
+        $declaredLanes += $m.Value
+    }
+}
+
+$builtLanes = @()
+foreach ($m in [regex]::Matches($allText, '(?s)func Pass\(\) -> String \{\s*return (AiNpcLane\w+\(\));')) {
+    $lane = $m.Groups[1].Value
+    if ($builtLanes -contains $lane) {
+        $pipelineProblems += "two builders declare pass $lane - a pass has one"
+    }
+    $builtLanes += $lane
+}
+foreach ($lane in $declaredLanes) {
+    if ($builtLanes -notcontains $lane) {
+        $pipelineProblems += "pass $lane is in AiNpcPassNames and no builder declares it - it could be bound to a slot and a recipe and never sent"
+    }
+}
+foreach ($lane in $builtLanes) {
+    if ($declaredLanes -notcontains $lane) {
+        $pipelineProblems += "a builder declares pass $lane, which AiNpcPassNames does not - it can be sent and never configured"
+    }
+}
+
+if ($pipelineProblems) {
+    Report-Fail "a request is assembled in one place" (($pipelineProblems | Select-Object -Unique) -join "`n")
+} else {
+    Report-Pass "a request is assembled in one place ($($builtLanes.Count) pass builder(s), one spine)"
+}
+
 Write-Output ""
 if ($script:failures -gt 0) {
     Write-Output "$($script:failures) check(s) failed."

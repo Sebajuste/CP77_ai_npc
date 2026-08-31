@@ -100,6 +100,20 @@ public class AiNpcTestTimeoutCallback extends AiNpcSetupCallback {
     }
 }
 
+public class AiNpcActionTimeoutCallback extends AiNpcActionLaneCallback {
+    public let waitId: Int32;
+
+    protected func Run(lane: ref<AiNpcActionService>) -> Void {
+        lane.OnWaitTimedOut(this.waitId);
+    }
+
+    public static func Create(waitId: Int32) -> ref<AiNpcActionTimeoutCallback> {
+        let self = new AiNpcActionTimeoutCallback();
+        self.waitId = waitId;
+        return self;
+    }
+}
+
 public class AiNpcThinkingTimeoutCallback extends AiNpcThinkingLaneCallback {
     public let waitId: Int32;
 

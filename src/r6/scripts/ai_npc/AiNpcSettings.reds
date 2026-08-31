@@ -4,6 +4,8 @@
 
 module AiNpc
 
+import RedData.Json.*
+
 // API keys and model names live in <game>\r6\storages\AiNpc\settings.json, created with
 // placeholders on first launch: credentials stay out of the distributed mod, and change
 // without recompiling anything.
@@ -13,6 +15,49 @@ func AiNpcGetSetting(key: String, fallback: String) -> String {
         return fallback;
     }
     return storage.GetSetting(key, fallback);
+}
+
+func AiNpcHasSetting(key: String) -> Bool {
+    let storage = AiNpcStorageService.GetPersistentStorageSystem();
+    if !IsDefined(storage) {
+        return false;
+    }
+    return storage.HasSetting(key);
+}
+
+func AiNpcGetSettingObject(key: String) -> ref<JsonObject> {
+    let storage = AiNpcStorageService.GetPersistentStorageSystem();
+    if !IsDefined(storage) {
+        return null;
+    }
+    return storage.GetSettingObject(key);
+}
+
+/// The slots ///
+
+// One slot, resolved: the `slots` block of settings.json, the dialogue slot underneath it, and
+// the three settings that predate the format laid over that. The impure half of AiNpcSlot.reds
+// and the only one -- everything the mod decides about a slot is decided there, over values
+// this function hands it.
+//
+// Read per request rather than cached, so an edit to settings.json followed by a reload
+// applies to the next message like every other setting here.
+func AiNpcGetSlot(name: String) -> ref<AiNpcSlot> {
+    let model = AiNpcHasSetting("openRouterModel") ? AiNpcGetOpenRouterModel() : "";
+    return AiNpcSlotFrom(AiNpcGetSettingObject("slots"), name,
+        AiNpcSlotAliases(model, AiNpcGetMaxTokens(), AiNpcGetReasoningEffort()));
+}
+
+// The slot a kind of work is sent on. The pass table says which one; a pass nobody configured
+// is on the dialogue slot, which is where every request went before slots existed.
+func AiNpcGetSlotForPass(pass: String) -> ref<AiNpcSlot> {
+    return AiNpcGetSlot(AiNpcPassSlotName(pass));
+}
+
+// The model the reply is actually written on, whatever key it is stored under. What the CET
+// window shows, and what the setup test checks.
+func AiNpcSpeakingModel() -> String {
+    return AiNpcLlmSlotModel(AiNpcProviderSetting(), AiNpcGetSlotForPass(AiNpcLaneSpeaking()));
 }
 
 // The two per-request knobs, both read as text and both meaning "say nothing" when unset.

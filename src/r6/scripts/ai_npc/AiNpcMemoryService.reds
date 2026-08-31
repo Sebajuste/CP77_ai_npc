@@ -143,20 +143,10 @@ public class AiNpcMemoryService extends ScriptableSystem {
         let npcName = AiNpcGetCharacterName(contactId);
         let base = this.SeedIfEmpty(previous, contactProvider);
 
-        // Decided once and handed to both halves of the request: the instruction must ask for
-        // a CHRONICLE exactly when the body carries an ARCHIVE to build it from.
-        let folding = AiNpcMemoryShouldFold(base);
-        let exact = AiNpcMemoryChronicleExact();
-
-        // Bound to locals: the record measures each half, and a serialised body cannot be
-        // taken apart again.
-        let instruction = AiNpcMemoryInstruction(folding);
-        let request = AiNpcMemoryRequestBody(base, npcName, AiNpcGenderFact(),
-            AiNpcHistoryTranscript(evicted, npcName), exact);
-        let body = AiNpcLlmChatBody(backend, instruction, request);
-
-        this.m_record = AiNpcRequestRecord.Sent(AiNpcLaneThinking(), contactId,
-            backend, instruction, request);
+        // The builder decides once for both halves: the instruction asks for a CHRONICLE
+        // exactly when the body carries an ARCHIVE to build it from.
+        let builder = AiNpcPassCompaction.Of(base, npcName,
+            AiNpcHistoryTranscript(evicted, npcName));
 
         this.m_contact = contactId;
         this.m_base = base;
@@ -169,23 +159,25 @@ public class AiNpcMemoryService extends ScriptableSystem {
         // type here would put a third file at risk of the validation failure AiNpcCliNative
         // describes.
         this.m_serial += 1;
-        if !AiNpcSendChat(backend, body, this, n"OnMemoryResponse",
-                AiNpcCliRequestId(AiNpcCliLaneMemory(), this.m_serial)) {
+        let request = AiNpcPassSend(builder, backend, contactId, this, n"OnMemoryResponse",
+                AiNpcCliRequestId(AiNpcCliLaneMemory(), this.m_serial));
+        if !IsDefined(request) {
             // Refused before anything was spawned. The log is the only place a silent lane can
             // say so, and nothing was armed, so the lane is already free.
             AiNpcLog(s"Compaction for '\(contactId)' was refused by the transport.");
             return;
         }
+        this.m_record = request.record;
 
         // After the send and not before: arming is what marks this lane busy, so a request
         // that never left cannot occupy it.
         AiNpcArmTimeout(AiNpcThinkingTimeoutCallback.Create(this.m_watchdog.Arm()),
-            AiNpcLlmRequestTimeout(backend));
+            AiNpcLlmRequestTimeout(backend, request.slot));
 
         let trigger = full ? "batch" : "silence";
-        if folding {
-            let pending = ArraySize(base.archive) - AiNpcMemoryChronicleFrom(base, exact);
-            AiNpcLog(s"Folding \(pending) archived fact(s) into the chronicle for '\(contactId)' (\(exact ? "exact" : "incremental")).");
+        if builder.folding {
+            let pending = ArraySize(base.archive) - AiNpcMemoryChronicleFrom(base, builder.exact);
+            AiNpcLog(s"Folding \(pending) archived fact(s) into the chronicle for '\(contactId)' (\(builder.exact ? "exact" : "incremental")).");
         }
 
         AiNpcLog(s"Compacting \(this.m_absorbed) message(s) for '\(contactId)' (\(trigger)).");
@@ -255,6 +247,16 @@ public class AiNpcMemoryService extends ScriptableSystem {
         let text = AiNpcExtractChatText(root);
         if Equals(StrLen(text), 0) {
             this.Abandon("empty answer");
+            return;
+        }
+
+        // Before the parse, and this is the branch that makes an output cap safe on this lane.
+        // A note cut off by max_tokens still parses: the sections it did reach are well formed,
+        // and the ones it did not are simply absent -- which reads as "this character no longer
+        // remembers that", forever, with nothing anywhere saying why. The previous memory
+        // stands and the next batch tries again, which is what every other bad answer does.
+        if AiNpcReplyWasTruncated(root) {
+            this.Abandon("the answer was cut off by the output budget (max_tokens); raise it on the slot this pass is on");
             return;
         }
 

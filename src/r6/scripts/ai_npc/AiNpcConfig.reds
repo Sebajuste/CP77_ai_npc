@@ -16,6 +16,8 @@
 // recursively:
 //
 //   prompts.json              world / rules / interactions / language overrides
+//   recipes.json              what the system prompt renders, block by block
+//   recipes.example.json      rewritten every launch: the template, and the mod's own default
 //   characters.builtin.json   optional overrides for the characters shipped with the mod
 //   characters.<mod>.json     dropped in by another mod, or by hand
 //   characters.user.json      always applied last, so a hand edit wins over any mod
@@ -46,6 +48,9 @@ public class AiNpcConfigService extends ScriptableService {
     private let m_defs: array<ref<AiNpcCharacterDef>>;
     private let m_watches: array<ref<AiNpcFactWatch>>;
     private let m_prompts: ref<AiNpcPromptConfig>;
+    private let m_recipe: ref<AiNpcRecipe>;
+    private let m_book: ref<AiNpcRecipeBook>;
+    private let m_passes: array<ref<AiNpcPassBinding>>;
     private let m_issues: array<ref<AiNpcConfigIssue>>;
     private let m_errors: Int32 = 0;
     private let m_warnings: Int32 = 0;
@@ -70,6 +75,35 @@ public class AiNpcConfigService extends ScriptableService {
     public func GetPrompts() -> ref<AiNpcPromptConfig> {
         this.EnsureLoaded();
         return this.m_prompts;
+    }
+
+    // What a pass renders with, and the only way a recipe leaves this service: the active one
+    // is not offered, because a caller that could ask for it could render one pass under
+    // another's. Both answers fall back the way an absent `passes` block does: the active
+    // recipe, and the dialogue slot.
+    //
+    // `private` states the intent and nothing more -- measured 2026-08-31: redscript compiles
+    // a call to a private method from another file without a word. The two free functions at
+    // the bottom of this file are the door, and tools\lint.ps1 is what holds it shut.
+    private func GetPassRecipe(pass: String) -> ref<AiNpcRecipe> {
+        this.EnsureLoaded();
+        let binding = AiNpcPassBindingNamed(this.m_passes, pass);
+        let named = AiNpcRecipeBookNamed(this.m_book, binding.recipeName);
+        if IsDefined(named) {
+            return named;
+        }
+        return this.m_recipe;
+    }
+
+    private func GetPassSlotName(pass: String) -> String {
+        this.EnsureLoaded();
+        return AiNpcPassSlotNameIn(this.m_passes, pass);
+    }
+
+    // The book as loaded, for a preset deciding which recipe names it may write.
+    public func GetRecipeBook() -> ref<AiNpcRecipeBook> {
+        this.EnsureLoaded();
+        return this.m_book;
     }
 
     // Read once at player attach, by AiNpcFactBridge: a watch is only meaningful next to a
@@ -140,18 +174,76 @@ public class AiNpcConfigService extends ScriptableService {
 
         ArrayClear(this.m_defs);
         ArrayClear(this.m_watches);
+        ArrayClear(this.m_passes);
         ArrayClear(this.m_issues);
         this.m_errors = 0;
         this.m_warnings = 0;
         this.m_prompts = new AiNpcPromptConfig();
+        this.m_recipe = AiNpcRecipeFull();
 
         this.WriteExampleFile(storage);
         this.WriteFactsExampleFile(storage);
+        this.WriteRecipeTemplate(storage);
+        this.LoadRecipes(storage);
+        this.LoadPasses();
         this.LoadPrompts(storage);
         this.LoadCharacterFiles(storage);
         this.LoadFactFiles(storage);
         this.WriteReport(storage);
         this.LogSummary();
+    }
+
+    // The template is written first and then PARSED, and what comes out is the recipe the mod
+    // renders with when there is no recipes.json. So the file a player copies and the default
+    // they are copying are one text: a template that documented a default kept elsewhere would
+    // be free to disagree with it, and nothing would ever say so.
+    //
+    // A player's file is read the same way, over the same built-in full render, so an absent
+    // key keeps the mod's answer at both levels.
+    private func LoadRecipes(storage: ref<FileSystemStorage>) -> Void {
+        this.ReadRecipes(ParseJson(AiNpcRecipeTemplate()) as JsonObject, AiNpcRecipeTemplateFile());
+
+        let root = this.ReadObject(storage, AiNpcRecipeFile());
+        if IsDefined(root) {
+            this.ReadRecipes(root, AiNpcRecipeFile());
+            AiNpcLog(s"Loaded \(AiNpcRecipeFile()): rendering with recipe '\(this.m_recipe.name)'.");
+        }
+    }
+
+    // The whole book is kept, not only the active recipe: a pass may name any recipe in the
+    // file. A player's file REPLACES the template's book rather than adding to it, so a pass
+    // naming a recipe that only the shipped template declares points at nothing -- and the
+    // pass table says so, by name.
+    private func ReadRecipes(root: ref<JsonObject>, fileName: String) -> Void {
+        let issues: array<ref<AiNpcConfigIssue>>;
+        let book = AiNpcRecipeBookFromJson(root, fileName, issues);
+
+        let i = 0;
+        let count = ArraySize(issues);
+        while i < count {
+            this.AddIssue(issues[i].severity, issues[i].source, issues[i].message);
+            i += 1;
+        }
+        this.m_book = book;
+        this.m_recipe = AiNpcRecipeBookActive(book);
+    }
+
+    // The pass table lives in settings.json, beside the slots it names: what a request is sent
+    // with is one file, and what it says is another. Read after the recipes, because half of
+    // what it is checked against is the book.
+    private func LoadPasses() -> Void {
+        let issues: array<ref<AiNpcConfigIssue>>;
+        let slots = AiNpcGetSettingObject("slots");
+        AiNpcSlotReportShapes(slots, AiNpcSettingsFile(), issues);
+        this.m_passes = AiNpcPassTableFromJson(AiNpcGetSettingObject("passes"),
+            AiNpcSettingsFile(), slots, this.m_book, issues);
+
+        let i = 0;
+        let count = ArraySize(issues);
+        while i < count {
+            this.AddIssue(issues[i].severity, issues[i].source, issues[i].message);
+            i += 1;
+        }
     }
 
     private func LoadPrompts(storage: ref<FileSystemStorage>) -> Void {
@@ -978,7 +1070,7 @@ public class AiNpcConfigService extends ScriptableService {
             "            \"_prompts\": \"Rarely needed: the same keys as prompts.json, for this contact only. Omit a key to keep resolving prompts.json, then the built-in text. 'rules' and 'interactions' are objects keyed by rubric -- a known rubric is replaced where it stands, an unknown one is appended.\",\n" +
             "            \"prompts\": {\n" +
             "                \"interactions\": { \"REAL\": \"Replaces the REAL rubric of <interactions> for Nadia only.\" },\n" +
-            "                \"playerDescription\": \"Replaces the <player> section: what THIS contact knows of V. For an unknown number, state the ignorance -- 'you have never met V' -- rather than leaving it empty.\",\n" +
+            "                \"playerDescription\": \"Replaces the <target> section: what THIS contact knows of V. For an unknown number, state the ignorance -- 'you have never met V' -- rather than leaving it empty.\",\n" +
             "                \"worldBackground\": \"Replaces the <world_background> section for Nadia only.\"\n" +
             "            },\n" +
             "            \"_romanced\": \"Your own contact only. For a built-in one -- Panam, Judy, River, Kerry -- the save answers instead and this key is ignored, so an override file cannot claim a romance the playthrough never had.\",\n" +
@@ -1009,6 +1101,12 @@ public class AiNpcConfigService extends ScriptableService {
         storage.GetFile(this.EXAMPLE_FILE).WriteText(text);
     }
 
+    // Same contract as WriteExampleFile, and one line because the text is not this file's: it
+    // is the mod's own default recipe, and it lives with the parser that reads it.
+    private func WriteRecipeTemplate(storage: ref<FileSystemStorage>) -> Void {
+        storage.GetFile(AiNpcRecipeTemplateFile()).WriteText(AiNpcRecipeTemplate());
+    }
+
     // Same contract as WriteExampleFile: rewritten every launch, never read back.
     private func WriteFactsExampleFile(storage: ref<FileSystemStorage>) -> Void {
         let text = "{\n" +
@@ -1036,4 +1134,29 @@ public class AiNpcConfigService extends ScriptableService {
         storage.GetFile(this.FACTS_EXAMPLE_FILE).WriteText(text);
     }
 
+}
+
+// The two questions a call site asks about its own pass. A config that failed to load answers
+// "the dialogue slot, the built-in recipe", which is what the mod sent before either table
+// existed -- a caller that had to guard would be one caller away from a prompt with no blocks.
+//
+// AiNpcPassRecipe has ONE caller, AiNpcPassBuilder.Recipe(), and tools\lint.ps1 holds it there:
+// a renderer reaching the recipe by any other route is a renderer that can read another pass's.
+func AiNpcPassSlotName(pass: String) -> String {
+    let service = AiNpcConfigService.Get();
+    if IsDefined(service) {
+        return service.GetPassSlotName(pass);
+    }
+    return AiNpcSlotDefaultName();
+}
+
+func AiNpcPassRecipe(pass: String) -> ref<AiNpcRecipe> {
+    let service = AiNpcConfigService.Get();
+    if IsDefined(service) {
+        let recipe = service.GetPassRecipe(pass);
+        if IsDefined(recipe) {
+            return recipe;
+        }
+    }
+    return AiNpcRecipeFull();
 }

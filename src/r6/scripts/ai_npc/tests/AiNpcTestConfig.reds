@@ -22,7 +22,7 @@ func AiNpcTestConfigHelpers(t: ref<AiNpcTestRunner>) -> Void {
 
     // Variant conditions are a closed vocabulary: config may carry text, never predicates.
     let conditions = AiNpcVariantConditions();
-    t.EqInt("variants/vocabulary size", ArraySize(conditions), 14);
+    t.EqInt("variants/vocabulary size", ArraySize(conditions), 15);
     t.Check("variants/romanced is known", ArrayContains(conditions, "romanced"));
     t.Check("variants/an invented condition is not known", !ArrayContains(conditions, "whenever"));
     t.EqBool("variants/unknown condition never fires",

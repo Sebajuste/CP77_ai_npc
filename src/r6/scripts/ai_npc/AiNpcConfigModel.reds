@@ -306,3 +306,14 @@ public class AiNpcConfigIssue {
     public let source: String;    // file the problem came from
     public let message: String;
 }
+
+// One issue, built where it is found. The loader owns the list and the counters; a reader
+// that only knows how to read a file -- the recipe parser -- collects into an array and hands
+// it over, which is what keeps that parser free of the service.
+func AiNpcConfigIssueOf(severity: String, source: String, message: String) -> ref<AiNpcConfigIssue> {
+    let issue = new AiNpcConfigIssue();
+    issue.severity = severity;
+    issue.source = source;
+    issue.message = message;
+    return issue;
+}

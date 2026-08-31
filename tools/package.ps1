@@ -6,7 +6,7 @@
 #   ai_npc.zip             stable name, for installing into Vortex (see the note below)
 #
 # Usage: powershell -File tools\package.ps1 [-Release] [-Version 0.7.0]
-#                                            [-SkipPlugin] [-NoStableCopy]
+#                                            [-SkipPlugin] [-SkipArchive] [-NoStableCopy]
 #
 # The version comes from AiNpcVersion() in the sources; -Version only asserts it.
 #
@@ -36,6 +36,7 @@ param(
     [switch]$Release,
     [string]$Version = "",
     [switch]$SkipPlugin,
+    [switch]$SkipArchive,
     [switch]$NoStableCopy
 )
 
@@ -139,7 +140,21 @@ if (Test-Path $binDir) {
 # atlas it was built from. This throws rather than warns when the depot tree is missing: an
 # archive that quietly fails to build is a site whose icon is a blank square, and nothing
 # downstream would say so.
-& (Join-Path $PSScriptRoot "build-archive.ps1")
+#
+# -SkipArchive ships the committed src\archive\ instead of repacking it, because tools\archive
+# references the DLLs of a local WolvenKit 8.20 install -- not redistributed, not on NuGet, and
+# therefore absent from any machine that is not this one. It asserts the file is present rather
+# than letting a zip without an icon travel, which is the failure the repack itself guards
+# against. The repack stays the default: it is the only thing that proves the zip's icon is not
+# older than the atlas it came from.
+$archiveFile = Join-Path $srcDir "archive\pc\mod\ai_npc.archive"
+if ($SkipArchive) {
+    if (-not (Test-Path $archiveFile)) {
+        throw "$archiveFile not found and -SkipArchive was passed. Build it on a machine with WolvenKit, or drop -SkipArchive."
+    }
+} else {
+    & (Join-Path $PSScriptRoot "build-archive.ps1")
+}
 
 $archiveDir = Join-Path $srcDir "archive"
 if (Test-Path $archiveDir) {

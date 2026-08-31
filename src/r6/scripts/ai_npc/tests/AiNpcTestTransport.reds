@@ -117,16 +117,16 @@ func AiNpcTestWatchdog(t: ref<AiNpcTestRunner>) -> Void {
 
     // Every backend must get a real budget: a zero here would disarm the whole mechanism
     // silently, by timing every request out on the frame it was sent.
-    t.Check("timeout/openrouter has a budget", AiNpcLlmRequestTimeout(AiNpcProvider.OpenRouter) > 0.0);
-    t.Check("timeout/claude cli has a budget", AiNpcLlmRequestTimeout(AiNpcProvider.ClaudeCli) > 0.0);
-    t.Check("timeout/codex cli has a budget", AiNpcLlmRequestTimeout(AiNpcProvider.CodexCli) > 0.0);
+    t.Check("timeout/openrouter has a budget", AiNpcLlmRequestTimeout(AiNpcProvider.OpenRouter, null) > 0.0);
+    t.Check("timeout/claude cli has a budget", AiNpcLlmRequestTimeout(AiNpcProvider.ClaudeCli, null) > 0.0);
+    t.Check("timeout/codex cli has a budget", AiNpcLlmRequestTimeout(AiNpcProvider.CodexCli, null) > 0.0);
 
     // A CLI lane has a process to start -- a runtime, an auth check, a handshake -- before a
     // single token is generated, so it must never be held to a cloud provider's deadline.
     t.Check("timeout/the cli lanes get the longest",
-        AiNpcLlmRequestTimeout(AiNpcProvider.ClaudeCli) > AiNpcLlmRequestTimeout(AiNpcProvider.OpenRouter));
+        AiNpcLlmRequestTimeout(AiNpcProvider.ClaudeCli, null) > AiNpcLlmRequestTimeout(AiNpcProvider.OpenRouter, null));
     t.Check("timeout/both cli lanes agree",
-        Equals(AiNpcLlmRequestTimeout(AiNpcProvider.ClaudeCli), AiNpcLlmRequestTimeout(AiNpcProvider.CodexCli)));
+        Equals(AiNpcLlmRequestTimeout(AiNpcProvider.ClaudeCli, null), AiNpcLlmRequestTimeout(AiNpcProvider.CodexCli, null)));
 
     // Which transport carries which provider, asked in one place and read by AiNpcSendChat.
     // Getting this wrong is not a compile error: it is a request posted to "cli://claude".
@@ -527,10 +527,16 @@ func AiNpcTestRequestLog(t: ref<AiNpcTestRunner>) -> Void {
     // derives its whole section table from. The line has to re-produce it, because that is
     // the point of writing it -- the ratio stops being a constant taken once by hand.
     let record = AiNpcRequestRecord.Sent(AiNpcLaneSpeaking(), "panam", AiNpcProvider.OpenRouter,
-        AiNpcTestFiller(16321), AiNpcTestFiller(853));
+        null, "default", AiNpcTestFiller(16321), AiNpcTestFiller(853));
     let line = record.Line(200, AiNpcTestRequestLogUsage(4504, 312), "stop");
 
     t.Check("record/names the lane", StrContains(line, "lane=speaking"));
+    // A mistyped parameter is not refused by the mod: it goes out and comes back a 400, which
+    // is only payable if the line says which slot produced it.
+    t.Check("record/names the slot", StrContains(line, "slot=dialogue"));
+    // The other half of the same question: the slot says what the request was sent with, the
+    // recipe says what was in it.
+    t.Check("record/names the recipe", StrContains(line, "recipe=default"));
     t.Check("record/names the contact", StrContains(line, "contact=panam"));
     t.Check("record/counts both halves separately",
         StrContains(line, "chars_system=16321") && StrContains(line, "chars_user=853"));

@@ -28,6 +28,11 @@ public class AiNpcSetupSystem extends ScriptableSystem {
     private let m_testSerial: Int32 = 0;
     private let m_testUrl: String = "";
 
+    // The slot under test, held for the timeout line: the test checks the slot the speaking
+    // pass is on, because an installation declared healthy on another one is a typo the player
+    // meets ten replies later.
+    private let m_testSlot: ref<AiNpcSlot>;
+
     // The clock on a test that may never be answered. Measured 2026-08-24: a CLI answer the
     // plugin produced correctly was never handed to script, and the window said "Testing
     // ClaudeCli..." for the rest of the session, refusing to start another -- the one state a
@@ -94,9 +99,17 @@ public class AiNpcSetupSystem extends ScriptableSystem {
         let provider = AiNpcProviderSetting();
         let out = s"provider  \(AiNpcProviderName(provider))\n";
 
+        let preset = AiNpcGetSetting(AiNpcModelPresetKey(), "");
+        if NotEquals(StrLen(preset), 0) {
+            out += s"preset    \(preset) -- a starting point written into settings.json, yours to edit\n";
+        }
+
         switch provider {
             case AiNpcProvider.OpenRouter:
-                out += s"model     \(AiNpcGetOpenRouterModel())\n";
+                // The resolved model, not the key it is stored under: with a slots block the
+                // legacy setting is no longer what goes out, and a line naming it would be a
+                // lie in the one place a player checks.
+                out += s"model     \(AiNpcSpeakingModel())\n";
                 out += s"routing   \(AiNpcGetOpenRouterProvider())\n";
                 out += s"key       \(AiNpcMaskSecret(AiNpcGetOpenRouterApiKey()))\n";
                 break;
@@ -146,6 +159,58 @@ public class AiNpcSetupSystem extends ScriptableSystem {
             "CodexCli      FOR MOD AUTHORS TESTING THEIR OWN WORK, NOT FOR PLAYING. Stricter than the Claude lane: OpenAI's terms forbid extracting Output automatically or programmatically, with no exception written for third-party products, and the account can be limited or suspended without warning (openai.com/policies). No key either: the same idea on a ChatGPT subscription, through the Codex CLI and ai_npc.dll. Needs `codex` installed and `codex login status` reporting a ChatGPT sign-in rather than an API key. Untested in game so far, and its safe-for-work tier has not been measured on this lane.";
     }
 
+    // The three starting points, one per line, name first -- the window reads its buttons out
+    // of this text rather than holding a list of its own. Same contract as DescribeProviders.
+    public func DescribeModelPresets() -> String {
+        let out = "";
+        let presets = AiNpcModelPresets();
+        let i = 0;
+        let count = ArraySize(presets);
+        while i < count {
+            if i > 0 {
+                out += "\n\n";
+            }
+            out += s"\(presets[i].name)    \(presets[i].model) -- \(presets[i].summary)";
+            i += 1;
+        }
+        return out;
+    }
+
+    // Applied means WRITTEN: the block goes into settings.json in clear, and from that moment
+    // it is the player's. Nothing re-applies it, and editing a model under it is expected.
+    public func ApplyModelPreset(name: String) -> String {
+        let preset = AiNpcModelPresetNamed(name);
+        if !IsDefined(preset) {
+            return s"Unknown preset '\(name)'. One of: \(AiNpcRecipeJoinNames(AiNpcModelPresetNames())).";
+        }
+
+        let storage = AiNpcStorageService.GetPersistentStorageSystem();
+        if !IsDefined(storage) {
+            return "No storage: RedFileSystem is missing, or the AiNpc storage was revoked this session (see red4ext\\logs\\redfilesystem-*.log).";
+        }
+
+        let config = AiNpcConfigService.Get();
+        let book = IsDefined(config) ? config.GetRecipeBook() : null;
+        if !storage.SetSettings(AiNpcModelPresetPatch(preset, book)) {
+            return "Could not write settings.json.";
+        }
+
+        // The pass table is read at config load, so the binding has to be rebuilt before the
+        // next request: without this the file would say one thing and the session send another.
+        if IsDefined(config) {
+            config.Reload();
+        }
+
+        this.m_testState = "";
+        this.m_testResult = "";
+
+        let out = s"Preset '\(name)' written to settings.json: \(preset.model) on every pass. Edit the slots block to change it.";
+        if NotEquals(AiNpcProviderSetting(), AiNpcProvider.OpenRouter) {
+            out += s" The provider is \(AiNpcProviderName(AiNpcProviderSetting())), which runs its own model: the preset applies to everything except the model until you switch back to OpenRouter.";
+        }
+        return out;
+    }
+
     // The editable fields of the current provider, one per line:
     //
     //     key <tab> label <tab> value <tab> secret
@@ -162,7 +227,7 @@ public class AiNpcSetupSystem extends ScriptableSystem {
         switch AiNpcProviderSetting() {
             case AiNpcProvider.OpenRouter:
                 return this.Row("openRouterApiKey", "API key", AiNpcMaskSecret(AiNpcGetOpenRouterApiKey()), true)
-                    + "\n" + this.Row("openRouterModel", "Model", AiNpcGetOpenRouterModel(), false)
+                    + "\n" + this.Row("openRouterModel", "Model", AiNpcSpeakingModel(), false)
                     + "\n" + this.Row("openRouterProvider", "Routing", AiNpcGetOpenRouterProvider(), false);
             // No secret row on either CLI lane: there is no key to show. What is editable is
             // what the plugin has to be told -- which model, and where the executable is when
@@ -247,7 +312,13 @@ public class AiNpcSetupSystem extends ScriptableSystem {
             return "No storage: RedFileSystem is missing, or the AiNpc storage was revoked this session (see red4ext\\logs\\redfilesystem-*.log).";
         }
 
-        if !storage.SetSetting(key, value) {
+        // The Model box writes where the resolution reads: into slots.dialogue.model when a
+        // slots block declares one, into the legacy setting otherwise. Writing the key the row
+        // is named after would report success over a model a slot then shadows.
+        let written = Equals(key, "openRouterModel")
+            ? AiNpcModelPresetSetModel(storage, value)
+            : storage.SetSetting(key, value);
+        if !written {
             return s"Could not write \(key) to settings.json.";
         }
 
@@ -309,29 +380,24 @@ public class AiNpcSetupSystem extends ScriptableSystem {
         }
 
         this.m_testUrl = AiNpcLlmChatUrl(provider);
-        // Bound to locals so the record can measure each half: a serialised body cannot be
-        // taken apart again.
-        let instruction = "You are a connection test. Answer with a single word.";
-        let ask = "Reply with the single word OK.";
-        let body = AiNpcLlmChatBody(provider, instruction, ask);
 
-        // Recorded like any other request: it appears in the log with its size and cost, and
-        // what it spends is charged to the day.
-        this.m_record = AiNpcRequestRecord.Sent(AiNpcLaneTest(), "", provider, instruction, ask);
-
-        // Through the same seam the two real lanes use.
+        // Through the same seam every lane uses, so what a test proves is what a reply is sent
+        // through: it is recorded, charged to the day, and on the speaking slot.
         this.m_testSerial += 1;
-        if !AiNpcSendChat(provider, body, this, n"OnTestResponse",
-                AiNpcCliRequestId(AiNpcCliLaneTest(), this.m_testSerial)) {
+        let request = AiNpcPassSend(AiNpcPassProbe.Of(), provider, "", this, n"OnTestResponse",
+                AiNpcCliRequestId(AiNpcCliLaneTest(), this.m_testSerial));
+        if !IsDefined(request) {
             this.m_testState = "done";
             this.m_testResult = "FAILED: the transport refused the request. On a CLI lane that means ai_npc.dll did not load - check red4ext\\logs\\ai_npc-*.log.";
             return this.m_testResult;
         }
+        this.m_testSlot = request.slot;
+        this.m_record = request.record;
 
         this.m_testState = "running";
         this.m_testResult = "";
         AiNpcArmTimeout(AiNpcTestTimeoutCallback.Create(this.m_testWatchdog.Arm()),
-            AiNpcLlmRequestTimeout(provider));
+            AiNpcLlmRequestTimeout(provider, this.m_testSlot));
         AiNpcLog(s"Setup test: \(AiNpcProviderName(provider)) -> \(this.m_testUrl)");
         return s"Testing \(AiNpcProviderName(provider))...";
     }
@@ -402,7 +468,7 @@ public class AiNpcSetupSystem extends ScriptableSystem {
         // what it spent, and leaving it open would hold a line in the log for ever.
         this.m_record.Answered(AiNpcReply.Nothing());
 
-        let seconds = Cast<Int32>(AiNpcLlmRequestTimeout(this.m_testProvider));
+        let seconds = Cast<Int32>(AiNpcLlmRequestTimeout(this.m_testProvider, this.m_testSlot));
         this.m_testResult =
             s"FAILED: \(AiNpcProviderName(this.m_testProvider)) never answered within \(seconds)s.";
         FTLogError(s"[ai_npc]: setup test timed out after \(seconds)s (provider \(AiNpcProviderName(this.m_testProvider)))");

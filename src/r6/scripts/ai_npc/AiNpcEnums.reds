@@ -31,6 +31,13 @@ enum AiNpcProvider {
     CodexCli = 2
 }
 
+// Where the choice of a command is made. Embedded is what the mod has always done and stays
+// the default; Dedicated moves it to a request of its own -- see AiNpcActionService.
+enum AiNpcActionMode {
+    Embedded = 0,
+    Dedicated = 1
+}
+
 enum AiNpcLanguage {
     English = 0,
     Spanish = 1,

@@ -54,6 +54,23 @@ public static func AiNpcUndoAvailable() -> Bool {
 // Named after the setting, which is named after the cost: the retry is what is bought, the
 // repair is what is done with it. Absent service reads as no -- a setting that spends the
 // player's tokens must never default to yes because the menu had not finished loading.
+// Where the choice of a command is made. Read at the two points that differ: the prompt that
+// does or does not carry the vocabulary, and the reply that is or is not scanned for one.
+//
+// A switch flipped mid-conversation is safe in both directions and settles on the next reply:
+// nothing about it is stored, and neither half remembers what the other did last turn.
+func AiNpcActionModeSetting() -> AiNpcActionMode {
+    let settings = AiNpcSettingsService.Get();
+    if !IsDefined(settings) {
+        return AiNpcActionMode.Embedded;
+    }
+    return settings.actionMode;
+}
+
+func AiNpcActionsAreDedicated() -> Bool {
+    return Equals(AiNpcActionModeSetting(), AiNpcActionMode.Dedicated);
+}
+
 public static func AiNpcRetryActionsEnabled() -> Bool {
     let settings = AiNpcSettingsService.Get();
     return IsDefined(settings) && settings.retryActions;

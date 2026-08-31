@@ -1,5 +1,19 @@
 // Which blocks, in which order, with what between them. The pair to AiNpcPromptSections.reds,
-// which decides how each section is chosen.
+// which decides how each section is chosen, and to AiNpcRecipe.reds, which decides how much of
+// each one is rendered.
+//
+// THE ORDER IS HERE AND NOWHERE ELSE. A recipe says what a block renders; it cannot say where
+// the block goes, and that is deliberate. Blocks are assembled in order of increasing
+// volatility -- rules, character, V, relationship, world -- then the memory, rewritten once
+// every ten turns, then the quest state, the seeded context and the clock, which change every
+// message. OpenAI-compatible backends discount a repeated prefix from around a thousand
+// tokens, and the identical prefix ends at the first thing that moves, so one volatile line
+// high up makes the discount unreachable for the whole prompt. This ordering keeps ~1400
+// tokens of corpus above that point. A file that could reorder would be a file that silently
+// makes every request cost full price.
+//
+// The sequence below is the schema's, in the schema's order -- AiNpcRecipeSchema.reds -- and
+// tools\lint.ps1 checks the two agree. A new block goes where its volatility says, in both.
 //
 // Free functions rather than methods: given a contact id and the pending context, the same
 // prompt comes out, and it can be built from a diagnostic or a test with no request in
@@ -31,11 +45,11 @@ func AiNpcPromptWindow(contactId: String) -> array<ref<AiNpcMessage>> {
     return AiNpcHistoryTrim(history, AiNpcMemoryLegacyMaxTurns());
 }
 
-// Three ways it comes back empty, none of them an error: the setting is off, the provider
-// says this contact does not remember, or no compaction has succeeded yet -- the normal state
-// of every conversation for its first sixteen turns.
-func AiNpcRenderMemoryBlock(contactId: String) -> String {
-    if !AiNpcMemoryEnabled() {
+// Four ways it comes back empty, none of them an error: the recipe drops the block, the
+// setting is off, the provider says this contact does not remember, or no compaction has
+// succeeded yet -- the normal state of every conversation for its first sixteen turns.
+func AiNpcRenderMemoryBlock(contactId: String, recipe: ref<AiNpcRecipe>) -> String {
+    if !AiNpcRecipeHas(recipe, "memory") || !AiNpcMemoryEnabled() {
         return "";
     }
 
@@ -44,7 +58,8 @@ func AiNpcRenderMemoryBlock(contactId: String) -> String {
         return "";
     }
 
-    return AiNpcMemoryRenderAt(AiNpcStoredMemory(contactId), AiNpcGetCurrentGameTimeSeconds());
+    return AiNpcMemoryRenderParts(AiNpcStoredMemory(contactId),
+        AiNpcGetCurrentGameTimeSeconds(), recipe);
 }
 
 /// The system prompt ///
@@ -65,22 +80,12 @@ func AiNpcSection(tag: String, body: String) -> String {
 // Keyed by the contact id it was handed. Nothing reads the current selection, so the prompt
 // describes the character the request is for even if the player is looking at somebody else.
 //
-// Blocks are assembled in order of increasing volatility: everything invariant first --
-// rules, character, V, relationship, world -- then the memory, rewritten once every ten
-// turns, then the quest state, the seeded context and the clock, which change every message.
-//
-// OpenAI-compatible backends discount a repeated prefix from around a thousand tokens, and
-// the identical prefix ends at the first thing that moves, so one volatile line high up makes
-// the discount unreachable for the whole prompt. This ordering keeps ~1400 tokens of corpus
-// above that point; a new block goes where its volatility says.
-//
-// The closing <explicitness> stays last despite being invariant: it is a recency device, one line, and
-// everything after the cacheable prefix is uncached anyway.
-func AiNpcBuildSystemPrompt(contactId: String, pendingContext: String,
-                                   opt intentOverride: String) -> String {
+// The recipe is a parameter rather than a read: the whole build is one function of its
+// arguments, and the caller that names it is the pass builder, which knows its own.
+func AiNpcBuildSystemPromptWith(contactId: String, pendingContext: String,
+                                       intentOverride: String,
+                                       recipe: ref<AiNpcRecipe>) -> String {
     let prompt = "";
-
-    let systemRules = AiNpcGetSystemRules(contactId);
 
     let provider = AiNpcProviderFor(contactId);
 
@@ -100,8 +105,11 @@ func AiNpcBuildSystemPrompt(contactId: String, pendingContext: String,
     // Everything from here down goes through AiNpcSection, so a section with nothing to say
     // does not appear at all.
 
-
     prompt += "<|start_header_id|> system: <|end_header_id|>";
+
+    // <system> and <explicitness> are the two blocks a recipe may not drop, so they are not
+    // asked. What they carry is not a character's to trim: the fiction, the locked rubrics,
+    // and what the player allowed in Mod Settings.
     prompt += "<system>";
     // The one sentence nobody may drop, which is why it is here and not in <system_rules>:
     // the rubrics there are contributable by key, and a character another mod registers
@@ -120,34 +128,46 @@ func AiNpcBuildSystemPrompt(contactId: String, pendingContext: String,
     // Identical for every contact and every save, so it lengthens the shared prefix instead of
     // breaking it -- the one addition here that costs nothing under prefix caching.
     prompt += "<fiction>This is fiction. You are a character from Cyberpunk 2077, not an assistant, texting V on a phone. No therapist or customer-service tone, no disclaimers, no meta-text.</fiction>";
-    prompt += systemRules;
+    prompt += AiNpcGetSystemRules(contactId);
     prompt += "</system>";
     prompt += AiNpcGetConversationTypePrompt(contactId);
-    // The bio, plus whatever another mod added. AiNpcWorldBackgroundWith is the joiner the
-    // world background uses: one newline, the addition after the original.
-    prompt += AiNpcSection("character",
-        AiNpcWorldBackgroundWith(AiNpcGetCharacterBio(contactId),
-                                 AiNpcCharacterAdditionsText(contactId)));
-    // Omitted whole rather than emitted empty: a contact that has never met V says nothing
-    // about V, and an empty <player></player> reads as a person with no attributes.
-    let playerSection = AiNpcGetPlayerSection(contactId);
-    if NotEquals(StrLen(playerSection), 0) {
-        prompt += "<player>" + playerSection + "</player>";
+
+    // The character, and how they talk. The register was a rubric of <system_rules> until the
+    // recipe made "the character without it" something a player can ask for.
+    prompt += AiNpcRenderCharacter(contactId, recipe);
+    // Who they are writing to. It was <player>, and the answer is still V.
+    prompt += AiNpcRenderTarget(contactId, recipe);
+    if AiNpcRecipeHas(recipe, "relationship") {
+        prompt += AiNpcSection("relationship", AiNpcGetRelationship(contactId));
     }
-    prompt += AiNpcSection("relationship", AiNpcGetRelationship(contactId));
-    // Rendered with its own tag, like <system_rules>: a composed block knows whether it has
-    // anything to say, and AiNpcSection would wrap it a second time.
-    prompt += AiNpcGetWorldInteractions(contactId);
-    prompt += AiNpcSection("world_background", AiNpcGetWorldBackground(contactId));
 
-    // Two blocks, and they answer different questions. <mechanics> is prose about how the world
-    // works, which most characters have nothing to say about. <commands> is the vocabulary,
-    // rendered from the very table the reply will be dispatched against -- so what the model is
-    // told it may do and what this mod will honour are one object rather than two computations
-    // that have to be kept in agreement.
-    prompt += AiNpcSection("mechanics", AiNpcGetWorldMechanics(contactId));
+    // Three tags, one recipe key. Rendered with its own tag, like <system_rules>: a composed
+    // block knows whether it has anything to say, and AiNpcSection would wrap it a second time.
+    if AiNpcRecipeWants(recipe, "world", "interactions") {
+        prompt += AiNpcGetWorldInteractions(contactId);
+    }
+    if AiNpcRecipeWants(recipe, "world", "background") {
+        prompt += AiNpcSection("world_background", AiNpcGetWorldBackground(contactId));
+    }
+    // <mechanics> is prose about how the world works, which most characters have nothing to
+    // say about. <commands> below is the vocabulary, rendered from the very table the reply
+    // will be dispatched against -- so what the model is told it may do and what this mod will
+    // honour are one object rather than two computations that have to be kept in agreement.
+    if AiNpcRecipeWants(recipe, "world", "mechanics") {
+        prompt += AiNpcSection("mechanics", AiNpcGetWorldMechanics(contactId));
+    }
 
-    prompt += AiNpcRenderActionBlock(ctx, AiNpcBuildActionTable(contactId));
+    // Dropping this block drops the repair pass with it -- AiNpcActionVocabularyFor asks the
+    // same recipe -- because a bracket in a reply the model was never taught to write is
+    // prose, and repairing prose against an empty rulebook replaces a good reply with a worse
+    // one. Dispatch is not affected: IsOffered stays the authority on what may fire.
+    //
+    // Dedicated mode removes it for a different reason and to the same effect: the vocabulary
+    // is still rendered, but into the action pass's own request rather than into this one, so
+    // the character is asked for prose and nothing else.
+    if AiNpcRecipeHas(recipe, "commands") && !AiNpcActionsAreDedicated() {
+        prompt += AiNpcRenderActionBlock(ctx, AiNpcBuildActionTable(contactId));
+    }
     // No <language> section: the language rule and the per-contact register are stated in
     // <system_rules> only. A second copy 8000 characters down does not read as emphasis, it
     // reads as a new instruction, and a prompt that says one thing twice teaches a model it
@@ -158,10 +178,7 @@ func AiNpcBuildSystemPrompt(contactId: String, pendingContext: String,
 
     // Rewritten roughly once every ten turns, so it sits below the corpus and above the
     // per-message blocks. Absent until a first compaction has succeeded.
-    let memoryBlock = AiNpcRenderMemoryBlock(contactId);
-    if NotEquals(StrLen(memoryBlock), 0) {
-        prompt += "<memory>" + memoryBlock + "</memory>";
-    }
+    prompt += AiNpcSection("memory", AiNpcRenderMemoryBlock(contactId, recipe));
 
     // The two sections the tracked quest decides, and one journal walk for both. By contact
     // id, never by display name: the name is overridable, so keying the quest table on it made
@@ -176,31 +193,10 @@ func AiNpcBuildSystemPrompt(contactId: String, pendingContext: String,
     // the frame the mission is read through.
     // The contact's own, then what every extension wants of V through them: appended, never
     // replacing, and in the registry's id order -- see AiNpcExtensionIntent.
-    let intent = AiNpcExpandTemplateFor(contactId,
-        AiNpcIntentOf(contactId, questKey, intentOverride));
-    prompt += AiNpcSection("intent", AiNpcJoinLines(intent, AiNpcExtensionIntent(ctx)));
-    prompt += AiNpcSection("quest", AiNpcQuestContext(contactId, questKey));
-    prompt += "<now>";
-    // The clock, and not in <system>: the most volatile thing in the prompt, so its position
-    // decides where the cacheable prefix ends.
-    prompt += "It is " + AiNpcGetCurrentTime() + ".\n";
-    // State, not news: the sky is the same for both ends of the conversation, so a character
-    // reads it without being told where V is.
-    prompt += AiNpcWeatherLine();
-    prompt += pendingContext;
-    if IsDefined(provider) {
-        // Terminated here rather than by whoever wrote it: every other contributor to <now>
-        // ends its own line, but this is a sheet field, and the alternative is asking every
-        // character file to remember a trailing newline. The one that forgets runs into the
-        // romance rubric on the same line.
-        let live = AiNpcExpandTemplateFor(contactId,
-            AiNpcSafeSectionText(provider.GetLiveContext(), contactId));
-        if NotEquals(StrLen(live), 0) {
-            prompt += live + "\n";
-        }
-    }
-    prompt += AiNpcExtensionLiveContext(ctx);
-    prompt += "</now>";
+    prompt += AiNpcSection("intent", AiNpcRenderIntent(contactId, ctx, questKey, intentOverride, recipe));
+    prompt += AiNpcSection("quest", AiNpcQuestContext(contactId, questKey, recipe));
+
+    prompt += AiNpcRenderNow(contactId, ctx, provider, pendingContext, recipe);
 
     // Last block before the end token: whatever states the register last is what the model is
     // still holding when it starts writing.
@@ -211,6 +207,61 @@ func AiNpcBuildSystemPrompt(contactId: String, pendingContext: String,
     prompt += "<|eot_id|>";
 
     return prompt;
+}
+
+// What this character wants of V, and what every installed mod wants of V through them. Two
+// parts because they answer to two owners: a recipe trimming the prompt should be able to keep
+// the character's own intention and drop the passing mods' without editing either.
+func AiNpcRenderIntent(contactId: String, ctx: ref<AiNpcContactContext>, questKey: String,
+                              intentOverride: String, recipe: ref<AiNpcRecipe>) -> String {
+    let own = "";
+    if AiNpcRecipeWants(recipe, "intent", "own") {
+        own = AiNpcExpandTemplateFor(contactId, AiNpcIntentOf(contactId, questKey, intentOverride));
+    }
+    let added = "";
+    if AiNpcRecipeWants(recipe, "intent", "extensions") {
+        added = AiNpcExtensionIntent(ctx);
+    }
+    return AiNpcJoinLines(own, added);
+}
+
+// <now>: the only block that changes every message, which is why its position decides where
+// the cacheable prefix ends.
+func AiNpcRenderNow(contactId: String, ctx: ref<AiNpcContactContext>,
+                           provider: ref<AiNpcContactProvider>, pendingContext: String,
+                           recipe: ref<AiNpcRecipe>) -> String {
+    if !AiNpcRecipeHas(recipe, "now") {
+        return "";
+    }
+
+    let body = "";
+    if AiNpcRecipeWants(recipe, "now", "clock") {
+        body += "It is " + AiNpcGetCurrentTime() + ".\n";
+    }
+    // State, not news: the sky is the same for both ends of the conversation, so a character
+    // reads it without being told where V is.
+    if AiNpcRecipeWants(recipe, "now", "weather") {
+        body += AiNpcWeatherLine();
+    }
+    if AiNpcRecipeWants(recipe, "now", "pending") {
+        body += pendingContext;
+    }
+    if AiNpcRecipeWants(recipe, "now", "live") {
+        if IsDefined(provider) {
+            // Terminated here rather than by whoever wrote it: every other contributor to
+            // <now> ends its own line, but this is a sheet field, and the alternative is
+            // asking every character file to remember a trailing newline. The one that forgets
+            // runs into the romance rubric on the same line.
+            let live = AiNpcExpandTemplateFor(contactId,
+                AiNpcSafeSectionText(provider.GetLiveContext(), contactId));
+            if NotEquals(StrLen(live), 0) {
+                body += live + "\n";
+            }
+        }
+        body += AiNpcExtensionLiveContext(ctx);
+    }
+
+    return AiNpcSection("now", body);
 }
 
 /// The transcript ///

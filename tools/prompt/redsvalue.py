@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Reading redscript literals, and only literals.
+r"""Reading redscript literals, and only literals.
 
 The corpus this mod sends to a model -- the cast sheets, <world_lore>, <system_rules>, the
 tone tiers, the WORDS tables -- is written by hand inside .reds files. An offline prompt
@@ -11,6 +11,7 @@ WHAT THIS FILE IS, AND IS NOT. It is not a redscript interpreter and must never 
 It reads the shapes that authored text actually appears in:
 
     "a" + "b"                         concatenation of literals
+    s"a \(local) b"                   the same tree, spelled as an interpolation
     name                              a local bound earlier in the same function
     obj.field                         a field of an object built earlier
     Fn(arg, ...)                      kept as an unevaluated node, resolved by the caller
@@ -62,7 +63,7 @@ class Token(object):
     __slots__ = ("kind", "value", "line")
 
     def __init__(self, kind, value, line):
-        self.kind = kind      # "str" | "ident" | "punct" | "end"
+        self.kind = kind      # "str" | "interp" | "ident" | "punct" | "end"
         self.value = value
         self.line = line
 
@@ -102,13 +103,15 @@ def tokenize(source, where="<source>"):
             i = end + 2
             continue
 
-        # s"..." is an interpolated string. None of the authored corpus uses one, and
-        # guessing at what an interpolation would render to is exactly the kind of quiet
-        # invention this reader exists to prevent.
+        # s"a \(local) b" is an interpolated string, and the one shape of it this reader
+        # admits is a bare local: it is the same node a "a" + local + " b" concatenation
+        # produces, spelled the other way. Anything else inside \(...) raises -- guessing at
+        # what an expression would render to is the quiet invention this reader exists to
+        # prevent, and spelling it as a concatenation is how the sources say it instead.
         if char == "s" and i + 1 < size and source[i + 1] == '"':
-            raise RedsParseError(
-                "%s:%d: interpolated string s\"...\" in extracted text; "
-                "this reader only handles plain literals" % (where, line))
+            parts, i, line = _read_interpolated(source, i + 1, line, where)
+            tokens.append(Token("interp", parts, line))
+            continue
 
         if char == '"':
             text, i, line = _read_string(source, i, line, where)
@@ -157,6 +160,52 @@ def _read_string(source, i, line, where):
         out.append(char)
         i += 1
     raise RedsParseError("%s:%d: unterminated string literal" % (where, line))
+
+
+def _read_interpolated(source, i, line, where):
+    r"""The parts of an s"..." string: the literal runs, and the locals named in \(...).
+
+    i points at the opening quote. What comes back is what a concatenation would have
+    produced -- text, {"ref": name}, text -- so everything downstream reads one shape.
+    """
+    parts = []
+    text = []
+    i += 1
+    size = len(source)
+    while i < size:
+        char = source[i]
+        if char == "\\" and i + 1 < size and source[i + 1] == "(":
+            end = source.find(")", i + 2)
+            if end < 0:
+                raise RedsParseError(r"%s:%d: unterminated \( in an interpolated string"
+                                     % (where, line))
+            inner = source[i + 2:end].strip()
+            if not _IDENT_RE.match(inner) or _IDENT_RE.match(inner).end() != len(inner):
+                raise RedsParseError(
+                    r"%s:%d: \(%s) is an expression, and this reader reads locals. Write the "
+                    "concatenation the sources mean instead." % (where, line, inner))
+            parts.append("".join(text))
+            text = []
+            parts.append({"ref": inner})
+            i = end + 1
+            continue
+        if char == "\\":
+            if i + 1 >= size:
+                break
+            escape = source[i + 1]
+            if escape not in _ESCAPES:
+                raise RedsParseError(r"%s:%d: unknown escape \%s" % (where, line, escape))
+            text.append(_ESCAPES[escape])
+            i += 2
+            continue
+        if char == '"':
+            parts.append("".join(text))
+            return [part for part in parts if part != ""], i + 1, line
+        if char == "\n":
+            line += 1
+        text.append(char)
+        i += 1
+    raise RedsParseError("%s:%d: unterminated interpolated string" % (where, line))
 
 
 # ── Expressions ──────────────────────────────────────────────────────────────
@@ -252,6 +301,9 @@ class Reader(object):
 
         if token.kind == "str":
             return token.value
+
+        if token.kind == "interp":
+            return join(token.value)
 
         if token.kind == "num":
             return {"num": token.value}
