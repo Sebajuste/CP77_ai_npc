@@ -138,10 +138,11 @@ public class AiNpcCallSystem extends ScriptableSystem {
         this.m_state = to;
         AiNpcLog(s"Call: \(AiNpcCallStateLabel(from)) -> \(AiNpcCallStateLabel(to)) ('\(contactId)').");
 
-        // The two sequences the player sees, and neither is drawn here: the game is asked for
-        // them. Ringing is the portrait and the ringtone; Connected is the character.
+        // The call the player sees is the game's own, asked for once. Picking up does not ask
+        // again: the vanilla call is already up, and answering only stops the ring and offers
+        // the two choices. Nothing is drawn here.
         if Equals(to, AiNpcCallState.Ringing) {
-            AiNpcVanillaCallStart(contactId, false);
+            AiNpcVanillaCallStart(contactId);
             AiNpcArmTimeout(AiNpcCallRingCallback.Create(this.m_serial), AiNpcVanillaRingDelay());
             AiNpcArmTimeout(AiNpcCallTickCallback.Create(this.m_serial, AiNpcCallState.Missed),
                 AiNpcCallRingSeconds());
@@ -189,23 +190,6 @@ public class AiNpcCallSystem extends ScriptableSystem {
     // through the phone.
     private func OpenConversation(contactId: String) -> Void {
         AiNpcLog(s"Call connected to '\(contactId)'. No written conversation is opened: a call is spoken.");
-    }
-
-    // LA SONDE, ET RIEN D'AUTRE. Voir AiNpcHoloProbe.reds : elle mesure ce qui pourrait
-    // remplir le cadre vide du holo, et elle part avec ce fichier quand la réponse est connue.
-    //
-    // Un seul point d'entrée qui aiguille, plutôt qu'une méthode par hypothèse : ce qui est
-    // jetable doit s'enlever en supprimant un fichier et une méthode.
-    public func Probe(what: String, argument: String) -> String {
-        switch what {
-            case "tree": return AiNpcHoloProbeTree();
-            case "holo": return AiNpcHoloProbeStart(argument, "holo");
-            case "audio": return AiNpcHoloProbeStart(argument, "audio");
-            case "refresh": return AiNpcHoloProbeRefresh(argument);
-            case "event": return AiNpcHoloProbeEvent();
-            case "status": return AiNpcHoloProbeStatus(argument);
-            default: return s"sonde inconnue : \(what)";
-        }
     }
 
     // A key, offered by the hook and answered here. True means the call took it, which is what

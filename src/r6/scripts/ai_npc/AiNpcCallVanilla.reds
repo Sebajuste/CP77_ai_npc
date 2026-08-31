@@ -1,10 +1,21 @@
 // THE ONE PLACE A VANILLA CALL IS PLACED. Everything the game knows about calls is asked for
 // here, and nothing else in the mod names a quest type.
 //
-// The two sequences a player expects from a call are the game's own, and they are not ours to
-// rebuild: the phone folds away, the contact's portrait comes up with the ringtone, and then
-// the character appears. `questTriggerCallRequest` asks for exactly that -- `showAvatar` and
-// `callMode = Audio` for the first, `callMode = Video` for the second.
+// The call a player expects is the game's own, and it is not ours to rebuild: the phone folds
+// away, the contact's portrait comes up, the ringtone plays. `questTriggerCallRequest` asks for
+// exactly that.
+//
+// IT IS AN AUDIO CALL, AND THAT IS A MEASUREMENT RATHER THAN A PREFERENCE. `callMode = Video`
+// opens the real holo window -- and it stays empty. Measured 2026-08-31 across every reachable
+// entry point: `StartHolocall`, `StartAudiocall` and `RefreshView` on the live
+// `HudPhoneAvatarController`, and `HolocallStartEvent` queued on the player. Nothing draws a
+// character. In vanilla the quest's scene puts an actor in that frame, and a call placed from
+// script has no scene behind it.
+//
+// So the surface is the portrait and an open voice channel. It is the lesser ambition and the
+// better result: no uncanny empty window, and the player keeps the world on screen while the
+// character talks. Going back to Video is one enum away if a way to populate the frame is ever
+// found.
 //
 // Verified against the vanilla bundle on 2026-08-31, one candidate per probe function, because
 // the compiler reports at most ONE error per function and a batched probe validates nothing
@@ -53,7 +64,7 @@ func AiNpcVanillaPhone() -> ref<PhoneSystem> {
 // isRejectable is false on purpose. The vanilla call UI can answer and decline on its own, and
 // a player using it would move the game's state while AiNpcCallSystem still believed the phone
 // was ringing. One machine drives; this only draws.
-func AiNpcVanillaCallStart(contactId: String, video: Bool) -> Bool {
+func AiNpcVanillaCallStart(contactId: String) -> Bool {
     let phone = AiNpcVanillaPhone();
     if !IsDefined(phone) {
         AiNpcLog("No PhoneSystem: a call cannot be shown.");
@@ -63,14 +74,14 @@ func AiNpcVanillaCallStart(contactId: String, video: Bool) -> Bool {
     let request = new questTriggerCallRequest();
     request.addressee = AiNpcCallAddressee(contactId);
     request.callPhase = questPhoneCallPhase.StartCall;
-    request.callMode = video ? questPhoneCallMode.Video : questPhoneCallMode.Audio;
+    request.callMode = questPhoneCallMode.Audio;
     request.visuals = questPhoneCallVisuals.Default;
     request.showAvatar = true;
     request.isPlayerTriggered = true;
     request.isRejectable = false;
 
     phone.QueueRequest(request);
-    AiNpcLog(s"Vanilla call requested for '\(contactId)' (\(video ? "video" : "audio")).");
+    AiNpcLog(s"Vanilla call requested for '\(contactId)'.");
     return true;
 }
 

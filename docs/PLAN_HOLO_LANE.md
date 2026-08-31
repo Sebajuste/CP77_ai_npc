@@ -307,7 +307,32 @@ queued on `PhoneSystem` folds the phone away, brings up the call UI and, on `cal
 opens the real holo window. The contact is addressed by its journal id -- `judy` is the game's
 own, callable, with `PhoneAvatars.Avatar_Judy`. See `AiNpcCallVanilla.reds`.
 
-**The frame comes up empty, and `holocallInitializerPath` is not the answer.** Dumped on this
+**The frame cannot be filled from script, and the surface is an audio call.** Measured
+2026-08-31 across every reachable entry point, in one launch: `StartHolocall`, `StartAudiocall`
+and `RefreshView(EHudAvatarMode.Holocall)` on the live `HudPhoneAvatarController`, and
+`HolocallStartEvent` queued on the player. **None of them draws a character.** The window opens
+on nobody.
+
+And the controller was not the problem. Every probe logged the same line:
+
+```
+contrôleur d'avatar trouvé sur 'rightColumn', après 219 widget(s)
+```
+
+So it is reachable, it is live, the calls reach a real object — and there is still nothing to
+render. That is the signature of a render texture fed by a scene rather than by the controller,
+and it is why no amount of calling the controller will help. (What was not established is
+whether `SetStatusText` visibly changed the screen; the probe reported that it ran, not that it
+showed. It does not change the conclusion, only how airtight it is.)
+
+So the lane ships `callMode = Audio`: the contact's portrait, the ringtone, an open voice
+channel, and the world still on screen. It is the lesser ambition and the better result — an
+empty holo window is worse than no window — and going back to `Video` is one enum away if a way
+to populate the frame is ever found.
+
+The evidence for why it is empty:
+
+**`holocallInitializerPath` is not the answer either.** Dumped on this
 save: of 176 journal contacts, `Character.<id>` exists for five, and all five -- Songbird
 included, who has holocalls in Phantom Liberty -- carry a NULL initializer. `Character.judy`
 does not exist at all: a journal contact id is not a character record id.
