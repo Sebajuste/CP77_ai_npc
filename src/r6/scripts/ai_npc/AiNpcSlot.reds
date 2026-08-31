@@ -51,9 +51,8 @@ func AiNpcSlotTimeoutKey() -> String {
 // the format. A file with no `slots` block behaves exactly as it always has -- the aliases are
 // then the only thing there is -- and a file that has one is edited where it can be read.
 //
-// The order was the other way round in docs\PLAN_MODEL_SLOTS.md, and the presets are what
-// turned it over: a preset writes slots.dialogue.model, and an openRouterModel left in the file
-// from before would have shadowed it. The preset would have appeared to do nothing at all.
+// A preset writes slots.dialogue.model, so the aliases have to lose: an openRouterModel left in
+// the file from before would otherwise shadow it, and the preset would appear to do nothing.
 func AiNpcSlotFrom(slots: ref<JsonObject>, name: String, aliases: ref<JsonObject>) -> ref<AiNpcSlot> {
     let slot = new AiNpcSlot();
     slot.name = name;

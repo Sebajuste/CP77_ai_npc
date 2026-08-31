@@ -122,8 +122,8 @@ func AiNpcTestSlotOverlay(t: ref<AiNpcTestRunner>) -> Void {
 /// The pass table ///
 
 func AiNpcTestPassSources(t: ref<AiNpcTestRunner>) -> Void {
-    // The four passes are the four lanes, by name: the usage report already totals per lane,
-    // and a fifth vocabulary would be a mapping table nobody maintains.
+    // A pass is a lane, by name: the usage report already totals per lane, and a second
+    // vocabulary would be a mapping table nobody maintains.
     let names = AiNpcPassNames();
     t.EqInt("pass/this version makes five passes", ArraySize(names), 5);
     t.Check("pass/the speaking lane is a pass", ArrayContains(names, AiNpcLaneSpeaking()));
@@ -230,6 +230,27 @@ func AiNpcTestPassTable(t: ref<AiNpcTestRunner>) -> Void {
         "test", slots, book, silent);
     t.EqString("pass/a test that names its own slot keeps it",
         AiNpcPassSlotNameIn(stated, AiNpcLaneTest()), AiNpcSlotDefaultName());
+}
+
+/// The pass builders ///
+
+// The repair aims at a tag it is given after construction -- the claim that produces it is made
+// against this builder's own vocabulary -- so Ready() is the whole of what keeps the two halves
+// together. Without it an untagged repair asks a model to correct a blank line.
+func AiNpcTestPassBuilders(t: ref<AiNpcTestRunner>) -> Void {
+    let untagged = AiNpcPassRepair.Of("panam");
+    t.Check("pass/an untagged repair is never ready", !untagged.Ready());
+
+    // Ready exactly when it has both halves. Stated as an equality rather than as a true, so
+    // the assertion holds on a contact whose command table happens to be empty.
+    let aimed = AiNpcPassRepair.Of("panam");
+    aimed.tag = "[ACTION:NOT_A_COMMAND]";
+    t.Check("pass/a tagged repair is ready exactly when it has a vocabulary",
+        Equals(aimed.Ready(), NotEquals(StrLen(aimed.Instruction()), 0)));
+
+    // The probe carries no contact and no vocabulary, and is ready all the same: what it proves
+    // is the transport.
+    t.Check("pass/the connection test is always ready", AiNpcPassProbe.Of().Ready());
 }
 
 /// The presets ///

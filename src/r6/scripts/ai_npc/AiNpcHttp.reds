@@ -574,7 +574,7 @@ public class AiNpcHttpSystem extends ScriptableSystem {
     // Built before the claim, because the claim is made against the vocabulary this pass would
     // send: the builder is the one place that renders it, and the tag it aims at comes out of
     // the claim itself.
-    let builder = AiNpcPassRepair.Of(contactId, "");
+    let builder = AiNpcPassRepair.Of(contactId);
     let provider = AiNpcProviderSetting();
     let tag = this.m_generation.Repair().Claim(text, candidates, builder.Instruction(),
       AiNpcRetryActionsEnabled(),

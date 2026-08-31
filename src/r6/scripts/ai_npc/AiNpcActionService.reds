@@ -27,7 +27,6 @@ public class AiNpcActionService extends ScriptableSystem {
     private let m_serial: Int32 = 0;
     private let m_watchdog: ref<AiNpcWatchdog>;
     private let m_record: ref<AiNpcRequestRecord>;
-    private let m_slot: ref<AiNpcSlot>;
 
     private func OnAttach() -> Void {
         this.m_watchdog = new AiNpcWatchdog();
@@ -91,11 +90,12 @@ public class AiNpcActionService extends ScriptableSystem {
             AiNpcLog(s"The action selection for '\(contactId)' was refused by the transport.");
             return;
         }
-        this.m_slot = request.slot;
         this.m_record = request.record;
 
+        // The slot stays a local: nothing below the deadline reads it again, and a field would
+        // outlive the request it describes.
         AiNpcArmTimeout(AiNpcActionTimeoutCallback.Create(this.m_watchdog.Arm()),
-            AiNpcLlmRequestTimeout(provider, this.m_slot));
+            AiNpcLlmRequestTimeout(provider, request.slot));
     }
 
     /// The answer ///

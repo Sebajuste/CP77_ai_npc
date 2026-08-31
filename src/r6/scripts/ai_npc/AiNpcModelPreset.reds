@@ -135,8 +135,8 @@ func AiNpcModelPresetSlots(preset: ref<AiNpcModelPreset>) -> ref<JsonObject> {
     return slots;
 }
 
-// The four passes, each naming its slot and its own recipe -- so the file says which model and
-// which prompt every kind of work uses instead of leaving three of the four implicit.
+// Every pass, each naming its slot and its own recipe -- so the file says which model and which
+// prompt every kind of work uses instead of leaving all but one implicit.
 //
 // The recipe name is written ONLY when the loaded book declares it. A player who keeps their own
 // recipes.json replaces the shipped book whole, and a preset naming a recipe they do not have

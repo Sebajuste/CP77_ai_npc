@@ -81,7 +81,11 @@ public class AiNpcConfigService extends ScriptableService {
     // is not offered, because a caller that could ask for it could render one pass under
     // another's. Both answers fall back the way an absent `passes` block does: the active
     // recipe, and the dialogue slot.
-    public func GetPassRecipe(pass: String) -> ref<AiNpcRecipe> {
+    //
+    // `private` states the intent and nothing more -- measured 2026-08-31: redscript compiles
+    // a call to a private method from another file without a word. The two free functions at
+    // the bottom of this file are the door, and tools\lint.ps1 is what holds it shut.
+    private func GetPassRecipe(pass: String) -> ref<AiNpcRecipe> {
         this.EnsureLoaded();
         let binding = AiNpcPassBindingNamed(this.m_passes, pass);
         let named = AiNpcRecipeBookNamed(this.m_book, binding.recipeName);
@@ -91,7 +95,7 @@ public class AiNpcConfigService extends ScriptableService {
         return this.m_recipe;
     }
 
-    public func GetPassSlotName(pass: String) -> String {
+    private func GetPassSlotName(pass: String) -> String {
         this.EnsureLoaded();
         return AiNpcPassSlotNameIn(this.m_passes, pass);
     }

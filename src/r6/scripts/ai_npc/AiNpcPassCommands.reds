@@ -31,13 +31,17 @@ class AiNpcPassCommands extends AiNpcPassBuilder {
 }
 
 // The bracket that was written, offered back for correction.
+//
+// The tag is set after construction, and it has to be: the claim that produces it is made
+// AGAINST the vocabulary this pass would send, so the builder exists before the tag it aims
+// at. Ready() is what makes that order safe rather than merely observed -- an empty tag asks
+// a model to correct a blank line.
 class AiNpcPassRepair extends AiNpcPassCommands {
     let tag: String;
 
-    static func Of(contactId: String, tag: String) -> ref<AiNpcPassRepair> {
+    static func Of(contactId: String) -> ref<AiNpcPassRepair> {
         let self = new AiNpcPassRepair();
         self.contactId = contactId;
-        self.tag = tag;
         return self;
     }
 
@@ -47,6 +51,10 @@ class AiNpcPassRepair extends AiNpcPassCommands {
 
     func Ask() -> String {
         return AiNpcRepairAsk(this.tag);
+    }
+
+    func Ready() -> Bool {
+        return super.Ready() && NotEquals(StrLen(this.tag), 0);
     }
 }
 

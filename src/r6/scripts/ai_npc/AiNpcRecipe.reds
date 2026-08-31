@@ -89,6 +89,10 @@ func AiNpcRecipeBlockNamed(recipe: ref<AiNpcRecipe>, blockKey: String) -> ref<Ai
 // a shared one edited underneath is a prompt that differs from the one that was logged.
 func AiNpcRecipeWith(recipe: ref<AiNpcRecipe>, block: ref<AiNpcRecipeBlock>) -> ref<AiNpcRecipe> {
     let out = new AiNpcRecipe();
+    if !IsDefined(recipe) {
+        ArrayPush(out.blocks, block);
+        return out;
+    }
     out.name = recipe.name;
 
     let replaced = false;

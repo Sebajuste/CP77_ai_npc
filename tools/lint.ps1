@@ -1727,8 +1727,8 @@ if ($slotProblems) {
 # the CET window, which reads its buttons out of the first word of DescribeModelPresets().
 $presetProblems = @()
 
+# Read once, and used again by the pass-pipeline rule below.
 $passText = Read-Code (Join-Path $modSrc "AiNpcPass.reds")
-foreach ($m in [regex]::Matches($passText, 'AiNpcPassRecipeName[\s\S]{0,600}?^\}')) { }
 $recipeNames = @()
 $passBody = [regex]::Match($passText, '(?s)func AiNpcPassRecipeName\(pass: String\)[^\{]*\{(?<body>.*?)\n\}')
 if (-not $passBody.Success) {
@@ -1796,6 +1796,11 @@ if ($presetProblems) {
 #   * the recipe has ONE door. AiNpcPassRecipe is called by AiNpcPassBuilder.Recipe(), which
 #     asks for its own pass, so a builder cannot render against another pass's recipe. Anything
 #     else reaching for a recipe by name can.
+#
+# The service methods are named here too, and that is the half the rule was missing: the free
+# function is the door, but GetPassRecipe is the hinge, and redscript compiles a call to a
+# private method from another file without a word. Guarding the door and leaving the hinge
+# open is a rule that reads as enforced and is not.
 $pipelineProblems = @()
 
 $spine = @{
@@ -1803,13 +1808,15 @@ $spine = @{
     "AiNpcSendChat("           = @("AiNpcPassSend.reds", "AiNpcTransport.reds")
     "AiNpcRequestRecord.Sent(" = @("AiNpcPassSend.reds", "AiNpcRequestLog.reds")
     "AiNpcPassRecipe("         = @("AiNpcPassBuilder.reds", "AiNpcConfig.reds")
+    "GetPassRecipe("           = @("AiNpcConfig.reds")
+    "GetPassSlotName("         = @("AiNpcConfig.reds")
 }
 foreach ($call in $spine.Keys) {
     foreach ($f in $files) {
         if (Test-IsSelfTest $f) { continue }
         if ($spine[$call] -contains $f.Name) { continue }
         if ((Read-Code $f.FullName) -match [regex]::Escape($call)) {
-            $pipelineProblems += "$($f.Name) calls $call) - the request pipeline is written in one place, AiNpcPassSend.reds"
+            $pipelineProblems += "$($f.Name) calls $call) - that step is written in one place, $($spine[$call][0])"
         }
     }
 }
@@ -1823,8 +1830,7 @@ foreach ($f in $files) {
 }
 
 # Every pass makes requests, so every pass has a builder. One, and its own.
-$passText = Read-Code (Join-Path $modSrc "AiNpcPass.reds")
-$namesBody = [regex]::Match($passText, '(?s)func AiNpcPassNames\(\)[^\{]*\{(?<body>.*?)\n\}')
+$namesBody = [regex]::Match($passText,'(?s)func AiNpcPassNames\(\)[^\{]*\{(?<body>.*?)\n\}')
 $declaredLanes = @()
 if (-not $namesBody.Success) {
     $pipelineProblems += "AiNpcPassNames not found - the rule is reading nothing"

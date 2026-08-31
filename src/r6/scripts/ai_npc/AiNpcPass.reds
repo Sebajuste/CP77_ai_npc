@@ -1,7 +1,7 @@
 // A pass: one kind of request, with the slot it is sent on and the recipe it is described by.
 //
-// The four passes are the four lanes of AiNpcRequestLog.reds, by name -- nothing is invented
-// and nothing is renamed, so the daily usage report already totals per pass.
+// A pass is a lane of AiNpcRequestLog.reds, by name -- nothing is invented and nothing is
+// renamed, so the daily usage report already totals per pass.
 //
 // WHAT A PASS DECIDES AND WHAT A RECIPE DECIDES ARE NOT THE SAME THING. A pass names the two
 // builders: the instruction it sends and the ask it ends on. A recipe describes the
