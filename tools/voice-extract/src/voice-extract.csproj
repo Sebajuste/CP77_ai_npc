@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>disable</Nullable>
+    <AssemblyName>voice-extract</AssemblyName>
+    <RootNamespace>VoiceExtract</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <MSBuildWarningsAsMessages>MSB3277</MSBuildWarningsAsMessages>
+    <WolvenKitDir>C:\Users\sebaj\Documents\CP77_mods\WolvenKit-8.20.0</WolvenKitDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <AssemblyMetadata Include="WolvenKitDir" Value="$(WolvenKitDir)" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="WolvenKit.Core">
+      <HintPath>$(WolvenKitDir)\WolvenKit.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="WolvenKit.Common">
+      <HintPath>$(WolvenKitDir)\WolvenKit.Common.dll</HintPath>
+    </Reference>
+    <Reference Include="NAudio.Core">
+      <HintPath>$(WolvenKitDir)\NAudio.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="NAudio.Vorbis">
+      <HintPath>$(WolvenKitDir)\NAudio.Vorbis.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Text.Json">
+      <HintPath>$(WolvenKitDir)\System.Text.Json.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Text.Encodings.Web">
+      <HintPath>$(WolvenKitDir)\System.Text.Encodings.Web.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <!-- kraken decompresse le dictionnaire de chemins embarque dans WolvenKit.Common,
+         wwtools convertit le Wwise Vorbis en Ogg. Sans eux l'echec est a l'execution. -->
+    <None Include="$(WolvenKitDir)\kraken.dll" Link="kraken.dll" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="$(WolvenKitDir)\wwtools.dll" Link="wwtools.dll" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="$(WolvenKitDir)\lib\*.dll" Link="lib\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

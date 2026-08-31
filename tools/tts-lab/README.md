@@ -218,3 +218,248 @@ is the one this measurement argues for.
 
 Whether the game's audio engine and a converter can share a machine while the game renders. The
 lab runs alone; the game does not. Every number here is an upper bound on what a launch gets.
+
+## Les references de personnages — `clone-refs.py`
+
+`tools/voice-extract` fabrique un extrait de voix par personnage a partir des archives du jeu ;
+`clone-refs.py` les passe dans Zonos, un rendu par personnage, pour l'ecoute.
+
+```
+python tools	ts-lab\clone-refs.py                # la replique "elisions" pour tous
+python tools	ts-lab\clone-refs.py --line longue  # une autre replique de lines.json
+python tools	ts-lab\clone-refs.py judy panam     # deux personnages
+```
+
+Deux choses qui ont coute une passe chacune, et que ce script tient a la place de l'appelant :
+
+- **le texte vient de `lines.json`, jamais retape.** Une replique recopiee sans ses accents se
+  prononce faux, et pas un peu : « Ramene » devient « Amen », « jusqu'a 22h » devient
+  « vingt-deusse, un de deux ». Entendu le 2026-08-31 sur une sonde qui avait retape le texte.
+- **la reference est televersee sur `/gradio_api/upload`.** Un chemin de fichier — absolu,
+  relatif au dossier du serveur, ou meme un fichier depose dans ce dossier — est refuse par le
+  garde de Gradio, avec `event: error` / `data: null` et aucun message. L'upload rend un chemin
+  `temp_dir\<hash>\<nom>`, et c'est celui-la qui passe dans le `gradio.FileData`.
+
+Le script affiche le RMS et la crete de chaque rendu, et marque `SATURE` au-dela de 0,99. C'est
+utile : sur la meme replique, les rendus vont de 0,009 a 0,13 de RMS selon le personnage, et
+`jackie` sature. Le niveau de sortie de Zonos suit celui de la reference sans etre borne.
+
+**La replique par defaut est `argot`, la seule longue de `lines.json` sans chiffre.** Les autres
+en portent un, et un nombre colle a son unite fait deraper le moteur : le rendu se juge alors
+sur le derapage et plus sur la voix. Le nom du fichier porte la replique
+(`clone-<personnage>-<replique>.wav`) parce qu'un rendu ne se juge pas sans savoir ce qui a ete
+demande.
+
+## Les nombres, et ce que le moteur en fait — 2026-08-31
+
+Ecoute : « jusqu'a vingt deux / vingt deusse / vingt deuze », et **le mot « heure » n'est jamais
+prononce**. Meme voix de reference, seul le texte change :
+
+| texte envoye | audio rendu |
+|---|---|
+| `jusqu'a 22h` | 3,77 s |
+| `jusqu'a 22 heures` | 3,83 s |
+| `jusqu'a vingt-deux heures` | **3,12 s** |
+| `500 eddies` | 3,61 s |
+| `cinq cents eddies` | **3,15 s** |
+
+La forme en chiffres collee est plus **longue** que la forme en lettres : le moteur ne saute pas
+le mot, il patauge et fabrique des syllabes autour du nombre.
+
+**A l'ecoute, la regle est plus simple que la duree ne le laissait croire** : un espace suffit.
+`22 heures` se dit correctement, `vingt-deux heures` aussi ; seul `22h`, colle, echoue. J'avais
+lu l'inverse dans les durees — `22 heures` rendait 3,83 s contre 3,12 s pour la forme en lettres
+— et j'en avais conclu a tort que l'espace ne reglait rien. La duree ne dit pas si c'est juste.
+
+Les rendus sont dans `out\chiffres\`.
+
+**Consequence pour le mod.** Ce que le modele ecrit passe tel quel au moteur, et un modele qui
+repond « dispo jusqu'a 22h » sera inintelligible. **Tranche le 2026-08-31 : ca appartient au
+canal**, pas a une regle globale — un SMS n'est jamais lu a voix haute et doit rester lisible,
+`22h` etant meilleur a l'ecrit et pire dans une bouche. La demande ira dans le prompt du canal
+`Call` et la garantie dans son `Clean`, comme pour les didascalies. Voir
+`docs\PLAN_HOLO_CHANNEL.md` § 6. **Rien n'est ecrit** : le canal ne sait pas encore porter une
+regle de prompt.
+
+`lines.json` n'a pas ete modifie. Ses `22h` et `500` sont des pieges deliberes, et ils viennent
+d'attraper quelque chose.
+
+## Le piege qui a fausse trois mesures : le cache d'embedding est sur le NOM
+
+Mesure du 2026-08-31, et il faut la connaitre avant de croire quoi que ce soit sur le clonage.
+
+Le serveur (`skyrimnet-zonos.exe`, l'interface Gradio du fork) garde l'embedding de locuteur
+d'une reference a l'autre — c'est voulu, « cloner une fois par PNJ ». Mais **la cle est le nom
+du fichier**, pas son contenu.
+
+L'experience : quatre rendus, meme texte, avec deux audios differents.
+
+| envoi | contenu | nom | sortie |
+|---|---|---|---|
+| 1 | judy | `reference.wav` | `c0b4f10dc265` |
+| 2 | **takemura** | `reference.wav` | `c0b4f10dc265` — **la voix de Judy** |
+| 3 | judy | `judy-source.wav` | `c0b4f10dc265` |
+| 4 | takemura | `takemura-source.wav` | `85bd39d42d94` |
+
+L'envoi 2 est la preuve : un autre comedien, sous un nom deja vu, ressort au bit pres avec la
+voix precedente. Et le televersement de Gradio ne protege pas — il range pourtant le fichier
+sous un dossier nomme par l'empreinte de son contenu, mais le cache ne regarde que le nom final.
+
+**Ce que ca a fausse**, et qui a ete refait depuis :
+
+- toute reference reenvoyee sous un nom stable entre deux series — donc chaque
+  `<personnage>.wav` de `clone-refs.py` a partir de la deuxieme execution. Les rendus etaient
+  identiques au bit pres a ceux de la serie precedente, ce qui est ce qui a mis la puce a
+  l'oreille ;
+- la comparaison **22050 Hz contre 48000 Hz**, dont les deux fichiers s'appelaient `judy.wav`.
+  La conclusion « aucun effet, sortie identique » etait un artefact du cache. Refaite proprement,
+  les deux sorties **different** (RMS 0,056 contre 0,052, crete 0,92 contre 0,57). Laquelle est
+  meilleure reste a l'oreille.
+
+`clone-refs.py` televerse desormais sous `<nom>-<sha256[:12]>.wav`. Deux contenus differents ne
+peuvent plus partager un nom, et deux noms differents pour un meme contenu redonnent bien le
+meme rendu — verifie.
+
+## Le palier `clone` clone un peu, et pas assez — 2026-08-31
+
+Mesure refaite apres la correction ci-dessus.
+
+Enveloppe spectrale moyenne en 32 bandes mel sur les trames voisees, centree, distance cosinus.
+**L'instrument a ete valide avant d'etre cru** : sur des repliques brutes du jeu il reconnait
+Judy parmi dix voix 6 fois sur 8 (hasard : 0,8 sur 8).
+
+Rang de la bonne reference, pour chacun des neuf rendus : 1, 2, 2, 2, 3, 3, 4, 5, 7.
+
+**Rang moyen 3,22 la ou le hasard donne 5** — z = -2,07, soit p ~ 0,02 unilateral. Il y a donc
+un transfert de timbre, faible mais reel. Une seule reference sur neuf arrive en tete.
+
+Cela s'accorde avec l'ecoute : « tres loin d'un vrai clone ». Le moteur va dans la direction du
+personnage sans y arriver.
+
+Une reserve qui reste entiere : la mesure compare deux chaines d'enregistrement — doublage de
+jeu d'un cote, synthese de l'autre — alors que sa validation s'est faite dans une seule. Elle
+appuie une ecoute, elle ne la remplace pas.
+
+Ce qui n'a pas ete essaye : un autre moteur (XTTS-v2 fait du clonage multilingue), un etage de
+conversion de timbre apres la synthese, une reference plus longue que 30 s.
+
+## Zonos coupe une fois sur deux, et c'est la graine qui decide — 2026-08-31
+
+Ecoute : « ca coupe a heures ». Mesure : sur la replique `argot`, qui ne contient aucun chiffre,
+trois rendus sur dix s'arretent en pleine voix.
+
+Le detecteur est simple et sans reglage a deviner : **l'energie des 50 dernieres millisecondes,
+rapportee au RMS du rendu**. Une phrase finie retombe dans le silence et donne moins de 0,05 ;
+une phrase coupee garde sa voix jusqu'au dernier echantillon et donne 0,3 a 1,25.
+
+Ce n'est ni la voix ni le debit :
+
+| `speaking_rate` | duree | fin |
+|---|---|---|
+| 13 | 4,99 s | 0,02 |
+| 15 | 4,30 s | **1,25 coupe** |
+| 17 | 3,76 s | 0,01 |
+| 19 | 3,30 s | **0,72 coupe** |
+
+Non monotone, donc pas un budget de longueur. La graine, elle, tranche — et **de la meme facon
+pour deux voix differentes** :
+
+| graine | jackie | songbird |
+|---|---|---|
+| 420 | **coupe** (1,25) | **coupe** (1,08) |
+| 421 | 0,02 | 0,06 |
+| 422 | **coupe** (0,46) | **coupe** (0,62) |
+| 423 | 0,02 | 0,03 |
+
+C'est donc le tirage, et il est independant du locuteur. `zonos.json` fixe `seed: 420`, une des
+mauvaises : tous les rendus du banc partaient avec une chance sur deux d'etre tronques.
+
+**Ce que ca implique pour le mod, et ce n'est pas fait** : la voie parlante ne peut pas jouer ce
+que le moteur rend sans le regarder. Il lui faut le meme controle -- mesurer la fin, et relancer
+avec la graine suivante quand elle est chaude. `clone-refs.py` le fait maintenant (`--tries`,
+trois essais par defaut) et sert de reference d'implementation. La question du reglage de
+`zonos.json` reste ouverte : changer `seed` deplace le probleme sans le supprimer.
+
+## Le timbre metallique vient du moteur — 2026-08-31
+
+Ecoute : trois voix sur neuf sonnent « metallique, comme dans une radio » (`jackie`,
+`kerry_eurodyne`, `victor_vector`). **Les references, elles, sont toutes jugees bonnes.** Le
+defaut est donc dans le rendu, pas dans l'extraction, et deux tentatives de le corriger en
+changeant la selection ont echoue : restreindre Jackie a `q003` ne change rien, et restreindre
+Kerry a `sq011` donne une voix qui crie.
+
+Cote moteur, sur `jackie`, meme reference et meme texte :
+
+| conditionnement | effet |
+|---|---|
+| `dnsmos_ovrl` 3, 4, 5 | **aucun** — sortie identique au bit pres |
+| `speaker_noised` vrai | **aucun** — identique au bit pres |
+| `vq_single` 1.0 | le serveur ne rend rien |
+| `cfg_scale` 3.0 | change le rendu |
+| **`fmax`** 16000 / 22050 / 24000 | change le rendu |
+
+Deux conditionnements de qualite sur trois n'atteignent pas le modele sur ce serveur : les
+passer est sans effet, et silencieusement.
+
+`fmax` est le seul qui decrive la bande passante, et **il vaut 22050 par defaut alors que les
+references sortent maintenant en 48 kHz**, dont la frequence de Nyquist est 24000. Annoncer au
+modele une bande plus etroite que celle du fichier qu'on lui donne, c'est litteralement lui
+decrire une radio. L'hypothese est donc que `fmax` doit suivre le taux de la reference.
+
+Les rendus sont dans `out\conditionnement\`. Les variantes bit-identiques au temoin ont ete
+supprimees pour ne pas faire perdre de temps a l'ecoute.
+
+**Tranche a l'oreille le 2026-08-31 : `fmax` 24000 avec `cfg_scale` 3,0 est le meilleur.**
+
+`clone-refs.py` applique donc les deux : `fmax` est **derive du taux de la reference** (sa
+frequence de Nyquist, donc 24000 pour un fichier en 48 kHz) et non plus laisse au defaut du
+serveur, et `cfg_scale` vaut 3,0, reglable par `--cfg`.
+
+Ce que cela dit du reste du banc : la serie precedente, celle qui a produit le « judy-48k »
+juge bon, tournait avec **les defauts du serveur** — `fmax` 22050 et `cfg_scale` 2,0.
+`zonos.json` ne surcharge que sept valeurs et ne touche ni l'un ni l'autre. Judy sonnait donc
+bien *malgre* un `fmax` trop etroit, pas grace a un reglage.
+
+`zonos.json` n'est toujours pas modifie : le conditionnement se derive de la reference, ce qui
+n'est pas la meme chose qu'une constante a poser dans une configuration.
+
+## Une seule configuration, et un residu — 2026-08-31
+
+Contrainte posee par l'utilisateur : **le mod ne peut pas se permettre une configuration par
+personnage**, parce que la voie parlante tourne toute seule. Elle est tenue.
+
+| ce qui varie d'un personnage a l'autre | comment |
+|---|---|
+| `fmax` | **derive** de la reference (sa frequence de Nyquist), pas choisi |
+| `cfg_scale` | 3,0 pour tous |
+| la graine | avancee automatiquement tant que le rendu est coupe |
+| la selection des repliques | meme regle pour tous : ordre par hachage, plancher de niveau, voice sets ecartes |
+
+Le seul motif propre a un personnage est `^sobchak_` pour River Ward, et c'est une **donnee de
+casting** — le nom de son etiquette de doublage dans le jeu — pas un reglage. `-Pattern` et
+`-Exclude` existent pour enqueter ; la passe par defaut ne s'en sert pas.
+
+### Le residu : jackie
+
+Neuf voix sur dix sont jugees bonnes avec cette configuration unique. `jackie` s'ameliore mais
+reste metallique, et **rien de mesurable ne l'explique**. Sa reference est parmi les plus larges
+du lot :
+
+| reference | rolloff 99 % | energie au-dessus de 8 kHz |
+|---|---|---|
+| `rogue` | 6 646 Hz | 0,0036 |
+| `river_ward` | 8 031 Hz | 0,0102 |
+| **`jackie`** | **9 727 Hz** | **0,0339** |
+| `songbird` | 11 349 Hz | 0,0247 |
+
+`rogue` a la source la plus etroite et sonne bien ; `jackie` a la plus riche en aigu et sonne
+radio. Restreindre sa selection a une seule quete (`q003`, jouee a pied et face a face) ne change
+rien non plus — essaye, ecoute, sans effet.
+
+Quatre hypotheses ont ete essayees et falsifiees sur ce point : bande au-dessus de 4 kHz,
+energie sous 300 Hz, energie sous 1,5 x F0, largeur de bande de la reference. **Aucun seuil
+n'est installe**, et il n'en sera pas installe sur la foi de dix points.
+
+Ce qui reste, et c'est une decision, pas une mesure : accepter `jackie` tel quel, ou changer de
+moteur pour tout le monde. Une exception de configuration pour lui seul est exclue par la
+contrainte.

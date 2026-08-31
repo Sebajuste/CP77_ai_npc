@@ -368,6 +368,41 @@ None of this has to stay argued: `tools\prompt` rebuilds the real prompt offline
 runs against it, so the position is measurable — remembering that n = 3 is below the noise
 floor.
 
+### Numbers, on a call only — decided 2026-08-31
+
+Measured on the bench: a numeral glued to its unit derails the speech engine. `jusqu'a 22h` is
+read « vingt deusse », « vingt deuze », and the word *heures* is swallowed. **A space is enough**
+— `22 heures` and `vingt-deux heures` are both said correctly, only `22h` fails. Heard, not
+inferred; the durations said the opposite and were wrong.
+
+The user's decision is that this belongs to the channel, not to a global rule: **an SMS is never
+spoken, so its text must stay readable.** `22h` is better writing in a thread and worse writing
+in a mouth, and the channel is the only thing that knows which one it is.
+
+Which half carries it is settled by the rule three paragraphs up — *what the engine can make
+true, the prompt does not ask for* — and by the precedent already in `AiNpcChannelHolo`:
+narration is **both** asked for in the prompt and stripped in `Clean`, because « une demande
+n'est pas une garantie ». Numbers are the same shape:
+
+- **the request**, on the `Call` channel only, and **with no example.** The `TIME` rubric
+  measured what an example costs: showing the marker made models copy the string in 22 % of
+  replies, 7 of 24 word for word. A rule that shows `22h → vingt-deux heures` will produce
+  « vingt-deux heures » in replies that had no hour in them. Proposed wording, one line, and it
+  is a proposal:
+
+  > write every number, time and amount in words, never in digits.
+
+- **the guarantee**, in `Clean`: expand the digits the model wrote anyway. French spelling-out
+  is deterministic and therefore the engine's job, but it is not small — *cent*/*vingt*
+  agreement, *et un*, times against quantities, currency. It is a loop over a token list, no
+  recursion, and it is the part that has not been written.
+
+**Neither half exists yet**, and the seam for the first one does not either: `AiNpcSystemRules()`
+does not know the channel, and a recipe chooses which blocks render, not which rubrics exist. The
+channel cannot supply the rule itself without breaking its own contract — *« le canal ne
+construit aucune requête »*. The channel id already travels with the request
+(`TriggerPostRequest(contactId, text, this.Id())`), so the seam is on the pass side.
+
 **A channel already written by hand.** Jackie's sheet drops the Heist entry entirely, because
 "he is beside V from the Afterlife briefing to the Delamain, so the phone is never the channel".
 That is an `InPerson` conversation reasoned about in prose before the concept existed, and it is

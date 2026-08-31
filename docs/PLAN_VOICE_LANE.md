@@ -100,8 +100,13 @@ speaker is in the path. No metadata to cross-reference, no matching subtitles to
 
 The real dependency is elsewhere and is a data one: **archives store only the FNV1a64 of the
 lowercased path**, never the path. Filtering by regex therefore needs a dictionary of known
-paths — the one WolvenKit ships. That is what the tool must carry, and it is the thing to
-verify before anything else: whether the paths for one character resolve on a plain install.
+paths — the one WolvenKit ships.
+
+**Verified, 2026-08-31.** 110 495 of the 110 498 English voice-over paths in that dictionary
+resolve against a plain install, base game and Phantom Liberty. `^judy_` selects 1 462 lines.
+Step 2 above is wrong on one point: the voice-over is **not** Opus in `.opuspak` — it is Wwise
+Vorbis in ordinary depot files, one per line. `tools\voice-extract\README.md` carries the
+measurements; § 5 below carries what it takes to do the same without WolvenKit.
 
 ### A reference does not have to come from the game
 
@@ -133,3 +138,87 @@ change that makes a cloned voice arrive on time.
 
 So the order is: streaming first, voices second. A beautiful voice that arrives three seconds
 late is the defect Mantella's players report most, and it would be ours by construction.
+
+---
+
+## 5. Extraire sans dependance externe
+
+L'extracteur de `tools\voice-extract` marche, et il demande au joueur d'installer WolvenKit et
+le SDK .NET. Aucun joueur ne fera ca. Voici ce que chaque piece sert, et laquelle tombe.
+
+| piece | a quoi elle sert | evitable |
+|---|---|---|
+| dictionnaire `usedhashes` de WolvenKit, 135 Mo | resoudre chemin -> hachage | **oui** |
+| `kraken.dll` | decompresser ce dictionnaire | oui, par consequence |
+| lecture RDAR | trouver le fichier dans l'archive | non, mais c'est cent lignes |
+| `wwtools.dll` | Wwise Vorbis -> Ogg | non, a porter |
+| NVorbis | Ogg -> PCM | non, `stb_vorbis` est un seul fichier |
+| SDK .NET 8 | compiler | oui, si le code vit dans le plugin |
+
+### Le levier : la selection est une decision de fabrication, pas d'execution
+
+Le dictionnaire ne sert qu'a **choisir** les repliques. Ce choix, on le fait ici, une fois, et
+on ne livre que son resultat. Un extrait fini est fait de six a neuf repliques ; les designer
+par leur FNV1a64 coute huit octets chacune.
+
+```
+voices-recipe.json     contactId -> langue -> les hachages des repliques retenues
+```
+
+Cote joueur il ne reste donc plus qu'a ouvrir l'archive, aller chercher sept fichiers, les
+decoder et les coller. Deux mesures rendent ca simple :
+
+- sur 401 fichiers echantillonnes parmi les 103 221 du doublage francais : **un seul segment,
+  jamais compresse, `fmt` de 66 octets, sans exception**. Donc **aucun Oodle** sur ce chemin, et
+  un seul format de conteneur a decoder ;
+- sept repliques font environ 1,5 Mo a lire dans une archive de 5 Go, et la decoder prend une
+  fraction de seconde.
+
+### Ce que ca change au § 3
+
+Le § 3 ecarte l'idee que le mod fasse l'extraction lui-meme, au motif que c'est « des centaines
+de megaoctets d'intermediaires et des minutes de travail ». **Avec une recette, ce n'est plus
+vrai** : c'est 1,5 Mo et moins d'une seconde. L'argument tombe, et l'extraction peut vivre dans
+`ai_npc.dll` — qui tient deja l'audio (`plugin\Audio.cpp`), tourne deja hors du fil de jeu, et
+n'ajoute aucune installation pour le joueur.
+
+Ce qui reste a ecrire est un seul portage : **ww2ogg puis `stb_vorbis`**, tous deux tenant dans
+un fichier et tous deux redistribuables. C'est le seul vrai travail de cette moitie.
+
+### Le risque a nommer
+
+Une recette est liee a une version du jeu **et** a une langue. Un correctif qui reencode le
+doublage invalide les hachages. Le repli est de livrer aussi, par personnage, la liste complete
+de ses chemins — environ dix mille pour tout le casting, ce qui tient dans quelques centaines de
+kilooctets — et de refaire la selection sur place quand un hachage manque.
+
+---
+
+## 6. Parler avec la voix du jeu : quatre routes, et ce que chacune coute
+
+| route | installe quoi | dit un texte quelconque | c'est sa voix |
+|---|---|---|---|
+| serveur de clonage local | un moteur, un GPU 6 Go et plus | oui | oui, mesure 9 fois sur 10 |
+| service de clonage en ligne | rien | oui | oui |
+| `recolle` : les repliques du jeu | rien | **non** | oui, c'est elle exactement |
+| neuronal sur processeur | un moteur leger | oui | non |
+
+**Le serveur local est ce qui a ete mesure ici**, et c'est la forme que prennent Mantella et
+SkyrimNet : le mod livre le client, jamais le moteur. Il marche — neuf voix sur dix jugees
+bonnes — et il exclut tout joueur sans GPU recent.
+
+**Le service en ligne** demanderait un seul appel HTTP, sur une voie que le mod possede deja
+pour le modele de langue. Mais il suppose de **televerser un clone d'une interpretation
+protegee chez un tiers**, ce qui n'est pas la meme position que de fabriquer ce clone sur la
+machine du joueur, a partir de sa propre copie du jeu. C'est une question a trancher avant
+d'ecrire la moindre ligne, pas apres.
+
+**Le `recolle` est la seule route sans installation qui donne la vraie voix.** Il ne peut pas
+dire un texte quelconque : il rejoue des repliques du jeu. C'est beaucoup moins qu'une synthese,
+et c'est exactement le personnage. `-Raw` produit deja la matiere, replique par replique. Ce
+qu'il demande en plus est un travail de conception qui n'est pas commence : un vocabulaire, et
+un modele contraint a n'y puiser que ce qui existe.
+
+Rien de tout cela ne change l'echelle du § 1. Ce qui change, c'est que la moitie « fabriquer le
+clone » peut cesser d'etre une installation, et que la moitie « parler » ne le peut pas — sauf
+en renoncant a dire un texte quelconque.
