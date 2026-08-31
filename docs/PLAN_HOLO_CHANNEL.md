@@ -18,6 +18,42 @@ is implemented.
 
 ---
 
+## 0. Re-read against the pipeline as it stands, 2026-08-31
+
+This document was written before `develop` was merged and before the streaming lane landed.
+The pipeline was read again, end to end, and most of it survives — but three things below are
+corrections, and one of them would have produced exactly the patch-on-top this project refuses.
+
+**Still true, verified.** The player's half of a turn is written twice, at
+`AiNpcSystem.reds:307` and `AiNpcTerminalChat.reds:779`, ordering trap and all.
+`AiNpcDeliverOrNotify` is still the single delivery decision, `AiNpcAppendMessage` the single
+door into a thread, and `AiNpcGeneration` still captures the contact at send time.
+
+**Correction 1 — `<channel>` is a recipe block, not a line in the builder.** `develop` gave the
+prompt a schema: `AiNpcRecipeSchema()` lists every block in prompt order with its parts, and
+`AiNpcPromptBuild` walks that order asking the recipe about each. A rubric added by hand in the
+builder would be the one block a recipe cannot turn off, in a system whose whole point is that a
+recipe decides. **`channel` is an entry in that array, placed after `now`** — which is where §6
+argued it belongs for reasons that have not changed: it is the last block before the two message
+blocks, below the point where the cacheable prefix ends.
+
+**Correction 2 — the cleaner has two call sites now, not one.** §4 puts `Clean` where
+`AiNpcApplyActions` hands back its `processedText`. That is the *complete reply* path. Since the
+streaming lane landed there is a second one: `AiNpcStreamDeliver` hands finished sentences
+straight to the voice, and they never pass through the action pass. Cleaning only the first would
+speak the emoji and the stage directions while filing a clean line — the mod would be wrong
+precisely where the player can hear it. `Clean` is pure; **both consumers call it**, and the
+lint rule of §8 should say so rather than assume one site.
+
+**Correction 3 — a channel is orthogonal to a pass, exactly as it is to a slot.** A *pass* is a
+kind of work (speaking, commands, compaction) with its own builder and its own recipe, assembled
+by the one spine in `AiNpcPassSend`. A *channel* is a kind of conversation. The channel does not
+own request assembly and must not grow a builder: `Send` starts a turn and the lane builds the
+request as it already does. §4b said this about slots; it holds unchanged for passes, and the
+reason is the same — two axes, no crossing.
+
+---
+
 ## 1. The pipeline has no owner today, and it already costs
 
 The player's half of a turn is four steps in a fixed order: read the contact off the session,
