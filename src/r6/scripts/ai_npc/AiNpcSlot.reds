@@ -136,6 +136,35 @@ func AiNpcSlotSetMaxTokens(slot: ref<JsonObject>, maxTokens: Int32) -> Void {
     slot.SetKeyInt64("max_tokens", Cast<Int64>(maxTokens));
 }
 
+// The second parameter a preset writes, and the same rule about where it may be spelled.
+//
+// A TECHNICAL CALL HAS NOTHING TO DELIBERATE. The repair rewrites one bracket; the selection
+// reads a decision already taken in prose and transcribes it. Neither is a judgement a draft
+// improves, and both are paid for on every message.
+//
+// Measured 2026-08-31 in ai_npc_lab\action-bench, nvidia/nemotron-3-super-120b:free, 50 items
+// of the action selection. With reasoning left on, at the 500-token ceiling below: median
+// output 500 -- the ceiling exactly -- of which 386 was a draft nobody reads, 6 answers in 19
+// cut off, 6.6 s each. With reasoning off: median output THREE tokens, longest 32, not one
+// truncation in 34 answers, 1.4 s, and no false positive on 22 negatives. The ceiling stops
+// being a constraint the moment the draft stops being paid for.
+//
+// "effort": "low" is not this setting. On the same model it moved 386 reasoning tokens to 370
+// -- it is a hint, and a hint is not a bound.
+//
+// THE ONE THING IT COSTS: a provider may refuse it. liquid/lfm-2.5-2.6b:free answers HTTP 400,
+// "Reasoning is mandatory for this endpoint and cannot be disabled." The refusal is named in
+// the log by whoever sent the request, and a player on such a model deletes the key. That is
+// the price of a slot format that copies rather than validates, and it is paid in the open.
+func AiNpcSlotDisableReasoning(slot: ref<JsonObject>) -> Void {
+    if !IsDefined(slot) {
+        return;
+    }
+    let reasoning = new JsonObject();
+    reasoning.SetKeyBool("enabled", false);
+    slot.SetKey("reasoning", reasoning);
+}
+
 /// The overlay ///
 
 // Applied to the serialised body rather than to a DTO, because a DTO field is always emitted:

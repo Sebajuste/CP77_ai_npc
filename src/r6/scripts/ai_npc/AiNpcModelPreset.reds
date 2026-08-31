@@ -11,9 +11,9 @@
 // repair. A slot filled by guesswork would be worse than an absent one, because it would be
 // invisible.
 //
-// What every preset DOES carry is an output ceiling, and the two are not the same kind of
-// decision: which model answers is a judgement a bench makes, how many tokens it may spend
-// before something has gone wrong is a bound. See "The output budget" below.
+// What every preset DOES carry is a budget for its technical calls, and that is not the same
+// kind of decision: which model answers is a judgement a bench makes, how much a call that
+// nobody reads may spend is a bound. See "The output budget" below.
 
 module AiNpc
 
@@ -102,8 +102,11 @@ func AiNpcSlotDialogueMaxTokens() -> Int32 {
 // tight ceiling, and the only ones where being cut off costs nothing -- a repair that fails
 // delivers the reply as it was written, and a selection that fails fires nothing.
 //
-// 500 for a line of about twenty tokens: room for a short draft on a model that thinks before
-// it answers, and nowhere near enough for one that runs away.
+// 500 for a line of about twenty tokens, AND THE DRAFT SWITCHED OFF ON THE SAME SLOT. The two
+// go together and the second is what makes the first comfortable: measured, a selector with
+// its reasoning off answers in three tokens, so 500 is fifteen times the room it needs. With
+// the draft left on, the same 500 is not a bound but a guillotine -- see
+// AiNpcSlotDisableReasoning for the numbers and for the one provider that refuses it.
 func AiNpcSlotMechanicName() -> String {
     return "mechanic";
 }
@@ -124,6 +127,7 @@ func AiNpcModelPresetSlots(preset: ref<AiNpcModelPreset>) -> ref<JsonObject> {
 
     let mechanic = new JsonObject();
     AiNpcSlotSetMaxTokens(mechanic, AiNpcSlotMechanicMaxTokens());
+    AiNpcSlotDisableReasoning(mechanic);
 
     let slots = new JsonObject();
     slots.SetKey(AiNpcSlotDefaultName(), dialogue);

@@ -131,7 +131,15 @@ public class AiNpcActionService extends ScriptableSystem {
 
         let root = reply.Root();
         if !reply.IsOk() || !IsDefined(root) {
-            AiNpcLog(s"The action selection for '\(this.m_contact)' failed (HTTP \(reply.StatusCode())); nothing fires.");
+            // The provider's own sentence, because one of them is actionable: a slot that
+            // switches the draft off is refused outright by an endpoint that requires it, and
+            // "HTTP 400" alone would leave a player with a pass that does nothing and no word
+            // saying which key to remove.
+            let detail = AiNpcExtractApiError(root);
+            if NotEquals(StrLen(detail), 0) {
+                detail = ": " + detail;
+            }
+            AiNpcLog(s"The action selection for '\(this.m_contact)' failed (HTTP \(reply.StatusCode()))\(detail); nothing fires.");
             return;
         }
         if AiNpcReplyWasTruncated(root) {

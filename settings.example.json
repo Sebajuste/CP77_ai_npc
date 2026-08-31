@@ -17,8 +17,9 @@
     "_slots_example": {
         "dialogue": { "model": "qwen/qwen3-235b-a22b-2507", "max_tokens": 4096 },
         "memory": { "timeoutSeconds": 120 },
-        "mechanic": { "max_tokens": 500 }
+        "mechanic": { "max_tokens": 500, "reasoning": { "enabled": false } }
     },
+    "_slots_reasoning": "The mechanic slot switches the model's draft off, because the two passes on it -- the bracket repair and the action selection -- ask for one line and read a decision that is already taken. Measured: with the draft on, a selector spent the whole 500-token budget deliberating and answered nothing; with it off, three tokens and no truncation. A few endpoints require the draft and answer HTTP 400, \"Reasoning is mandatory\"; the log names the provider's sentence, and the cure is to delete the key.",
 
     "_passes": "OPTIONAL, same rule: absent means every pass on the dialogue slot and on the active recipe of recipes.json, which is what the mod does out of the box. A pass is one kind of request the mod makes -- speaking is the reply, thinking is the memory compaction, repair is the one-bracket correction, test is the connection check, and actions is the command selection, which sends nothing unless Mod Settings > Command Handling is set to Dedicated. It is the same name the usage report totals by. Both keys are optional: slot names one of the slots above, recipe names one of the recipes in recipes.json. Naming something that does not exist is reported in config-report.json and the pass falls back.",
     "_passes_example": {

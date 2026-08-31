@@ -271,13 +271,25 @@ func AiNpcTestModelPresets(t: ref<AiNpcTestRunner>) -> Void {
     t.Check("preset/and it is above anything measured", AiNpcSlotDialogueMaxTokens() > 1976);
 
     // The second slot names no model at all -- it inherits the first. It exists for its
-    // ceiling, because the repair is the one pass whose output has a known shape.
+    // budget, because the repair and the selection are the passes whose output has a known
+    // shape: one line, and no draft worth paying for.
     let mechanic = AiNpcJsonObjectAt(slots, AiNpcSlotMechanicName());
     t.Check("preset/the mechanic slot names no model of its own", !mechanic.HasKey("model"));
     t.EqInt("preset/the repair carries a tighter budget",
         AiNpcJsonInt(mechanic, "max_tokens", -1), AiNpcSlotMechanicMaxTokens());
     t.Check("preset/tighter than the reply's",
         AiNpcSlotMechanicMaxTokens() < AiNpcSlotDialogueMaxTokens());
+
+    // And the draft switched off, which is what makes that budget a bound rather than a
+    // guillotine -- three tokens of answer against five hundred of deliberation nobody reads.
+    // Asserted as the nested object the wire takes, because a top-level effort hint is a
+    // different key with a different effect, and the two were measured apart.
+    let reasoning = AiNpcJsonObjectAt(mechanic, "reasoning");
+    t.Check("preset/the technical calls do not deliberate", IsDefined(reasoning));
+    let switched = IsDefined(reasoning) ? reasoning.GetKey("enabled") : null;
+    t.Check("preset/and it is the switch, not a hint",
+        IsDefined(switched) && switched.IsBool() && !switched.GetBool());
+    t.Check("preset/the reply still may deliberate", !dialogue.HasKey("reasoning"));
 
     // And the resolution agrees with the file: the repair inherits the model and keeps its own
     // ceiling, which is the whole reason a slot resolves key by key.
