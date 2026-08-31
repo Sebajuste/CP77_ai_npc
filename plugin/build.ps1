@@ -59,7 +59,8 @@ $compile = @(
     # user32.lib: the SDK's address resolver reports a failure with MessageBoxW.
     # winmm.lib: Audio.cpp plays a generated buffer, which never becomes a file.
     # ole32.lib: Speech.cpp drives SAPI, which is COM.
-    "/link /DLL user32.lib winmm.lib ole32.lib"
+    # winhttp.lib: HttpStream.cpp reads a response body as it arrives, and does its own TLS.
+    "/link /DLL user32.lib winmm.lib ole32.lib winhttp.lib"
 ) -join " "
 
 Write-Output "Building ai_npc.dll ($Config) from $($sources.Count) source file(s)..."

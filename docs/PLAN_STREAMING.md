@@ -161,3 +161,56 @@ reply arrived, that the tokens were counted, or that a sentence reached the voic
 measurement in the last section shows the first sentence is not meaningfully earlier than the
 whole reply, say that: it would mean the model streams too coarsely for this to buy anything, and
 that is a result worth having.
+
+---
+
+## Status, 2026-08-31: built, green offline, never launched
+
+All four steps are in. Nothing below has been proved in game, and the last section of this brief
+says exactly which claims a launch owns.
+
+**The lane.** A fourth provider, `OpenRouterStream`, beside `OpenRouter` and not replacing it.
+Same endpoint, same key, same model and routing preference, same request body -- only the pipe
+differs. `RedHttpClient` is untouched and the default provider has not moved.
+
+**Where each piece lives.**
+
+| File | What it is |
+|---|---|
+| `plugin/Stream.cpp` | the SSE reader, the sentence splitter, the chunk reader and the assembler. Pure -- no RED4ext, no Windows, no socket -- and in `plugin/test/run.ps1` |
+| `plugin/HttpStream.cpp` | WinHTTP: one POST whose body is read as it arrives, plus the cancel that lets the game close |
+| `plugin/OpenRouterStream.cpp` | the lane: headers, the stream flags, the failures, and the measurement |
+| `plugin/ScriptApi.cpp` | routes the provider name, and carries sentences and replies to the game thread in one ordered queue |
+| `AiNpcStreamDeliver.reds` | the side channel's door in script |
+
+**Traps.** All three are fixtures in `plugin/test/TestHost.cpp`: the usage block after
+`finish_reason` (asserted on a stream fed one byte at a time), the `: OPENROUTER PROCESSING`
+comment lines, and a stream that stops mid-reply -- which produces a 502 through
+`HandleRequestFailure` rather than a truncated reply written into the thread.
+
+**Two things this needed that the brief did not name.**
+
+- The speech worker held ONE pending line and replaced it. Handing it the sentences of one reply
+  would have kept the first and the last and dropped everything between, which makes step 4
+  meaningless. It is now a bounded FIFO (`plugin/Speech.cpp`); `Speak()` appends instead of
+  replacing.
+- `Transport.hpp` said the plugin must never learn what OpenRouter is. It does now, and the head
+  of that file says so and says why the streaming lane is deliberately not an `ITransport`.
+
+**What the voice does with a sentence.** It speaks it when a call is connected, and otherwise
+does nothing: the written surfaces are read, not heard. The call lane does not generate replies
+yet, so in practice the audible half waits on the holo lane -- the sentences themselves arrive
+and are logged either way, which is what the measurement needs.
+
+**Where to read the number.** `red4ext\logs\ai_npc-*.log`, one line per streamed request:
+
+```
+request 1000003 streamed 5 sentence(s): first ready after 812 ms, whole reply after 4210 ms
+```
+
+That gap is the whole point of this work. If it is small, the model streams too coarsely for a
+voice to hide inside it, and that is the result -- not a bug to go looking for.
+
+**Offline, at the time of writing.** `plugin/test/run.ps1`: 241 checks, 0 failures.
+`tools/compile-check.ps1`: clean, 0 warnings. `tools/lint.ps1`: all checks passed.
+`plugin/build.ps1`: builds, 236.5 KB.

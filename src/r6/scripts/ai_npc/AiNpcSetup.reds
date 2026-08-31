@@ -105,6 +105,7 @@ public class AiNpcSetupSystem extends ScriptableSystem {
         }
 
         switch provider {
+            case AiNpcProvider.OpenRouterStream:
             case AiNpcProvider.OpenRouter:
                 // The resolved model, not the key it is stored under: with a slots block the
                 // legacy setting is no longer what goes out, and a line naming it would be a
@@ -151,7 +152,9 @@ public class AiNpcSetupSystem extends ScriptableSystem {
             // mod using it. Either reads as a broken install without this line.
             "OpenRouter    the supported way to play. Needs a key from openrouter.ai/keys. Model ids ending in :free cost nothing, but they are a shared pool: expect 429 (busy) or 404 (retired), and change the model when one stops answering.\n" +
             "\n" +
-            // Not a footnote under the two lines: the window renders this verbatim, and a
+            "OpenRouterStream  the same service and the same key, over a socket ai_npc.dll owns rather than RedHttpClient. It reads the reply as it is written and hands each finished sentence to the voice, so a spoken line can start before the model has finished writing. Nothing else about a reply changes. New, and not measured against the lane above in game yet.\n" +
+            "\n" +
+            // Not a footnote under the lanes above: the window renders this verbatim, and a
             // reader picking a lane reads the lane. Said on each, in the same words, so
             // neither reads as the exception.
             "ClaudeCli     FOR MOD AUTHORS TESTING THEIR OWN WORK, NOT FOR PLAYING. Anthropic states the limits on Pro and Max assume ordinary individual use of Claude Code; playing this way is outside that, and the account can be limited or suspended without warning (anthropic.com/legal/consumer-terms). No key at all: it drives the Claude CLI you are already signed into, through ai_npc.dll. Needs `claude` installed, and `claude auth status` reporting a subscription rather than an API key.\n" +
@@ -205,7 +208,7 @@ public class AiNpcSetupSystem extends ScriptableSystem {
         this.m_testResult = "";
 
         let out = s"Preset '\(name)' written to settings.json: \(preset.model) on every pass. Edit the slots block to change it.";
-        if NotEquals(AiNpcProviderSetting(), AiNpcProvider.OpenRouter) {
+        if !AiNpcProviderIsOpenRouter(AiNpcProviderSetting()) {
             out += s" The provider is \(AiNpcProviderName(AiNpcProviderSetting())), which runs its own model: the preset applies to everything except the model until you switch back to OpenRouter.";
         }
         return out;
@@ -225,6 +228,7 @@ public class AiNpcSetupSystem extends ScriptableSystem {
         }
 
         switch AiNpcProviderSetting() {
+            case AiNpcProvider.OpenRouterStream:
             case AiNpcProvider.OpenRouter:
                 return this.Row("openRouterApiKey", "API key", AiNpcMaskSecret(AiNpcGetOpenRouterApiKey()), true)
                     + "\n" + this.Row("openRouterModel", "Model", AiNpcSpeakingModel(), false)
@@ -263,7 +267,7 @@ public class AiNpcSetupSystem extends ScriptableSystem {
     public func SetProvider(name: String) -> String {
         let provider: AiNpcProvider;
         if !AiNpcProviderFromName(name, provider) {
-            return s"Unknown provider '\(name)'. One of: OpenRouter, ClaudeCli, CodexCli.";
+            return s"Unknown provider '\(name)'. One of: OpenRouter, OpenRouterStream, ClaudeCli, CodexCli.";
         }
 
         if !AiNpcSetProviderSetting(provider) {
@@ -586,6 +590,10 @@ func AiNpcProviderFromName(name: String, out provider: AiNpcProvider) -> Bool {
 
     if Equals(key, "openrouter") {
         provider = AiNpcProvider.OpenRouter;
+        return true;
+    }
+    if Equals(key, "openrouterstream") || Equals(key, "stream") {
+        provider = AiNpcProvider.OpenRouterStream;
         return true;
     }
     if Equals(key, "claudecli") || Equals(key, "claude") {

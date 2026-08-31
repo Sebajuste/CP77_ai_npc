@@ -43,7 +43,8 @@ Settings ReadSettings(const std::wstring& aPluginDirectory)
     if (file == INVALID_HANDLE_VALUE)
     {
         // Absent is not an error. Both paths are optional -- empty means "look on PATH",
-        // which is what works on most machines.
+        // which is what works on most machines -- and a lane that needs the key reports its
+        // absence itself, in the sentence that says where to put it.
         return settings;
     }
 
@@ -72,6 +73,7 @@ Settings ReadSettings(const std::wstring& aPluginDirectory)
 
     settings.claudePath = Widen(root.StringAt("claudeCliPath"));
     settings.codexPath = Widen(root.StringAt("codexCliPath"));
+    settings.openRouterKey = root.StringAt("openRouterApiKey");
     return settings;
 }
 } // namespace ainpc

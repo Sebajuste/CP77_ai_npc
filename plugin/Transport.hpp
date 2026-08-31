@@ -1,8 +1,10 @@
-// What a CLI backend is, and the OpenAI dialect every one of them speaks.
+// What a CLI backend is, and the OpenAI dialect every lane in this plugin speaks.
 //
-// The plugin knows about CLI backends only. It must never learn what OpenRouter is: a
-// "provider" abstraction spanning both the script transport and this one would be owned by
-// neither, and the script side already has that answer.
+// ITransport is for CLI backends and stays that way. There is one lane in here that is not
+// one -- the streaming client in OpenRouterStream.hpp, which owns a socket instead of a
+// process -- and it is deliberately not made to fit this interface: five of the seven methods
+// would answer "not applicable", and an abstraction spanning both would be owned by neither.
+// What the two share is the dialect below, which is the only thing they need to share.
 //
 // The dialect is the important half of this file. The plugin receives the same
 // chat/completions body an HTTP lane would have posted and returns the same response shape,
@@ -48,11 +50,14 @@ struct ChatReply
     std::string body;
 };
 
-// Where the executables are, read from the mod's own settings.json.
+// What the plugin needs out of the mod's own settings.json: where the executables are, and the
+// credential the streaming lane sends. Read here rather than passed across the boundary, for
+// the reason SettingsFile.hpp gives.
 struct Settings
 {
     std::wstring claudePath;
     std::wstring codexPath;
+    std::string openRouterKey;
 };
 
 struct ITransport

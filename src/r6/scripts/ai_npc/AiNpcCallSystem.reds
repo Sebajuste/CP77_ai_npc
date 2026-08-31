@@ -256,6 +256,18 @@ public class AiNpcCallSystem extends ScriptableSystem {
         AiNpcLog(s"Call: V said '\(text)' to '\(this.m_contactId)'. \(AiNpcAudio.Speak(text))");
     }
 
+    // One sentence of a reply that is still being written, from AiNpcStreamDeliver.
+    //
+    // Spoken only on a connected call, and that is the whole of the policy: the written surfaces
+    // are read, not heard, and a phone that started talking out loud while the player was texting
+    // would be a bug with no way to turn it off.
+    public func SpeakStreamed(text: String) -> Void {
+        if NotEquals(this.m_state, AiNpcCallState.Connected) {
+            return;
+        }
+        AiNpcLog(s"Call: '\(this.m_contactId)' says '\(text)'. \(AiNpcAudio.Speak(text))");
+    }
+
     // The ring, armed late on purpose -- see the head of AiNpcCallVanilla.reds.
     public func OnRingTick(serial: Int32) -> Void {
         if NotEquals(serial, this.m_serial) || NotEquals(this.m_state, AiNpcCallState.Ringing) {

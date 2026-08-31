@@ -21,6 +21,12 @@
 // disagree the answer simply never arrives, and the lane's watchdog reports it as a provider
 // that never replied -- which is why the function is looked up once and its absence logged
 // loudly rather than passed over.
+//
+// The streaming lane adds a SECOND plain global, AiNpcStreamDeliver, and no second native class.
+// It carries finished sentences to the voice while the reply is still being written, and it is a
+// side channel: the reply itself still arrives once, whole, through AiNpcCliDeliver, and nothing
+// downstream of it learns that anything was streamed. A build whose scripts do not declare it
+// loses the sentences and keeps the replies.
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -31,6 +37,8 @@
 #include "ScriptApi.hpp"
 
 #include "Audio.hpp"
+#include "HttpStream.hpp"
+#include "OpenRouterStream.hpp"
 #include "Process.hpp"
 #include "Registry.hpp"
 #include "SettingsFile.hpp"
@@ -55,11 +63,38 @@ struct Job
     int requestId = 0;
 };
 
-struct Answer
+// One thing to hand to script, on the game thread, in the order it was produced.
+//
+// Two kinds in one queue rather than two queues, and the reason is the ordering: a sentence
+// belongs BEFORE the reply it is part of, and two queues drained one after the other would put
+// every sentence of a request behind every reply that finished first.
+enum class Kind
 {
+    Answer,   // the whole reply, once
+    Sentence  // one finished sentence of a reply still being written
+};
+
+struct Delivery
+{
+    Kind kind = Kind::Answer;
     int requestId = 0;
+
+    // Answer
     int status = 0;
     std::string body;
+    std::string date;
+
+    // Sentence. `last` is the end of the stream and may carry no text at all -- see
+    // OpenRouterStream.hpp.
+    std::string text;
+    bool last = false;
+};
+
+// A reply and the moment it belongs to. The date is not part of ChatReply because a CLI lane
+// invents it and the streaming lane is given it by the server, and only the caller knows which.
+struct Outcome
+{
+    ChatReply reply;
     std::string date;
 };
 
@@ -77,7 +112,7 @@ std::condition_variable g_wake;
 // and script already reports a refused transport correctly.
 constexpr size_t kPendingLimit = 8;
 std::deque<Job> g_pending;
-std::deque<Answer> g_finished;
+std::deque<Delivery> g_ready;
 std::atomic<bool> g_running{false};
 std::thread g_worker;
 
@@ -124,25 +159,74 @@ std::string HttpDateNow()
     return buffer;
 }
 
-void Finish(int aRequestId, const ChatReply& aReply)
+void Finish(int aRequestId, const Outcome& aOutcome)
 {
-    Answer answer;
-    answer.requestId = aRequestId;
-    answer.status = aReply.status;
-    answer.body = aReply.body;
-    answer.date = HttpDateNow();
+    Delivery delivery;
+    delivery.kind = Kind::Answer;
+    delivery.requestId = aRequestId;
+    delivery.status = aOutcome.reply.status;
+    delivery.body = aOutcome.reply.body;
+    delivery.date = aOutcome.date.empty() ? HttpDateNow() : aOutcome.date;
 
     char message[160];
     std::snprintf(message, sizeof(message), "request %d finished with status %d (%zu bytes)", aRequestId,
-                  aReply.status, aReply.body.size());
+                  aOutcome.reply.status, aOutcome.reply.body.size());
     Log(message);
 
     std::lock_guard<std::mutex> lock(g_mutex);
-    g_finished.push_back(std::move(answer));
+    g_ready.push_back(std::move(delivery));
 }
 
-// One request, start to finish, on the worker thread.
-ChatReply Run(const Job& aJob)
+// One sentence, on its way to the voice while the rest of the reply is still being written.
+// Queued exactly like a reply, because it crosses the same boundary and needs the same thread.
+void Emit(int aRequestId, const std::string& aText, bool aLast)
+{
+    Delivery delivery;
+    delivery.kind = Kind::Sentence;
+    delivery.requestId = aRequestId;
+    delivery.text = aText;
+    delivery.last = aLast;
+
+    std::lock_guard<std::mutex> lock(g_mutex);
+    g_ready.push_back(std::move(delivery));
+}
+
+// The streaming lane. It shares nothing with the CLI path above but the dialect: no executable
+// to find, no auth to prove, no scratch directory to write a prompt into.
+Outcome RunStream(const Job& aJob)
+{
+    const Settings settings = ReadSettings(g_pluginDirectory);
+    const openrouter::Streamed streamed =
+        openrouter::Stream(aJob.body, settings.openRouterKey,
+                           [&](const std::string& aText, bool aLast) { Emit(aJob.requestId, aText, aLast); });
+
+    // The measurement the lane was built for, and the only place it exists. A first sentence
+    // that is not meaningfully earlier than the whole reply means the model streams too coarsely
+    // for a voice to hide inside the difference -- which is a result, and this line is how
+    // anyone finds out.
+    char message[200];
+    if (streamed.firstSentenceMs >= 0)
+    {
+        std::snprintf(message, sizeof(message),
+                      "request %d streamed %d sentence(s): first ready after %lld ms, whole reply after %lld ms",
+                      aJob.requestId, streamed.sentences, streamed.firstSentenceMs, streamed.totalMs);
+    }
+    else
+    {
+        std::snprintf(message, sizeof(message),
+                      "request %d streamed no complete sentence before it ended, after %lld ms", aJob.requestId,
+                      streamed.totalMs);
+    }
+    Log(message);
+
+    Outcome outcome;
+    outcome.reply = streamed.reply;
+    outcome.date = streamed.date;
+    return outcome;
+}
+
+// One CLI request, start to finish, on the worker thread.
+ChatReply RunCli(const Job& aJob)
 {
     const ITransport* transport = Find(aJob.provider);
     if (!transport)
@@ -254,6 +338,18 @@ ChatReply Run(const Job& aJob)
     return reply;
 }
 
+// Which lane, and nothing else. The CLI lanes date their own answers from the machine clock
+// because they never touched a server that could have dated one; the streaming lane is given a
+// Date header and uses it.
+Outcome Run(const Job& aJob)
+{
+    if (aJob.provider == openrouter::ProviderName())
+    {
+        return RunStream(aJob);
+    }
+    return {RunCli(aJob), HttpDateNow()};
+}
+
 void Worker()
 {
     while (true)
@@ -276,7 +372,7 @@ void Worker()
 
 /// Delivery, on the game thread ///
 
-RED4ext::CBaseFunction* FindDeliverFunction()
+RED4ext::CBaseFunction* FindGlobal(const char* aBareName, const char* aQualifiedName)
 {
     auto* rtti = RED4ext::CRTTISystem::Get();
     if (!rtti)
@@ -295,8 +391,8 @@ RED4ext::CBaseFunction* FindDeliverFunction()
     // class next door registers qualified (verified: "RedHttpClient.AsyncHttpClient" is in
     // that DLL verbatim), so guessing one and being wrong would mean every reply silently
     // never arriving. Accepting both costs one comparison.
-    static const RED4ext::CName bare("AiNpcCliDeliver");
-    static const RED4ext::CName qualified("AiNpc.AiNpcCliDeliver");
+    const RED4ext::CName bare(aBareName);
+    const RED4ext::CName qualified(aQualifiedName);
     for (auto* function : functions)
     {
         if (!function)
@@ -312,14 +408,14 @@ RED4ext::CBaseFunction* FindDeliverFunction()
     return nullptr;
 }
 
-void Deliver(const Answer& aAnswer)
+void DeliverAnswer(const Delivery& aDelivery)
 {
     static RED4ext::CBaseFunction* deliver = nullptr;
     static bool complained = false;
 
     if (!deliver)
     {
-        deliver = FindDeliverFunction();
+        deliver = FindGlobal("AiNpcCliDeliver", "AiNpc.AiNpcCliDeliver");
     }
     if (!deliver)
     {
@@ -333,10 +429,10 @@ void Deliver(const Answer& aAnswer)
     }
 
     auto* rtti = RED4ext::CRTTISystem::Get();
-    RED4ext::CString body(aAnswer.body.c_str());
-    RED4ext::CString date(aAnswer.date.c_str());
-    int32_t requestId = aAnswer.requestId;
-    int32_t status = aAnswer.status;
+    RED4ext::CString body(aDelivery.body.c_str());
+    RED4ext::CString date(aDelivery.date.c_str());
+    int32_t requestId = aDelivery.requestId;
+    int32_t status = aDelivery.status;
 
     RED4ext::StackArgs_t args;
     args.emplace_back(rtti->GetType("Int32"), &requestId);
@@ -349,23 +445,69 @@ void Deliver(const Answer& aAnswer)
     RED4ext::ExecuteFunction(static_cast<void*>(nullptr), deliver, nullptr, args);
 
     char message[96];
-    std::snprintf(message, sizeof(message), "request %d delivered to script", aAnswer.requestId);
+    std::snprintf(message, sizeof(message), "request %d delivered to script", aDelivery.requestId);
     Log(message);
+}
+
+// The side channel, and NOT A SECOND NATIVE CLASS. A plain redscript global costs nothing at
+// boot; a declared native type the plugin failed to register is one more line in the error that
+// stops the GAME from starting -- see the head of AiNpcCliNative.reds.
+//
+// Its absence is not fatal and is said once: a build whose scripts predate this lane still gets
+// its replies, it simply hears no sentences.
+void DeliverSentence(const Delivery& aDelivery)
+{
+    static RED4ext::CBaseFunction* deliver = nullptr;
+    static bool searched = false;
+
+    if (!searched)
+    {
+        searched = true;
+        deliver = FindGlobal("AiNpcStreamDeliver", "AiNpc.AiNpcStreamDeliver");
+        if (!deliver)
+        {
+            Log("AiNpcStreamDeliver was not found in the script runtime: the streamed sentences have "
+                "nowhere to go, and only the complete replies will arrive.");
+        }
+    }
+    if (!deliver)
+    {
+        return;
+    }
+
+    auto* rtti = RED4ext::CRTTISystem::Get();
+    RED4ext::CString text(aDelivery.text.c_str());
+    int32_t requestId = aDelivery.requestId;
+    bool last = aDelivery.last;
+
+    RED4ext::StackArgs_t args;
+    args.emplace_back(rtti->GetType("Int32"), &requestId);
+    args.emplace_back(rtti->GetType("String"), &text);
+    args.emplace_back(rtti->GetType("Bool"), &last);
+
+    RED4ext::ExecuteFunction(static_cast<void*>(nullptr), deliver, nullptr, args);
 }
 
 bool OnUpdate(RED4ext::CGameApplication*)
 {
     // Drained under the lock, delivered outside it: a script callback can send a new request
     // from inside this call, and doing that while holding the queue's lock deadlocks.
-    std::deque<Answer> ready;
+    std::deque<Delivery> ready;
     {
         std::lock_guard<std::mutex> lock(g_mutex);
-        ready.swap(g_finished);
+        ready.swap(g_ready);
     }
 
-    for (const Answer& answer : ready)
+    for (const Delivery& delivery : ready)
     {
-        Deliver(answer);
+        if (delivery.kind == Kind::Sentence)
+        {
+            DeliverSentence(delivery);
+        }
+        else
+        {
+            DeliverAnswer(delivery);
+        }
     }
 
     // FALSE, AND IT IS THE WHOLE DELIVERY MECHANISM.
@@ -649,6 +791,10 @@ void Stop()
         TerminateJobObject(static_cast<HANDLE>(g_job), 1);
     }
 
+    // The same reason on the streaming lane: a worker blocked on a socket read would hold the
+    // game open for the rest of the receive timeout.
+    http::Cancel();
+
     if (g_worker.joinable())
     {
         g_worker.join();
@@ -656,6 +802,6 @@ void Stop()
 
     std::lock_guard<std::mutex> lock(g_mutex);
     g_pending.clear();
-    g_finished.clear();
+    g_ready.clear();
 }
 } // namespace ainpc::script

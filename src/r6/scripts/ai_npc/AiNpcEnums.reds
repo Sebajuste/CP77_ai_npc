@@ -23,12 +23,16 @@ enum AiNpcGender {
     Female = 1
 }
 
-// Three lanes, and only the first speaks HTTP. Numbered contiguously: a hole would mean a
-// persisted setting that reads as a provider nobody can select.
+// Four lanes, and two of them are OpenRouter: the same service, the same key, one reached
+// through RedHttpClient and one through ai_npc.dll, which reads the reply as it is written and
+// hands each finished sentence to the voice. Numbered contiguously and appended, never
+// inserted: a hole would mean a persisted setting that reads as a provider nobody can select,
+// and a member added in the middle silently reassigns what a player already chose.
 enum AiNpcProvider {
     OpenRouter = 0,
     ClaudeCli = 1,
-    CodexCli = 2
+    CodexCli = 2,
+    OpenRouterStream = 3
 }
 
 // Where the choice of a command is made. Embedded is what the mod has always done and stays

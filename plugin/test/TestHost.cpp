@@ -9,8 +9,13 @@
 // with usage, a refusal, and garbage. Each is a fixture, so none of it needs `claude`
 // installed, a network, or a subscription.
 //
+// The streaming lane is here for the same reason and more of it: an SSE stream has three ways
+// of going wrong that a launched game shows as one symptom -- "the character said nothing" --
+// and every one of them is a fixture below.
+//
 // What is NOT covered, and cannot be from here: the RTTI registration, the callback reaching
-// script, and UTF-8 arriving intact in a bubble. Those three are the launch checklist.
+// script, UTF-8 arriving intact in a bubble, and the socket itself. Those are the launch
+// checklist.
 //
 // Build and run: powershell -File plugin\test\run.ps1
 
@@ -21,6 +26,7 @@
 #include "../Json.hpp"
 #include "../Process.hpp"
 #include "../Registry.hpp"
+#include "../Stream.hpp"
 #include "../Transport.hpp"
 
 #include <chrono>
@@ -1022,6 +1028,268 @@ void TestAudio(bool aAudible)
     ainpc::audio::Stop();
     Check("Stop() on silence is harmless", !ainpc::audio::IsPlaying());
 }
+
+/// The streaming lane ///
+
+// Bytes in, complete `data:` payloads out, whatever the chunk boundaries are.
+void TestSseReader()
+{
+    std::printf("sse reader\n");
+
+    {
+        ainpc::stream::SseReader reader;
+        std::vector<std::string> payloads;
+        const std::string wire = "data: {\"a\":1}\n\ndata: {\"a\":2}\n\n";
+        reader.Feed(wire.data(), wire.size(), payloads);
+        Check("two events, two payloads", payloads.size() == 2);
+        if (payloads.size() == 2)
+        {
+            EqualString("the first payload", payloads[0], "{\"a\":1}");
+            EqualString("the second payload", payloads[1], "{\"a\":2}");
+        }
+    }
+
+    // The one that matters: an event arriving in two reads, cut inside its own JSON. A reader
+    // that handed out what it had would give the chunk parser half an object and be told it is
+    // not JSON -- for every chunk, on a fast connection.
+    {
+        ainpc::stream::SseReader reader;
+        std::vector<std::string> payloads;
+        const std::string head = "data: {\"choi";
+        const std::string tail = "ces\":[]}\n\n";
+        reader.Feed(head.data(), head.size(), payloads);
+        Check("a half event yields nothing", payloads.empty());
+        reader.Feed(tail.data(), tail.size(), payloads);
+        Check("the read that completes it yields it", payloads.size() == 1);
+        if (payloads.size() == 1)
+        {
+            EqualString("and it is whole", payloads[0], "{\"choices\":[]}");
+        }
+    }
+
+    // OpenRouter's keep-alives. A parser that JSON-decodes every line dies here with
+    // "unexpected end of JSON input", which is a real bug filed against a real client.
+    {
+        ainpc::stream::SseReader reader;
+        std::vector<std::string> payloads;
+        const std::string wire = ": OPENROUTER PROCESSING\n\n: OPENROUTER PROCESSING\n\ndata: {\"a\":1}\n\n";
+        reader.Feed(wire.data(), wire.size(), payloads);
+        Check("comment lines produce no payload", payloads.size() == 1);
+        if (payloads.size() == 1)
+        {
+            EqualString("and the data still arrives", payloads[0], "{\"a\":1}");
+        }
+    }
+
+    {
+        ainpc::stream::SseReader reader;
+        std::vector<std::string> payloads;
+        const std::string wire = "data: [DONE]\r\n\r\n";
+        reader.Feed(wire.data(), wire.size(), payloads);
+        Check("CRLF line endings are read", payloads.size() == 1);
+        if (payloads.size() == 1)
+        {
+            EqualString("[DONE] is handed on, not swallowed", payloads[0], "[DONE]");
+        }
+    }
+
+    // A connection that closed without the blank line that ends the last event.
+    {
+        ainpc::stream::SseReader reader;
+        std::vector<std::string> payloads;
+        const std::string wire = "data: {\"a\":1}";
+        reader.Feed(wire.data(), wire.size(), payloads);
+        Check("an unterminated event waits", payloads.empty());
+        reader.Finish(payloads);
+        Check("and comes out at the end", payloads.size() == 1);
+    }
+}
+
+void TestSentenceSplitter()
+{
+    std::printf("sentence splitter\n");
+
+    {
+        ainpc::stream::SentenceSplitter splitter;
+        std::vector<std::string> out;
+        splitter.Feed("Je suis devant le Afterlife. ", out);
+        Check("a terminated sentence comes out", out.size() == 1);
+        if (out.size() == 1)
+        {
+            EqualString("without its trailing space", out[0], "Je suis devant le Afterlife.");
+        }
+        EqualString("and nothing is left behind", splitter.Finish(), "");
+    }
+
+    // The abbreviation. "M." ends nothing, and a splitter without a minimum length hands the
+    // voice two characters to say.
+    {
+        ainpc::stream::SentenceSplitter splitter;
+        std::vector<std::string> out;
+        splitter.Feed("M. Silverhand a dit non, et il avait raison. ", out);
+        Check("an initial does not cut", out.size() == 1);
+        if (out.size() == 1)
+        {
+            EqualString("the whole sentence survives", out[0], "M. Silverhand a dit non, et il avait raison.");
+        }
+    }
+
+    // A terminator at the very end of a delta is not a cut: the next delta decides whether it
+    // ended a sentence or sat in the middle of a number.
+    {
+        ainpc::stream::SentenceSplitter splitter;
+        std::vector<std::string> out;
+        splitter.Feed("On se retrouve au bar a 22h.", out);
+        Check("a terminator at the edge waits", out.empty());
+        splitter.Feed("30 comme convenu. ", out);
+        Check("and the time was not a full stop", out.size() == 1);
+        if (out.size() == 1)
+        {
+            EqualString("one sentence, not two", out[0], "On se retrouve au bar a 22h.30 comme convenu.");
+        }
+    }
+
+    // The mandatory flush. A reply with no terminator at all lives entirely in the buffer, and
+    // without this the last thing the character says is never said.
+    {
+        ainpc::stream::SentenceSplitter splitter;
+        std::vector<std::string> out;
+        splitter.Feed("faut que je te laisse", out);
+        Check("no terminator, nothing delivered yet", out.empty());
+        EqualString("the flush gives it back", splitter.Finish(), "faut que je te laisse");
+        EqualString("and only once", splitter.Finish(), "");
+    }
+
+    {
+        ainpc::stream::SentenceSplitter splitter;
+        std::vector<std::string> out;
+        splitter.Feed("Tu es serieux la, Johnny ? Parce que moi je le suis. Vraiment.", out);
+        Check("several sentences in one delta", out.size() == 2);
+        EqualString("what is left is the unterminated tail", splitter.Finish(), "Vraiment.");
+    }
+
+    // A closing guillemet belongs to the sentence it closes, not to the next one.
+    {
+        ainpc::stream::SentenceSplitter splitter;
+        std::vector<std::string> out;
+        splitter.Feed("Il a dit \xC2\xAB je m'en occupe.\xC2\xBB Et il est parti chez Vik. ", out);
+        Check("two sentences", out.size() == 2);
+        if (out.size() == 2)
+        {
+            Check("the quote closes the first", Contains(out[0], "\xC2\xBB"));
+            Check("and does not open the second", !Contains(out[1], "\xC2\xBB"));
+        }
+    }
+}
+
+void TestStreamAssembly()
+{
+    std::printf("stream assembly\n");
+
+    // A whole exchange as OpenRouter sends it: a comment, deltas, the chunk that carries
+    // finish_reason, and THEN the usage block. The last one is the trap -- a client that stops
+    // at finish_reason loses the numbers the ledger and the daily cap live on, silently, with a
+    // reply that looks perfect.
+    const std::string wire =
+        ": OPENROUTER PROCESSING\n\n"
+        "data: {\"choices\":[{\"delta\":{\"content\":\"Je suis devant le Afterlife. \"}}]}\n\n"
+        "data: {\"choices\":[{\"delta\":{\"content\":\"Tu arrives quand ?\"}}]}\n\n"
+        "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}]}\n\n"
+        "data: {\"choices\":[],\"usage\":{\"prompt_tokens\":4504,\"completion_tokens\":312,"
+        "\"prompt_tokens_details\":{\"cached_tokens\":4000}}}\n\n"
+        "data: [DONE]\n\n";
+
+    ainpc::stream::Assembler assembler;
+    std::vector<std::string> sentences;
+    // Fed one byte at a time, because that is the harshest chunking there is and the real one
+    // is somewhere between it and a single read.
+    for (size_t i = 0; i < wire.size(); ++i)
+    {
+        assembler.Feed(wire.data() + i, 1, sentences);
+    }
+    Check("the first sentence is out before the end", sentences.size() == 1);
+    assembler.Finish(sentences);
+
+    Check("both sentences arrived", sentences.size() == 2);
+    if (sentences.size() == 2)
+    {
+        EqualString("the first", sentences[0], "Je suis devant le Afterlife.");
+        EqualString("the second", sentences[1], "Tu arrives quand ?");
+    }
+    Check("the stream says it finished", assembler.Complete());
+    Check("no error was reported", assembler.Error().empty());
+
+    const std::string response = assembler.Response();
+    EqualString("the reply reassembles whole", ReplyText(response),
+                "Je suis devant le Afterlife. Tu arrives quand ?");
+    Check("the usage block survived finish_reason", Contains(response, "\"prompt_tokens\":4504"));
+    Check("and so did the completion count", Contains(response, "\"completion_tokens\":312"));
+    Check("and the cached half", Contains(response, "\"cached_tokens\":4000"));
+}
+
+void TestStreamFailures()
+{
+    std::printf("stream failures\n");
+
+    // A stream that stopped mid-reply. The speaking lane has a watchdog expecting one answer,
+    // and a truncated reply handed over as a good one is written into the thread for good.
+    {
+        const std::string wire = "data: {\"choices\":[{\"delta\":{\"content\":\"Je suis devant le \"}}]}\n\n";
+        ainpc::stream::Assembler assembler;
+        std::vector<std::string> sentences;
+        assembler.Feed(wire.data(), wire.size(), sentences);
+        assembler.Finish(sentences);
+        Check("a broken stream is not complete", !assembler.Complete());
+        EqualString("and what arrived is still readable", assembler.Text(), "Je suis devant le ");
+    }
+
+    // An error object inside a 200 stream, which is how a provider reports a model that fell
+    // over after it started answering.
+    {
+        const std::string wire = "data: {\"error\":{\"message\":\"upstream is overloaded\"}}\n\n";
+        ainpc::stream::Assembler assembler;
+        std::vector<std::string> sentences;
+        assembler.Feed(wire.data(), wire.size(), sentences);
+        assembler.Finish(sentences);
+        EqualString("the error is carried out", assembler.Error(), "upstream is overloaded");
+    }
+
+    // Garbage on the wire is skipped rather than fatal: one unreadable chunk must not lose the
+    // reply around it.
+    {
+        const std::string wire =
+            "data: not json at all\n\n"
+            "data: {\"choices\":[{\"delta\":{\"content\":\"ok\"}}]}\n\n"
+            "data: [DONE]\n\n";
+        ainpc::stream::Assembler assembler;
+        std::vector<std::string> sentences;
+        assembler.Feed(wire.data(), wire.size(), sentences);
+        assembler.Finish(sentences);
+        EqualString("the readable chunks still assemble", assembler.Text(), "ok");
+        Check("and [DONE] ends it", assembler.Complete());
+    }
+}
+
+void TestStreamOptions()
+{
+    std::printf("stream options\n");
+
+    const std::string body = "{\"model\":\"x\",\"messages\":[],\"temperature\":0.9}";
+    const std::string asked = ainpc::stream::WithStreamOptions(body);
+    Check("it asks for a stream", Contains(asked, "\"stream\":true"));
+    // Not optional for this mod: without it the usage block never comes, and a reply whose cost
+    // was never measured passes for a free one.
+    Check("it asks for the usage block", Contains(asked, "\"include_usage\":true"));
+    Check("what the slot set survives", Contains(asked, "\"temperature\":0.9"));
+
+    ainpc::json::Value parsed;
+    Check("and the result is still JSON", ainpc::json::Parse(asked, parsed) && parsed.IsObject());
+
+    ainpc::json::Value empty;
+    Check("an object with nothing in it gains no trailing comma",
+          ainpc::json::Parse(ainpc::stream::WithStreamOptions("{}"), empty) && empty.IsObject());
+}
+
 } // namespace
 
 int main(int argc, char** argv)
@@ -1050,6 +1318,11 @@ int main(int argc, char** argv)
     TestShimRefusal();
     TestRegistry();
     TestScrub();
+    TestSseReader();
+    TestSentenceSplitter();
+    TestStreamAssembly();
+    TestStreamFailures();
+    TestStreamOptions();
     TestAudio(audible);
     TestSpeech();
 

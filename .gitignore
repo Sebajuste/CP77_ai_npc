@@ -25,3 +25,9 @@ tools/prompt/out/
 # voix, refabricables par fetch.ps1 -- rien de tout cela n'est une source.
 tools/tts-lab/engines/
 tools/tts-lab/out/
+
+# Les voix extraites du jeu du joueur, et le dictionnaire de chemins qui sert a les
+# trouver. Rien de tout cela n'est distribuable : c'est la copie du joueur.
+tools/voice-extract/cache/
+tools/voice-extract/src/bin/
+tools/voice-extract/src/obj/

@@ -30,7 +30,10 @@ namespace ainpc::speech
 // a failure to SYNTHESISE is reported later, through the log, because by then the caller is
 // gone.
 //
-// A second line replaces the one waiting: a character does not talk over itself.
+// Lines are spoken in the order they are handed over, one after the other: a character does not
+// talk over itself, and a streamed reply reaches this as several sentences that are one
+// utterance cut into pieces. A queue running far behind the player stops growing -- the bound
+// and which end it drops are in Speech.cpp.
 bool Speak(const std::string& aUtf8Text);
 
 // The samples for one line, without playing them. Blocking, and the reason it is public: it

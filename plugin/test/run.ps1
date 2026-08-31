@@ -27,6 +27,7 @@ $sources = @(
     "plugin\Audio.cpp",
     "plugin\Speech.cpp",
     "plugin\Json.cpp",
+    "plugin\Stream.cpp",
     "plugin\Transport.cpp",
     "plugin\Process.cpp",
     "plugin\Text.cpp",

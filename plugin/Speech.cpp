@@ -9,6 +9,7 @@
 
 #include <chrono>
 #include <condition_variable>
+#include <deque>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -30,11 +31,20 @@ constexpr uint32_t kSampleRate = 22050;
 constexpr uint16_t kChannels = 1;
 constexpr uint16_t kBits = 16;
 
+// A queue and not a slot, and the streaming lane is what decided it. One reply arrives as
+// several sentences, each handed over while the previous one is still being synthesised, and a
+// single slot would keep the first and the last and silently lose everything between them.
+//
+// Bounded, because the queue is a character's next few seconds of speech: past a handful, what
+// is waiting is no longer an answer to anything the player did. The oldest goes, not the newest
+// -- the end of a reply is the part that carries what was decided.
+constexpr size_t kQueueLimit = 16;
+
 struct Worker
 {
     std::mutex mutex;
     std::condition_variable wake;
-    std::string pending;      // the line waiting; empty means nothing to say
+    std::deque<std::string> pending;
     std::string result = "nothing said yet";
     bool running = false;
     bool stopping = false;
@@ -168,8 +178,8 @@ void Run()
             {
                 break;
             }
-            text = std::move(worker.pending);
-            worker.pending.clear();
+            text = std::move(worker.pending.front());
+            worker.pending.pop_front();
         }
 
         const auto started = std::chrono::steady_clock::now();
@@ -270,9 +280,13 @@ bool Speak(const std::string& aUtf8Text)
         worker.thread = std::thread(&Run);
     }
 
-    // The latest line wins: a character does not talk over itself, and the one the player just
-    // typed is the one they meant.
-    worker.pending = aUtf8Text;
+    // Spoken in the order they were handed over: a character does not talk over itself, and the
+    // sentences of one reply are one utterance cut into pieces.
+    worker.pending.push_back(aUtf8Text);
+    while (worker.pending.size() > kQueueLimit)
+    {
+        worker.pending.pop_front();
+    }
     worker.wake.notify_one();
     return true;
 }

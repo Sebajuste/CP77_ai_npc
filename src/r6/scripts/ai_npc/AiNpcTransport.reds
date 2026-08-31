@@ -5,6 +5,10 @@
 // stop the game booting when the plugin is absent (AiNpcCliNative says why). `AiNpcCli` is
 // mentioned in exactly one place, so that blast radius is one file instead of three.
 //
+// What the plugin runs is not only the CLI lanes any more: the streaming OpenRouter lane goes
+// through the same Send, because what it needs from script is the same body and the same request
+// id. Which is why the question asked here is "does the plugin run it", not "is it a CLI".
+//
 // The switch is at home beside the ones AiNpcLlm.reds carries -- url, model, headers,
 // timeout, credentials -- so adding a provider means touching those five answers and this one.
 //
@@ -26,7 +30,7 @@ import RedHttpClient.*
 // it", because from the player's side there is no difference.
 func AiNpcSendChat(provider: AiNpcProvider, body: String, target: wref<IScriptable>,
         httpMethod: CName, requestId: Int32) -> Bool {
-    if AiNpcProviderIsCli(provider) {
+    if AiNpcProviderIsNative(provider) {
         // The provider is named rather than numbered on the way across: the plugin has its
         // own registry keyed by that name, and a number would make the two halves agree by
         // coincidence of ordering rather than by saying the same word.
