@@ -7,6 +7,12 @@ The goal is stated once and does not move: **a vanilla-looking holocall, carryin
 this mod generates.** Not a character standing in the world, not a portrait on a phone — the
 holo window with somebody in it.
 
+**The deliverable is an answer, and a prototype at most.** Questions 1 to 3 below are research:
+what the mechanism is, whether a mod can invoke it, whether it can be pointed at any contact.
+Answer them with evidence and stop. Question 4 is where an implementation would live, and the
+session that owns this lane will do that with what you found — so prototype freely in your own
+worktree, but do not treat a working fake as the finished feature.
+
 ---
 
 ## Where the investigation starts, and what is already established
@@ -126,8 +132,13 @@ Read `../CLAUDE.md` (the `CP77_mods` one) first. What bites here:
 - **`tools/compile-check.ps1` needs your own `-WorkDir`**: the default is shared and collides
   with the other agents working in this repository.
 - **Never kill a process by image name**; track the PID you started.
-- Several agents write in this worktree. **Never `git add -A`** — stage explicit paths, and
-  check `git status` before committing. Files that are not yours will appear mid-session.
+- **Work in your own git worktree, and create one if you were not given one.** Three sessions
+  already write in `CP77_mods/ai_npc-holo`, and this brief touches the files they own —
+  `AiNpcCallSystem.reds`, the widget layer, `tools/lint.ps1`. Sharing that tree means committing
+  somebody else's half-written work by accident; it has happened twice.
+- Whatever tree you end up in: **never `git add -A`** — stage explicit paths, and read
+  `git status` before committing. Files that are not yours appear mid-session.
+- No bare `git stash`: the stack is shared across worktrees.
 
 ## What must not be claimed
 
