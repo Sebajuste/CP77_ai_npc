@@ -191,6 +191,23 @@ public class AiNpcCallSystem extends ScriptableSystem {
         AiNpcLog(s"Call connected to '\(contactId)'. No written conversation is opened: a call is spoken.");
     }
 
+    // LA SONDE, ET RIEN D'AUTRE. Voir AiNpcHoloProbe.reds : elle mesure ce qui pourrait
+    // remplir le cadre vide du holo, et elle part avec ce fichier quand la réponse est connue.
+    //
+    // Un seul point d'entrée qui aiguille, plutôt qu'une méthode par hypothèse : ce qui est
+    // jetable doit s'enlever en supprimant un fichier et une méthode.
+    public func Probe(what: String, argument: String) -> String {
+        switch what {
+            case "tree": return AiNpcHoloProbeTree();
+            case "holo": return AiNpcHoloProbeStart(argument, "holo");
+            case "audio": return AiNpcHoloProbeStart(argument, "audio");
+            case "refresh": return AiNpcHoloProbeRefresh(argument);
+            case "event": return AiNpcHoloProbeEvent();
+            case "status": return AiNpcHoloProbeStatus(argument);
+            default: return s"sonde inconnue : \(what)";
+        }
+    }
+
     // A key, offered by the hook and answered here. True means the call took it, which is what
     // stops the game from also acting on it.
     //

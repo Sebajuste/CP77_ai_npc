@@ -1083,7 +1083,10 @@ if ($encodingIssues.Count -gt 0) {
 # AiNpcHooks.reds is deliberately NOT on the list: it is the file the rule most needs to keep
 # clean. AiNpcPhoneInput.reds owns the walk into Codeware's HubTextInput -- the one FOREIGN-MOD
 # tree the phone reads, as opposed to the vanilla HUD trees the others resolve.
-$treeOwners = @("AiNpcPhoneRenderer.reds", "AiNpcPhoneWidgets.reds", "AiNpcWidgets.reds", "AiNpcPhoneInput.reds")
+# AiNpcHoloProbe.reds est TEMPORAIRE : sa marche cherche le controleur d'avatar du holo, et
+# elle disparait avec le fichier des que la question du cadre vide est tranchee. Si elle est
+# encore la dans un mois, c'est que la sonde est devenue une fonctionnalite sans le dire.
+$treeOwners = @("AiNpcPhoneRenderer.reds", "AiNpcPhoneWidgets.reds", "AiNpcWidgets.reds", "AiNpcPhoneInput.reds", "AiNpcHoloProbe.reds")
 $treePattern = '\.GetWidget\(|\.parentWidget|inkWidgetRef\.Get\(|FindWidgetWithName\(|GetWidgetByIndex\('
 $treeStrays = @()
 $treeOwnerHits = 0

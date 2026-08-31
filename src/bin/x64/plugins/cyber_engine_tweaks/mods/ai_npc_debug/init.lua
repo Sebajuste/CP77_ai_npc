@@ -242,6 +242,7 @@ local setup = {
     test = "",              -- the last test result
     beep = "",              -- what the audio device said to the last beep
     callContact = "judy",   -- who the Call tab dials
+    probeId = "PhoneAvatars.Avatar_Judy",  -- the TweakDBID the holo probes are given
     callOutput = "",        -- what the call system answered last
     testing = false,        -- whether a request is in flight, so we only poll while it is
     showKeys = false,
@@ -380,6 +381,51 @@ local function drawCall()
         setup.callOutput = err or text or ""
     end
 
+    -- The holo probes. Four hypotheses about what could draw a character into the empty
+    -- frame, all in one launch, because a launch is the expensive part.
+    --
+    -- Read "Inspect tree" first: if no avatar controller is found, the other three have
+    -- nothing to talk to and their answers mean nothing.
+    ImGui.Separator()
+    ImGui.Text("Holo probes -- pick up a call first, they act on the live HUD")
+
+    if ImGui.Button("1. Inspect tree") then
+        local text, err = callOn(CALL, "Probe", "tree", "")
+        setup.callOutput = err or text or ""
+    end
+
+    ImGui.SetNextItemWidth(320)
+    local typedId, changedId = ImGui.InputText("TweakDBID##probe", setup.probeId, 96)
+    if changedId then
+        setup.probeId = typedId
+    end
+
+    if ImGui.Button("2. StartHolocall") then
+        local text, err = callOn(CALL, "Probe", "holo", setup.probeId)
+        setup.callOutput = err or text or ""
+    end
+    ImGui.SameLine()
+    if ImGui.Button("StartAudiocall") then
+        local text, err = callOn(CALL, "Probe", "audio", setup.probeId)
+        setup.callOutput = err or text or ""
+    end
+    ImGui.SameLine()
+    if ImGui.Button("3. RefreshView") then
+        local text, err = callOn(CALL, "Probe", "refresh", setup.probeId)
+        setup.callOutput = err or text or ""
+    end
+
+    if ImGui.Button("4. HolocallStartEvent") then
+        local text, err = callOn(CALL, "Probe", "event", "")
+        setup.callOutput = err or text or ""
+    end
+    ImGui.SameLine()
+    if ImGui.Button("Write status text") then
+        local text, err = callOn(CALL, "Probe", "status", "AI NPC")
+        setup.callOutput = err or text or ""
+    end
+
+    ImGui.Separator()
     if ImGui.Button("Dump journal contacts to the log") then
         local text, err = callSetup("DumpContacts")
         setup.callOutput = err or text or ""
