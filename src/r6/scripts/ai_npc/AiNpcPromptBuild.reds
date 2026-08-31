@@ -167,7 +167,11 @@ func AiNpcBuildSystemPromptWith(contactId: String, pendingContext: String,
     // same recipe -- because a bracket in a reply the model was never taught to write is
     // prose, and repairing prose against an empty rulebook replaces a good reply with a worse
     // one. Dispatch is not affected: IsOffered stays the authority on what may fire.
-    if AiNpcRecipeHas(recipe, "commands") {
+    //
+    // Dedicated mode removes it for a different reason and to the same effect: the vocabulary
+    // is still rendered, but into the action pass's own request rather than into this one, so
+    // the character is asked for prose and nothing else.
+    if AiNpcRecipeHas(recipe, "commands") && !AiNpcActionsAreDedicated() {
         prompt += AiNpcRenderActionBlock(ctx, AiNpcBuildActionTable(contactId));
     }
     // No <language> section: the language rule and the per-contact register are stated in

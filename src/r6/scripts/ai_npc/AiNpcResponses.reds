@@ -163,3 +163,13 @@ func AiNpcExtractFinishReason(root: ref<JsonObject>) -> String {
     let choices = AiNpcJsonArrayAt(root, "choices");
     return AiNpcJsonString(AiNpcJsonItemObject(choices, 0u), "finish_reason");
 }
+
+// Whether the model was cut off by the output budget rather than finishing.
+//
+// The one answer a cap makes possible and nothing else does, so every lane that can be capped
+// asks it: a truncated reply is not a bad reply, it is half a reply, and the half that is
+// missing is the end -- where the command sits, and where a continuity note keeps its last
+// section. Named here because "length" is the wire's word and no lane should have to know it.
+func AiNpcReplyWasTruncated(root: ref<JsonObject>) -> Bool {
+    return Equals(AiNpcExtractFinishReason(root), "length");
+}

@@ -1604,7 +1604,7 @@ foreach ($m in [regex]::Matches($schemaText, 'AiNpcRecipeBlockSchemaOf\("(\w+)",
 $requiredBlocks = @()
 # A block with no parts of its own carries one named by the schema, and a file never writes
 # that name -- it writes "full" or true. So it is declared here and skipped below.
-foreach ($m in [regex]::Matches($schemaText, 'AiNpcRecipe(Required|Sourced|Whole)\("(\w+)"\)')) {
+foreach ($m in [regex]::Matches($schemaText, 'AiNpcRecipe(Required|Sourced|Whole|Message)\("(\w+)"')) {
     if ($m.Groups[1].Value -ne "Whole") { $requiredBlocks += $m.Groups[2].Value }
     $recipeBlocks[$m.Groups[2].Value] = @("all")
 }
@@ -1661,6 +1661,126 @@ if ($recipeProblems) {
     $partCount = 0
     foreach ($block in $recipeBlocks.Keys) { $partCount += $recipeBlocks[$block].Count }
     Report-Pass "the prompt recipe uses one vocabulary ($($recipeBlocks.Count) block(s), $partCount part(s))"
+}
+
+# --- the slots ------------------------------------------------------------------------
+#
+# Three agreements, and all three are about the same thing: the overlay COPIES what the file
+# says onto the request body. The moment the mod reads one of those keys by name, or grows a
+# typed setting beside them, the format stops being "whatever the provider accepts" and
+# becomes another list somebody has to extend for every parameter a provider ships.
+$slotProblems = @()
+
+# A body built without naming a slot is a request on the dialogue model whatever sent it --
+# and a log line that says so, which is the one thing that makes a 400 diagnosable.
+foreach ($m in [regex]::Matches($allText, 'AiNpcLlmChatBody\(([^)]*)\)')) {
+    if ($m.Groups[1].Value -notmatch '[Ss]lot') {
+        $slotProblems += "a call to AiNpcLlmChatBody names no slot: $($m.Value)"
+    }
+}
+
+# The wire names, written once each, where the two settings that predate the format are
+# translated. Anywhere else they are the mod reading a slot key by name.
+# Assertions are exempt, as everywhere else: naming a parameter is how a test says which one
+# it is checking. What the rule is about is the mod reading one.
+$shipParts = @()
+foreach ($f in $files) { if (-not (Test-IsSelfTest $f)) { $shipParts += (Read-Code $f.FullName) } }
+$shipText = ($shipParts -join "`n")
+$aliasText = Read-Code (Join-Path $modSrc "AiNpcSlot.reds")
+# The key as a KEY -- a standalone string literal -- not the word inside a sentence: a log line
+# that tells a player which setting cut their reply short has to name it, and that is the
+# opposite of the mod reading it.
+foreach ($wire in @("max_tokens", "reasoning_effort", "temperature", "top_p")) {
+    $literal = '"' + $wire + '"'
+    $hits = ([regex]::Matches($shipText, [regex]::Escape($literal))).Count
+    $here = ([regex]::Matches($aliasText, [regex]::Escape($literal))).Count
+    if ($hits -gt $here) {
+        $slotProblems += "the wire parameter `"$wire`" is named outside the alias table - the overlay copies, it does not inspect"
+    }
+}
+
+# The reserved keys are ours and never reach a provider. One declaration, or a second file
+# strips a key this one still sends.
+# The quoted key, not the resolved field: reading slot.timeoutSeconds is what the reserved
+# key is FOR. What must be written once is the name the file uses.
+$reserved = ([regex]::Matches($shipText, '"timeoutSeconds"')).Count
+$reservedHere = ([regex]::Matches($aliasText, '"timeoutSeconds"')).Count
+if ($reserved -gt $reservedHere) {
+    $slotProblems += "the reserved key list is written in more than one place"
+}
+
+# The wire's word for the second message, which the mod does not use for anything else.
+foreach ($m in [regex]::Matches($allText, '\buserText\b')) {
+    $slotProblems += "userText is the wire's name for the ask, not an identifier"
+}
+
+if ($slotProblems) {
+    Report-Fail "a slot is copied, never read" (($slotProblems | Select-Object -Unique) -join "`n")
+} else {
+    Report-Pass "a slot is copied, never read"
+}
+
+# --- the presets -----------------------------------------------------------------------
+#
+# A preset writes a block of settings.json in clear, and two of its halves cross a file
+# boundary: the recipe it names into the shipped template, and the preset names themselves into
+# the CET window, which reads its buttons out of the first word of DescribeModelPresets().
+$presetProblems = @()
+
+$passText = Read-Code (Join-Path $modSrc "AiNpcPass.reds")
+foreach ($m in [regex]::Matches($passText, 'AiNpcPassRecipeName[\s\S]{0,600}?^\}')) { }
+$recipeNames = @()
+$passBody = [regex]::Match($passText, '(?s)func AiNpcPassRecipeName\(pass: String\)[^\{]*\{(?<body>.*?)\n\}')
+if (-not $passBody.Success) {
+    $presetProblems += "AiNpcPassRecipeName not found - a preset would bind recipes nothing checks"
+} else {
+    foreach ($m in [regex]::Matches($passBody.Groups["body"].Value, 'return "(\w+)"')) {
+        $recipeNames += $m.Groups[1].Value
+    }
+}
+foreach ($name in $recipeNames) {
+    if ($templateText -notmatch ('\\"' + $name + '\\": \{')) {
+        $presetProblems += "a pass binds recipe `"$name`", which the shipped template does not declare - the preset would write a binding that points at nothing"
+    }
+}
+
+# Every preset must reach the window, and its name must be one word: the overlay takes the
+# first word of each line as a button.
+$presetText = Read-Code (Join-Path $modSrc "AiNpcModelPreset.reds")
+$presetNames = @()
+foreach ($m in [regex]::Matches($presetText, 'AiNpcModelPresetOf\("([^"]+)",\s*"([^"]+)"')) {
+    $presetNames += $m.Groups[1].Value
+    if ($m.Groups[1].Value -match '\s') {
+        $presetProblems += "preset name '$($m.Groups[1].Value)' is not one word - the CET window would draw a button nobody can press"
+    }
+    if ($m.Groups[2].Value -notmatch '/') {
+        $presetProblems += "preset '$($m.Groups[1].Value)' names '$($m.Groups[2].Value)', which is not a provider-qualified model id"
+    }
+}
+if ($presetNames.Count -eq 0) {
+    $presetProblems += "no preset is declared - the window's preset row would be empty"
+}
+$setupText = Read-Code (Join-Path $modSrc "AiNpcSetup.reds")
+if ($setupText -notmatch 'func DescribeModelPresets') {
+    $presetProblems += "DescribeModelPresets() not found - the CET window could not offer a preset"
+}
+if ($setupText -notmatch 'func ApplyModelPreset') {
+    $presetProblems += "ApplyModelPreset() not found - the window could describe presets it cannot apply"
+}
+$luaPath = Join-Path $root "src\bin\x64\plugins\cyber_engine_tweaks\mods\ai_npc_debug\init.lua"
+if (Test-Path $luaPath) {
+    $luaText = [System.IO.File]::ReadAllText($luaPath)
+    foreach ($call in @("DescribeModelPresets", "ApplyModelPreset")) {
+        if ($luaText -notmatch [regex]::Escape($call)) {
+            $presetProblems += "the CET window never calls $call - the presets would exist and be unreachable"
+        }
+    }
+}
+
+if ($presetProblems) {
+    Report-Fail "a preset writes what the mod declares" (($presetProblems | Select-Object -Unique) -join "`n")
+} else {
+    Report-Pass "a preset writes what the mod declares ($($presetNames.Count) preset(s), $($recipeNames.Count) recipe binding(s))"
 }
 
 Write-Output ""

@@ -20,7 +20,6 @@ public class AiNpcStorageService extends ScriptableService {
     // digits, no underscore. The mod's own folder name, "ai_npc", is rejected outright and
     // takes the whole service down with it -- self-tests included. Hence "AiNpc".
     private const let MOD_STORAGE_NAME: String = "AiNpc";
-    private const let SETTINGS_FILE: String = "settings.json";
 
     // Deliberately not `persistent`: a ScriptableService is not part of the savegame, so
     // the keyword would only suggest that the handle survives a load. It does not, and it
@@ -59,7 +58,7 @@ public class AiNpcStorageService extends ScriptableService {
 
     // Creates settings.json with placeholder values if it is missing or unreadable.
     private func EnsureSettingsFile() -> Void {
-        let existing = this.ReadJsonObject(this.SETTINGS_FILE);
+        let existing = this.ReadJsonObject(AiNpcSettingsFile());
 
         if IsDefined(existing) {
             this.m_settings = existing;
@@ -100,8 +99,8 @@ public class AiNpcStorageService extends ScriptableService {
             "}") as JsonObject;
 
         this.m_settings = defaults;
-        this.m_storage.GetFile(this.SETTINGS_FILE).WriteJson(defaults, "    ");
-        FTLog(s"[ai_npc]: created default \(this.SETTINGS_FILE) - add your API key there.");
+        this.m_storage.GetFile(AiNpcSettingsFile()).WriteJson(defaults, "    ");
+        FTLog(s"[ai_npc]: created default \(AiNpcSettingsFile()) - add your API key there.");
     }
 
     // Reads a settings value, falling back when the key is absent or empty.
@@ -118,6 +117,37 @@ public class AiNpcStorageService extends ScriptableService {
             return fallback;
         }
         return value;
+    }
+
+    // Whether the file itself says something, as opposed to the accessor answering with its
+    // own default. The three slot aliases need the difference: `openRouterModel` has a
+    // built-in default, and a default that counted as an answer would make
+    // slots.dialogue.model unreachable.
+    public func HasSetting(key: String) -> Bool {
+        if !IsDefined(this.m_settings) {
+            this.EnsureSettingsFile();
+        }
+        if !IsDefined(this.m_settings) || !this.m_settings.HasKey(key) {
+            return false;
+        }
+        return NotEquals(StrLen(this.m_settings.GetKeyString(key)), 0);
+    }
+
+    // A setting that is a block rather than a value: `slots` and `passes`. Returned whole and
+    // unread -- what is inside a slot is the provider's business, and the pass table is parsed
+    // by AiNpcPass.reds, which is pure and says everything it refuses.
+    public func GetSettingObject(key: String) -> ref<JsonObject> {
+        if !IsDefined(this.m_settings) {
+            this.EnsureSettingsFile();
+        }
+        if !IsDefined(this.m_settings) || !this.m_settings.HasKey(key) {
+            return null;
+        }
+        let value = this.m_settings.GetKey(key);
+        if !IsDefined(value) || !value.IsObject() {
+            return null;
+        }
+        return value as JsonObject;
     }
 
     // A setting that is a yes/no, read the way a player is likely to have written it: both
@@ -153,7 +183,7 @@ public class AiNpcStorageService extends ScriptableService {
 
     // Re-reads settings.json from disk, so key edits apply without restarting the game.
     public func ReloadSettings() -> Void {
-        let reloaded = this.ReadJsonObject(this.SETTINGS_FILE);
+        let reloaded = this.ReadJsonObject(AiNpcSettingsFile());
         if IsDefined(reloaded) {
             this.m_settings = reloaded;
         }
@@ -201,11 +231,32 @@ public class AiNpcStorageService extends ScriptableService {
         return this.WriteSettings();
     }
 
+    // Several settings as ONE edit. A preset writes three keys that only mean something
+    // together -- the stamp, the slots and the passes -- and three separate writes are three
+    // chances to leave the file half-changed.
+    public func SetSettings(patch: ref<JsonObject>) -> Bool {
+        if !IsDefined(this.m_settings) {
+            this.EnsureSettingsFile();
+        }
+        if !IsDefined(this.m_settings) || !IsDefined(patch) {
+            return false;
+        }
+
+        let keys = patch.GetKeys();
+        let i = 0;
+        let count = ArraySize(keys);
+        while i < count {
+            this.m_settings.SetKey(keys[i], patch.GetKey(keys[i]));
+            i += 1;
+        }
+        return this.WriteSettings();
+    }
+
     private func WriteSettings() -> Bool {
         if !IsDefined(this.m_storage) {
             return false;
         }
-        let file = this.m_storage.GetFile(this.SETTINGS_FILE);
+        let file = this.m_storage.GetFile(AiNpcSettingsFile());
         if !IsDefined(file) {
             return false;
         }
@@ -249,6 +300,12 @@ public class AiNpcStorageService extends ScriptableService {
 // logic. Four copies of a null check is four chances to write the fifth one without it, and
 // the answer here is the same for every caller: no service, no folder, and nothing crashes for
 // having asked outside a session.
+// Named by a function rather than by a constant inside the service: the config report names
+// the file when it refuses a slot or a pass, and it has no service to ask.
+func AiNpcSettingsFile() -> String {
+    return "settings.json";
+}
+
 public func AiNpcModStorage() -> ref<FileSystemStorage> {
     let service = AiNpcStorageService.GetPersistentStorageSystem();
     if !IsDefined(service) {

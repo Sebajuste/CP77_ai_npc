@@ -11,5 +11,21 @@
     "reasoningEffort": "",
     "appearance": "",
     "playerDescription": "",
-    "importConversationsFrom": ""
+    "importConversationsFrom": "",
+
+    "_slots": "OPTIONAL, and absent here on purpose: with no slots block every request goes out exactly as it always has. A slot is request JSON, copied onto the body as written -- the keys are the provider's (model, max_tokens, temperature, reasoning_effort, ...) and the mod does not read them, so a parameter your provider ships tomorrow works tomorrow. A mistyped one is not refused: it comes back a 400, and the request log names the slot it came from. Keys absent from a slot are taken from dialogue. timeoutSeconds is the only key of ours: it never goes on the wire. The more specific wins: a named slot, then dialogue, then the openRouterModel / maxTokens / reasoningEffort keys above -- so a file with no slots block behaves exactly as it always has. The setup window writes this block for you when you pick a preset (light, normal, premium) and records which one in modelPreset; everything in it stays yours to edit. Remove the underscore to write it by hand.",
+    "_slots_example": {
+        "dialogue": { "model": "qwen/qwen3-235b-a22b-2507", "max_tokens": 4096 },
+        "memory": { "timeoutSeconds": 120 },
+        "mechanic": { "max_tokens": 500 }
+    },
+
+    "_passes": "OPTIONAL, same rule: absent means every pass on the dialogue slot and on the active recipe of recipes.json, which is what the mod does out of the box. A pass is one kind of request the mod makes -- speaking is the reply, thinking is the memory compaction, repair is the one-bracket correction, test is the connection check, and actions is the command selection, which sends nothing unless Mod Settings > Command Handling is set to Dedicated. It is the same name the usage report totals by. Both keys are optional: slot names one of the slots above, recipe names one of the recipes in recipes.json. Naming something that does not exist is reported in config-report.json and the pass falls back.",
+    "_passes_example": {
+        "speaking": { "slot": "dialogue", "recipe": "default" },
+        "thinking": { "slot": "memory", "recipe": "compaction" },
+        "repair": { "slot": "mechanic" },
+        "actions": { "slot": "mechanic", "recipe": "actions" },
+        "test": { "slot": "dialogue" }
+    }
 }

@@ -153,10 +153,11 @@ public class AiNpcMemoryService extends ScriptableSystem {
         let instruction = AiNpcMemoryInstruction(folding);
         let request = AiNpcMemoryRequestBody(base, npcName, AiNpcGenderFact(),
             AiNpcHistoryTranscript(evicted, npcName), exact);
-        let body = AiNpcLlmChatBody(backend, instruction, request);
+        let slot = AiNpcGetSlotForPass(AiNpcLaneThinking());
+        let body = AiNpcLlmChatBody(backend, slot, instruction, request);
 
         this.m_record = AiNpcRequestRecord.Sent(AiNpcLaneThinking(), contactId,
-            backend, instruction, request);
+            backend, slot, instruction, request);
 
         this.m_contact = contactId;
         this.m_base = base;
@@ -180,7 +181,7 @@ public class AiNpcMemoryService extends ScriptableSystem {
         // After the send and not before: arming is what marks this lane busy, so a request
         // that never left cannot occupy it.
         AiNpcArmTimeout(AiNpcThinkingTimeoutCallback.Create(this.m_watchdog.Arm()),
-            AiNpcLlmRequestTimeout(backend));
+            AiNpcLlmRequestTimeout(backend, slot));
 
         let trigger = full ? "batch" : "silence";
         if folding {
@@ -255,6 +256,16 @@ public class AiNpcMemoryService extends ScriptableSystem {
         let text = AiNpcExtractChatText(root);
         if Equals(StrLen(text), 0) {
             this.Abandon("empty answer");
+            return;
+        }
+
+        // Before the parse, and this is the branch that makes an output cap safe on this lane.
+        // A note cut off by max_tokens still parses: the sections it did reach are well formed,
+        // and the ones it did not are simply absent -- which reads as "this character no longer
+        // remembers that", forever, with nothing anywhere saying why. The previous memory
+        // stands and the next batch tries again, which is what every other bad answer does.
+        if AiNpcReplyWasTruncated(root) {
+            this.Abandon("the answer was cut off by the output budget (max_tokens); raise it on the slot this pass is on");
             return;
         }
 

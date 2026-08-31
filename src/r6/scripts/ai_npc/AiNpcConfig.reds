@@ -49,6 +49,8 @@ public class AiNpcConfigService extends ScriptableService {
     private let m_watches: array<ref<AiNpcFactWatch>>;
     private let m_prompts: ref<AiNpcPromptConfig>;
     private let m_recipe: ref<AiNpcRecipe>;
+    private let m_book: ref<AiNpcRecipeBook>;
+    private let m_passes: array<ref<AiNpcPassBinding>>;
     private let m_issues: array<ref<AiNpcConfigIssue>>;
     private let m_errors: Int32 = 0;
     private let m_warnings: Int32 = 0;
@@ -80,6 +82,36 @@ public class AiNpcConfigService extends ScriptableService {
     public func GetRecipe() -> ref<AiNpcRecipe> {
         this.EnsureLoaded();
         return this.m_recipe;
+    }
+
+    // A recipe by name, for a pass that names one. Null when the loaded file declares no such
+    // recipe -- which the pass table has already reported, by name, at load.
+    public func GetRecipeNamed(name: String) -> ref<AiNpcRecipe> {
+        this.EnsureLoaded();
+        return AiNpcRecipeBookNamed(this.m_book, name);
+    }
+
+    // What a pass is bound to. Both answers fall back the way an absent `passes` block does:
+    // the active recipe, and the dialogue slot.
+    public func GetPassRecipe(pass: String) -> ref<AiNpcRecipe> {
+        this.EnsureLoaded();
+        let binding = AiNpcPassBindingNamed(this.m_passes, pass);
+        let named = AiNpcRecipeBookNamed(this.m_book, binding.recipeName);
+        if IsDefined(named) {
+            return named;
+        }
+        return this.m_recipe;
+    }
+
+    public func GetPassSlotName(pass: String) -> String {
+        this.EnsureLoaded();
+        return AiNpcPassSlotNameIn(this.m_passes, pass);
+    }
+
+    // The book as loaded, for a preset deciding which recipe names it may write.
+    public func GetRecipeBook() -> ref<AiNpcRecipeBook> {
+        this.EnsureLoaded();
+        return this.m_book;
     }
 
     // Read once at player attach, by AiNpcFactBridge: a watch is only meaningful next to a
@@ -150,6 +182,7 @@ public class AiNpcConfigService extends ScriptableService {
 
         ArrayClear(this.m_defs);
         ArrayClear(this.m_watches);
+        ArrayClear(this.m_passes);
         ArrayClear(this.m_issues);
         this.m_errors = 0;
         this.m_warnings = 0;
@@ -160,6 +193,7 @@ public class AiNpcConfigService extends ScriptableService {
         this.WriteFactsExampleFile(storage);
         this.WriteRecipeTemplate(storage);
         this.LoadRecipes(storage);
+        this.LoadPasses();
         this.LoadPrompts(storage);
         this.LoadCharacterFiles(storage);
         this.LoadFactFiles(storage);
@@ -175,17 +209,20 @@ public class AiNpcConfigService extends ScriptableService {
     // A player's file is read the same way, over the same built-in full render, so an absent
     // key keeps the mod's answer at both levels.
     private func LoadRecipes(storage: ref<FileSystemStorage>) -> Void {
-        this.m_recipe = this.ReadRecipe(ParseJson(AiNpcRecipeTemplate()) as JsonObject,
-            AiNpcRecipeTemplateFile());
+        this.ReadRecipes(ParseJson(AiNpcRecipeTemplate()) as JsonObject, AiNpcRecipeTemplateFile());
 
         let root = this.ReadObject(storage, AiNpcRecipeFile());
         if IsDefined(root) {
-            this.m_recipe = this.ReadRecipe(root, AiNpcRecipeFile());
+            this.ReadRecipes(root, AiNpcRecipeFile());
             AiNpcLog(s"Loaded \(AiNpcRecipeFile()): rendering with recipe '\(this.m_recipe.name)'.");
         }
     }
 
-    private func ReadRecipe(root: ref<JsonObject>, fileName: String) -> ref<AiNpcRecipe> {
+    // The whole book is kept, not only the active recipe: a pass may name any recipe in the
+    // file. A player's file REPLACES the template's book rather than adding to it, so a pass
+    // naming a recipe that only the shipped template declares points at nothing -- and the
+    // pass table says so, by name.
+    private func ReadRecipes(root: ref<JsonObject>, fileName: String) -> Void {
         let issues: array<ref<AiNpcConfigIssue>>;
         let book = AiNpcRecipeBookFromJson(root, fileName, issues);
 
@@ -195,7 +232,26 @@ public class AiNpcConfigService extends ScriptableService {
             this.AddIssue(issues[i].severity, issues[i].source, issues[i].message);
             i += 1;
         }
-        return AiNpcRecipeBookActive(book);
+        this.m_book = book;
+        this.m_recipe = AiNpcRecipeBookActive(book);
+    }
+
+    // The pass table lives in settings.json, beside the slots it names: what a request is sent
+    // with is one file, and what it says is another. Read after the recipes, because half of
+    // what it is checked against is the book.
+    private func LoadPasses() -> Void {
+        let issues: array<ref<AiNpcConfigIssue>>;
+        let slots = AiNpcGetSettingObject("slots");
+        AiNpcSlotReportShapes(slots, AiNpcSettingsFile(), issues);
+        this.m_passes = AiNpcPassTableFromJson(AiNpcGetSettingObject("passes"),
+            AiNpcSettingsFile(), slots, this.m_book, issues);
+
+        let i = 0;
+        let count = ArraySize(issues);
+        while i < count {
+            this.AddIssue(issues[i].severity, issues[i].source, issues[i].message);
+            i += 1;
+        }
     }
 
     private func LoadPrompts(storage: ref<FileSystemStorage>) -> Void {
@@ -1086,4 +1142,26 @@ public class AiNpcConfigService extends ScriptableService {
         storage.GetFile(this.FACTS_EXAMPLE_FILE).WriteText(text);
     }
 
+}
+
+// The two questions a call site asks about its own pass, guarded the way AiNpcPromptRecipe is:
+// a config that failed to load answers "the dialogue slot, the built-in recipe", which is what
+// the mod sent before either table existed.
+func AiNpcPassSlotName(pass: String) -> String {
+    let service = AiNpcConfigService.Get();
+    if IsDefined(service) {
+        return service.GetPassSlotName(pass);
+    }
+    return AiNpcSlotDefaultName();
+}
+
+func AiNpcPassRecipe(pass: String) -> ref<AiNpcRecipe> {
+    let service = AiNpcConfigService.Get();
+    if IsDefined(service) {
+        let recipe = service.GetPassRecipe(pass);
+        if IsDefined(recipe) {
+            return recipe;
+        }
+    }
+    return AiNpcRecipeFull();
 }

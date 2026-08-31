@@ -1,11 +1,36 @@
 # Plan: the action selector on its own call
 
+> **Built 2026-08-31 as an opt-in mode, ahead of the experiments below.** Mod Settings >
+> Command Handling switches between `Embedded` (the default, unchanged) and `Dedicated`, where
+> the `<commands>` block leaves the conversation prompt and `AiNpcActionService` sends one
+> selection per delivered reply on the `actions` pass. Green offline, never launched, and
+> **nothing in it is measured**: the three experiments below are still owed, and the design
+> question in *The design question the bench will not answer* was decided by shipping both
+> modes rather than by an answer — Embedded stays the default precisely because it cannot
+> produce the divergence Dedicated can.
+>
+> What the build settled, and what a reader should not re-derive:
+>
+> - the selector's answer goes through `AiNpcApplyActions` like a reply's own bracket, so this
+>   lane decides WHEN a command is looked for and never which ones exist or who may run one;
+> - a bare `ACTION:GIVE_EDDIES:500` is accepted and dressed in brackets (15 probe answers out
+>   of 20 came back that way); everything past that is the ordinary tag parser;
+> - there is no repair pass behind it — a call whose whole output is one line has nothing to
+>   repair, and asking twice would double the cost of every turn;
+> - a scripted contact is never examined, because its words never reached a model;
+> - **the wording of the ask has never been reviewed**, and this repo does not reword a prompt
+>   alone. `AiNpcActionSelectorAsk` is the one thing here written from scratch.
+
 A measurement first, and a build only if it passes. Three experiments answer whether the
 selection of a command can leave the dialogue generation; nothing is written into `src\` until
 they do.
 
 Depends on `docs/PLAN_MODEL_SLOTS.md`. Without a cheap mechanical slot this is a second
 full-price request on every message, which is the trade that makes it not worth doing.
+
+Depends on `docs/PLAN_PASSES.md` for the shape. A selector is a pass: its own slot, and a
+recipe whose second message ends on a question instead of on `<name>: `. Without it the
+selection has to be written as a fifth lane by hand.
 
 ## The diagnosis
 

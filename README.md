@@ -207,6 +207,117 @@ will be asked to check when something does not work.
   conversation history. For when a save is lost and play resumes from an earlier one. See
   "Importing a lost history" below, and **delete the key once it has run**.
 
+### Where commands are chosen: Embedded or Dedicated
+
+**Mod Settings → AI NPC → Command Handling**, and `Embedded` is the default — how the mod has
+always worked, and what every measurement in [docs/MODEL_BENCH.md](docs/MODEL_BENCH.md) was
+taken on.
+
+| | what the character is asked | what happens to the reply |
+|---|---|---|
+| **Embedded** | the conversation prompt carries the list of commands; the character writes one inside its reply | the mod takes the command out of the message before you read it, and runs it |
+| **Dedicated** | the list is **not** in the conversation at all; the character writes plainly | after the reply is delivered, a second much smaller request sends only the commands, the last few messages and that reply, and answers with one command or nothing |
+
+Dedicated costs **one extra request per reply**, on the `actions` pass — which the presets put
+on the cheap `mechanic` slot with its 500-token ceiling. What it buys, in principle: the
+character stops being asked to hold a syntax and a scene at once, ~380 tokens of command table
+leave every message, and a malformed bracket becomes inexpressible, so "Retry Broken Commands"
+has nothing left to repair.
+
+**None of that is measured.** One probe exists (56 calls) and it is not a campaign: it removed
+15 wrong commands out of 18 and transcribed three the character had promised in its own prose.
+The known risk is the one the split creates — the character can say it sent money while the
+selector chooses nothing, or the other way round. Embedded cannot do that, because the promise
+and the command are the same sentence.
+
+### Three presets: light, normal, premium
+
+The setup window offers three starting points, and picking one **writes it into
+`settings.json` in clear**. From that moment it is yours: the models are visible, editable, and
+nothing re-applies a preset behind your back. `modelPreset` records which one wrote the block.
+
+| preset | model | what it is |
+|---|---|---|
+| **light** | `google/gemma-4-31b-it:free` | free, and rate-limited by the pool it shares: 46 requests out of 54 came back "busy" on the evening it was measured. A way to try the mod, not a way to play an evening |
+| **normal** | `qwen/qwen3-235b-a22b-2507` | ~0.55 $/month at two hours a day. The appointment commands 18 times out of 20 on real conversations, no mechanical defect over 54 replies |
+| **premium** | `meta-llama/llama-4-maverick` | ~2.57 $/month. 20 out of 20 on the same conversations, and the strictest tier adherence measured |
+
+All three put **one model on every kind of work**, which is what the measurements support: the
+memory compaction and the command repair have been measured on nobody, so they stay on the model
+you play with rather than getting a guess.
+
+Each also ships an **output ceiling** — 4096 tokens for a reply, 500 for a one-line technical
+call such as the command repair. That is a bound on a model that runs away, not an economy: the longest reply ever
+measured here is 1976 tokens, and a cap set low enough to save money would cut the end of a
+message, which is exactly where an `[ACTION:...]` command sits. If one is ever reached the mod
+says so in the log, and a memory compaction that gets cut off is **thrown away rather than
+stored half-written**. See [docs/PLAN_PRESETS.md](docs/PLAN_PRESETS.md) for
+what would have to be measured to change that, and
+[docs/MODEL_BENCH.md](docs/MODEL_BENCH.md) for the numbers above.
+
+From the CET console, without the window:
+
+```lua
+print(GetMod("ai_npc_debug").preset("normal"))
+```
+
+### One model per kind of work: `slots` and `passes`
+
+Both blocks are optional, and **absent is the default**: with neither of them written, every
+request goes out on the model above, exactly as it always has. A preset writes them for you;
+everything below is what it writes, and what you can change afterwards.
+
+The mod makes five kinds of request, and they are the five lanes the usage report already totals
+by: **speaking** (the reply you read), **thinking** (the memory compaction), **repair** (the
+one-bracket correction of a malformed command), **test** (the connection check), and
+**actions** (the command selection, which sends nothing unless Command Handling is set to
+Dedicated). A **slot**
+says what a request is sent with; a **pass** binds a slot — and, if you want, a recipe from
+`recipes.json` — to one of those four.
+
+```json
+{
+    "slots": {
+        "dialogue": { "model": "qwen/qwen3-235b-a22b-2507" },
+        "memory":   { "timeoutSeconds": 120 },
+        "mechanic": { "model": "google/gemma-4-31b-it:free", "max_tokens": 40 }
+    },
+    "passes": {
+        "speaking": { "slot": "dialogue" },
+        "thinking": { "slot": "memory" },
+        "repair":   { "slot": "mechanic" }
+    }
+}
+```
+
+- **A slot is request JSON.** The keys are the provider's — `model`, `max_tokens`,
+  `temperature`, `reasoning_effort`, whatever it ships next — and the mod copies them onto the
+  body without reading them. So a parameter added by your provider works the day it exists, and
+  a **mistyped one is not refused**: it goes out and comes back a 400. The request log names the
+  slot that produced it, which is what makes that payable.
+- **A key a slot does not name is taken from `dialogue`**, so "the slot is empty" and "the slot
+  says nothing about this parameter" are one case.
+- **`timeoutSeconds` is the only key of ours**, and it never goes on the wire. camelCase is the
+  boundary: `snake_case` goes to the provider, `camelCase` stays in the mod.
+- **The more specific wins**: a named slot, then the `dialogue` slot, then the old
+  `openRouterModel` / `maxTokens` / `reasoningEffort` settings. A file with no `slots` block
+  behaves exactly as it always has, and once there is one, the slot is where a model is edited —
+  which is also where the setup window's Model box writes.
+- **The CLI lanes keep their own model.** `claudeCliModel` is not in OpenRouter's namespace, so
+  a slot naming a model never reaches a `claude` or `codex` process; everything else in the slot
+  does.
+- **The connection test follows the speaking pass.** `passes.test.slot` if you write one,
+  otherwise whatever `speaking` is on: a test run against another slot would declare the
+  installation healthy on a model you never see.
+- **A name that points at nothing is reported**, in `config-report.json`, and the pass falls
+  back to the dialogue slot and the active recipe. A pass name this version does not make —
+  `actions`, which is the next one to be built — is reported and ignored.
+
+Nothing here has been measured. Every slot on the dialogue model is what the mod ships and what
+every number in [docs/MODEL_BENCH.md](docs/MODEL_BENCH.md) was measured on; whether a cheap model
+can do the compaction or the repair is an open question, and **a `max_tokens` on the memory slot
+can truncate a compaction, which is a corrupted memory rather than a shorter one.**
+
 - **`installPreset`** — written by the mod, not by you: the provider the FOMOD installer was
   told to use, recorded once it has been applied. It is what stops the installer's answer from
   being re-applied over a choice you made later in the menu. Deleting it makes the next launch
@@ -572,6 +683,12 @@ src/r6/scripts/ai_npc/
   AiNpcRecipeSchema.reds  the vocabulary: which blocks exist, their parts, which may not be dropped
   AiNpcRecipeTemplate.reds  recipes.example.json, which is also the mod's own default recipe
   AiNpcRecipeParse.reds   a recipes file read into recipes, every refusal named
+  AiNpcSlot.reds          a slot: the model and the request parameters one kind of work is
+                          sent with. Copied onto the body, never read key by key
+  AiNpcPass.reds          the four passes, the builders each one names, and the table that
+                          binds a slot and a recipe to each
+  AiNpcModelPreset.reds   light / normal / premium: the block each one writes into settings.json,
+                          in clear, and where a model typed in the window is written
   AiNpcCharacterRender.reds  <character>: the bio, what another mod appended, the register
   AiNpcTargetRender.reds  <target>: who the character is writing to. V, for now
   api/                    THE public surface: everything another mod may call. Nothing outside

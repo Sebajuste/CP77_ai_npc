@@ -41,6 +41,13 @@ func AiNpcLaneThinking() -> String {
     return "thinking";
 }
 
+// The action selection, when the player has moved it out of the conversation. Its own lane
+// because it is its own request with its own cost, once per reply -- which is exactly the
+// number a player deciding between the two modes needs to see in the daily report.
+func AiNpcLaneActions() -> String {
+    return "actions";
+}
+
 // The connection test, a lane rather than a silent request: it is a real send on the real key,
 // and a day it spends is a day the player does not get back.
 //
@@ -63,26 +70,34 @@ public class AiNpcRequestRecord {
     private let m_contactId: String;
     private let m_provider: String;
     private let m_model: String;
+    private let m_slot: String;
     private let m_systemChars: Int32;
     private let m_userChars: Int32;
 
-    // Called on the line that posts, with the two halves of the body it is about to send.
+    // Called on the line that posts, with the slot it goes out on and the two halves of the
+    // body it is about to send.
+    //
+    // The slot is taken rather than the model, because the model is the slot's answer: a line
+    // that read the dialogue model itself would name it whatever sent the request, and the one
+    // failure this format exists to make payable -- a mistyped parameter coming back a 400 --
+    // is only diagnosable if the line says which slot produced it.
     public static func Sent(lane: String, contactId: String, provider: AiNpcProvider,
-            systemText: String, userText: String) -> ref<AiNpcRequestRecord> {
+            slot: ref<AiNpcSlot>, instructionText: String, askText: String) -> ref<AiNpcRequestRecord> {
         let self = new AiNpcRequestRecord();
         self.m_lane = lane;
         self.m_contactId = contactId;
         self.m_provider = AiNpcProviderName(provider);
-        self.m_model = AiNpcLlmChatModel(provider);
-        self.m_systemChars = StrLen(systemText);
-        self.m_userChars = StrLen(userText);
+        self.m_model = AiNpcLlmSlotModel(provider, slot);
+        self.m_slot = AiNpcSlotNameOf(slot);
+        self.m_systemChars = StrLen(instructionText);
+        self.m_userChars = StrLen(askText);
         return self;
     }
 
     // Before the first send of a session, and for a callback that fires with no record behind
     // it. A line that names nobody rather than a null every callback would have to check.
     public static func Idle() -> ref<AiNpcRequestRecord> {
-        return AiNpcRequestRecord.Sent("", "", AiNpcProvider.OpenRouter, "", "");
+        return AiNpcRequestRecord.Sent("", "", AiNpcProvider.OpenRouter, null, "", "");
     }
 
     // The one call the lanes make when a response lands, whatever the status. A failure is
@@ -125,7 +140,7 @@ public class AiNpcRequestRecord {
         // Two halves rather than a total: a single number says a request got bigger without
         // saying whether the memory block or the transcript did it.
         let line = s"request lane=\(this.m_lane) contact=\(this.m_contactId)"
-            + s" provider=\(this.m_provider) model=\(this.m_model)"
+            + s" provider=\(this.m_provider) model=\(this.m_model) slot=\(this.m_slot)"
             + s" chars_system=\(this.m_systemChars) chars_user=\(this.m_userChars)"
             + s" status=\(status)";
 

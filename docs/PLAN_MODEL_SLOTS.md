@@ -1,5 +1,11 @@
 # Plan: one model per kind of work
 
+> **Shipped 2026-08-31 as phase A of `docs/PLAN_PASSES.md`, green offline and never launched.**
+> The format below is what the code implements; read that plan for the pass table that binds a
+> slot to a kind of work, and for the two rules this one left implicit (an alias wins only when
+> it is written in the file; `model` is held out of the overlay so a slot cannot reach a CLI
+> lane). **Step 3 is still owed: `1200` below has never been measured, and no number ships.**
+
 Today every request the mod makes goes to one model: `AiNpcLlmChatModel(provider)` reads a
 single setting, and `AiNpcLlmWithTuning` applies one `max_tokens` and one `reasoning_effort`
 to all of them. A reply the player reads, a memory compaction with a section format to
@@ -118,8 +124,9 @@ and nothing round-trips through `GetKeyString`.
 
 ### Compatibility
 
-`openRouterModel`, `maxTokens` and `reasoningEffort` stay readable and win when present, as
-aliases into `slots.dialogue`. One branch, and no existing `settings.json` stops working —
+`openRouterModel`, `maxTokens` and `reasoningEffort` stay readable, as aliases into
+`slots.dialogue`. **They no longer win**: the order shipped is named slot, dialogue slot, then
+them — see `docs/PLAN_PRESETS.md` §5 for what turned it over. One branch, and no existing `settings.json` stops working —
 nor any screenshot in a bug report.
 
 ### What is deliberately not done

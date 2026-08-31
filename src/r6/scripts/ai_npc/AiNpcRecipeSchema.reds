@@ -19,6 +19,13 @@
 // The second is the one worth spelling out. It already refuses every contribution lane -- no
 // contact override, no prompts.json level, no extension -- because it answers a question that
 // was put to the player. A recipe is not a better position from which to answer it.
+//
+// Both are required OF A CONVERSATION RECIPE, which is what a recipe is until it says
+// otherwise. The two blocks at the end of the table -- <instruction> and <ask> -- name the
+// builders of the two messages a request is made of, and a recipe whose instruction comes
+// from another pass carries neither a <system> block nor an explicitness tier to state. It
+// may then drop them. AiNpcRecipeParse reads that source before the loop below, for that
+// reason and no other.
 
 module AiNpc
 
@@ -26,11 +33,19 @@ class AiNpcRecipeBlockSchema {
     let key: String;
     let parts: array<String>;
     // Whether a recipe may drop it. A required block accepts "full" and refuses everything
-    // else by name.
+    // else by name -- unless the recipe has said it describes another pass's message, which
+    // is the whole of the exemption. See AiNpcRecipeDescribesConversation.
     let required: Bool;
-    // Whether the block takes a "source". One block does; a second one would be a reason to
-    // generalise this, not a reason to have generalised it already.
-    let sourced: Bool;
+    // The sources this block may name, or empty when it takes none. Per block, because the
+    // two message blocks and <target> answer different questions and share no vocabulary.
+    let sources: array<String>;
+}
+
+func AiNpcRecipeIsSourced(entry: ref<AiNpcRecipeBlockSchema>) -> Bool {
+    if !IsDefined(entry) {
+        return false;
+    }
+    return ArraySize(entry.sources) > 0;
 }
 
 // Every block, in prompt order.
@@ -43,7 +58,7 @@ func AiNpcRecipeSchema() -> array<ref<AiNpcRecipeBlockSchema>> {
     // `speech` moved here from the SPEECH rubric of <system_rules> so that "the character,
     // without how they talk" is one part list rather than two keys held in agreement.
     ArrayPush(schema, AiNpcRecipeBlockSchemaOf("character", ["bio", "speech", "additions"]));
-    ArrayPush(schema, AiNpcRecipeSourced("target"));
+    ArrayPush(schema, AiNpcRecipeSourced("target", AiNpcTargetSources()));
     ArrayPush(schema, AiNpcRecipeWhole("relationship"));
     // Three tags, one key. They answer one question between them -- what the world is and what
     // may be done in it -- and a player trimming the prompt trims them together.
@@ -53,6 +68,12 @@ func AiNpcRecipeSchema() -> array<ref<AiNpcRecipeBlockSchema>> {
     ArrayPush(schema, AiNpcRecipeBlockSchemaOf("intent", ["own", "extensions"]));
     ArrayPush(schema, AiNpcRecipeBlockSchemaOf("quest", ["name", "context", "objective"]));
     ArrayPush(schema, AiNpcRecipeBlockSchemaOf("now", ["clock", "weather", "pending", "live"]));
+
+    // Last, and outside the order above, because they render nothing: a request is two
+    // messages, and these two say which builder writes each half. The eleven blocks above are
+    // the instruction's own, and only while its source is "conversation".
+    ArrayPush(schema, AiNpcRecipeMessage("instruction", AiNpcPassInstructionSources()));
+    ArrayPush(schema, AiNpcRecipeMessage("ask", AiNpcPassAskSources()));
 
     return schema;
 }
@@ -83,10 +104,27 @@ func AiNpcRecipeRequired(key: String) -> ref<AiNpcRecipeBlockSchema> {
     return entry;
 }
 
-func AiNpcRecipeSourced(key: String) -> ref<AiNpcRecipeBlockSchema> {
+func AiNpcRecipeSourced(key: String, sources: array<String>) -> ref<AiNpcRecipeBlockSchema> {
     let entry = AiNpcRecipeWhole(key);
-    entry.sourced = true;
+    entry.sources = sources;
     return entry;
+}
+
+// A message: sourced, and not removable. A request has two halves whatever a file says, so
+// there is nothing for "none" to mean here.
+func AiNpcRecipeMessage(key: String, sources: array<String>) -> ref<AiNpcRecipeBlockSchema> {
+    let entry = AiNpcRecipeSourced(key, sources);
+    entry.required = true;
+    return entry;
+}
+
+// The two blocks that describe a message rather than a piece of one. They are required in
+// every recipe, whatever pass it is for, because a request always has two halves.
+func AiNpcRecipeBlockIsMessage(entry: ref<AiNpcRecipeBlockSchema>) -> Bool {
+    if !IsDefined(entry) {
+        return false;
+    }
+    return Equals(entry.key, "instruction") || Equals(entry.key, "ask");
 }
 
 func AiNpcRecipeSchemaOf(key: String) -> ref<AiNpcRecipeBlockSchema> {

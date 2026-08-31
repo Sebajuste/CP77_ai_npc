@@ -42,6 +42,14 @@ func AiNpcRunAllTests() -> ref<AiNpcTestRunner> {
     AiNpcTestRecipeTemplate(t);
     AiNpcTestRecipeRendering(t);
     AiNpcTestRecipeSpeechMoved(t);
+    AiNpcTestSlotResolution(t);
+    AiNpcTestSlotAliases(t);
+    AiNpcTestSlotOverlay(t);
+    AiNpcTestPassSources(t);
+    AiNpcTestPassTable(t);
+    AiNpcTestModelPresets(t);
+    AiNpcTestTruncation(t);
+    AiNpcTestActionSelector(t);
     AiNpcTestArchiveNumber(t);
     AiNpcTestContactHash(t);
     AiNpcTestRomanceFacts(t);

@@ -438,6 +438,48 @@ Dropping `<commands>` drops the pass that repairs a malformed one with it. The t
 recipe, because a bracket in a reply the model was never taught to write is prose, and repairing
 prose against an empty rulebook replaces a good reply with a worse one.
 
+### A pass names the builders; a recipe describes one of them
+
+A request is **two messages**: an instruction and an ask. The diagram above is the instruction
+of one pass out of four — the **speaking** pass — and the transcript at its foot is that pass's
+ask. The other three build both halves themselves: **thinking** sends the compaction instruction
+and the batch to fold, **repair** sends the command vocabulary and the broken tag, **test** sends
+two literals.
+
+So a recipe reaches one message of one pass, and the blocks above are that message's. The two
+last keys of a recipe, `instruction` and `ask`, name the builder of each half — `conversation`,
+`memory`, `commands`, `repair`, `test` — and a recipe that names neither is a conversation
+recipe, which is what every recipe written before this existed is. They exist so that binding a
+recipe to the wrong pass is **refused when the files are read**, rather than rendering nothing at
+all: a recipe saying `character: ["bio"]` bound to `thinking` would trim a block that pass never
+renders.
+
+`passes` in `settings.json` is what binds them, and it is optional in both directions:
+
+```
+passes.speaking.slot    →  slots.<name>     (settings.json)   which model, which parameters
+passes.speaking.recipe  →  recipes.<name>   (recipes.json)    what the instruction renders
+```
+
+**Where a command is chosen is a setting, not a recipe.** Mod Settings > Command Handling has
+two values. `Embedded`, the default, is what the prompt chapter above describes: `<commands>` is
+a block of the conversation prompt, the character writes a bracket inside its reply, and the mod
+takes it out again on the way to the bubble. `Dedicated` removes that block from the
+conversation and gives the choice to the `actions` pass — `AiNpcActionService`, one request per
+delivered reply, carrying the command table, the last few messages and the reply itself, and
+nothing else. Its answer goes through the same `AiNpcApplyActions` a bracket would, so the two
+modes differ in when a command is looked for and never in which ones exist.
+
+The three presets — light, normal, premium — are nothing more than that block, written into
+`settings.json` in clear by the setup window and owned by the player from then on
+(`AiNpcModelPreset.reds`, `docs/PLAN_PRESETS.md`). They are a starting point, not a mode: the
+mod never re-applies one, and `modelPreset` is a stamp saying which one wrote what is there.
+
+With no `passes` block every pass is on the `dialogue` slot and on the recipe `active` names,
+which is what the mod sent before either table existed. That is also why the required blocks
+have an exemption: `<system>` and `<explicitness>` cannot be dropped **by a conversation
+recipe**, and a recipe that declares an instruction source from another pass carries neither.
+
 ### Two of those blocks are composed, not written
 
 `<system_rules>` and `<interactions>` are **lists of keyed rubrics in a fixed order**, not

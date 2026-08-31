@@ -44,6 +44,12 @@ func AiNpcCliLaneTest() -> Int32 {
     return 4;
 }
 
+// The action selection. A fifth code and no C++ change: the plugin composes nothing, it echoes
+// back the id it was handed, so a lane added here is a lane the plugin already routes.
+func AiNpcCliLaneActions() -> Int32 {
+    return 5;
+}
+
 /// Composing and taking apart ///
 
 func AiNpcCliRequestSpan() -> Int32 {
@@ -90,6 +96,15 @@ public func AiNpcCliDeliver(requestId: Int32, status: Int32, body: String, date:
             .Get(NameOf<AiNpcMemoryService>()) as AiNpcMemoryService;
         if IsDefined(memory) {
             memory.OnCliMemoryReply(serial, reply);
+        }
+        return;
+    }
+
+    if Equals(lane, AiNpcCliLaneActions()) {
+        let actions = GameInstance.GetScriptableSystemsContainer(GetGameInstance())
+            .Get(NameOf<AiNpcActionService>()) as AiNpcActionService;
+        if IsDefined(actions) {
+            actions.OnCliActionReply(serial, reply);
         }
         return;
     }

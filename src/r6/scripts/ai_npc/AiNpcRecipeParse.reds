@@ -104,6 +104,21 @@ func AiNpcRecipeBookHas(book: ref<AiNpcRecipeBook>, name: String) -> Bool {
     return false;
 }
 
+func AiNpcRecipeBookNamed(book: ref<AiNpcRecipeBook>, name: String) -> ref<AiNpcRecipe> {
+    if !IsDefined(book) {
+        return null;
+    }
+    let i = 0;
+    let count = ArraySize(book.recipes);
+    while i < count {
+        if Equals(book.recipes[i].name, name) {
+            return book.recipes[i];
+        }
+        i += 1;
+    }
+    return null;
+}
+
 /// One recipe ///
 
 // Every recipe is a DIFFERENCE from the full render, never a declaration of it. A key the
@@ -116,6 +131,11 @@ func AiNpcRecipeFromJson(body: ref<JsonObject>, name: String, fileName: String,
 
     AiNpcRecipeReportUnknown(body, AiNpcRecipeBlockNames(), fileName, s"\(name).", issues);
 
+    // Read before the loop, and this is the only thing that needs it: <system> and
+    // <explicitness> are required of a recipe that describes the conversation, and a recipe
+    // written for another pass carries neither.
+    let conversation = AiNpcRecipeDescribesConversation(body);
+
     let schema = AiNpcRecipeSchema();
     let i = 0;
     let count = ArraySize(schema);
@@ -123,36 +143,52 @@ func AiNpcRecipeFromJson(body: ref<JsonObject>, name: String, fileName: String,
         let entry = schema[i];
         if body.HasKey(entry.key) {
             recipe = AiNpcRecipeWith(recipe,
-                AiNpcRecipeBlockFromJson(body, entry, s"\(fileName): \(name).\(entry.key)", issues));
+                AiNpcRecipeBlockFromJson(body, entry, conversation,
+                    s"\(fileName): \(name).\(entry.key)", issues));
         }
         i += 1;
     }
     return recipe;
 }
 
+// A recipe is a conversation recipe until it says otherwise: silence is not a declaration,
+// and a file that has never heard of the instruction block is every file written before this
+// version. Only an instruction source naming another pass's builder exempts it.
+func AiNpcRecipeDescribesConversation(body: ref<JsonObject>) -> Bool {
+    if !IsDefined(body) {
+        return true;
+    }
+    let declared = AiNpcJsonString(AiNpcJsonObjectAt(body, "instruction"), "source");
+    if Equals(StrLen(declared), 0) {
+        return true;
+    }
+    return Equals(declared, AiNpcPassInstructionSource(AiNpcLaneSpeaking()));
+}
+
 // One block's value, in whichever of the five shapes it was written: an object, a list of
 // parts, a level, a boolean, or null.
 func AiNpcRecipeBlockFromJson(body: ref<JsonObject>, entry: ref<AiNpcRecipeBlockSchema>,
-                              where: String, out issues: array<ref<AiNpcConfigIssue>>) -> ref<AiNpcRecipeBlock> {
+                              conversation: Bool, where: String,
+                              out issues: array<ref<AiNpcConfigIssue>>) -> ref<AiNpcRecipeBlock> {
     let value = body.GetKey(entry.key);
 
     if IsDefined(value) && value.IsObject() {
-        return AiNpcRecipeBlockFromObject(value as JsonObject, entry, where, issues);
+        return AiNpcRecipeBlockFromObject(value as JsonObject, entry, conversation, where, issues);
     }
     if IsDefined(value) && value.IsArray() {
         return AiNpcRecipeBlockOfParts(entry,
-            AiNpcRecipePartsFromArray(value as JsonArray, entry, where, issues));
+            AiNpcRecipePartsFromArray(value as JsonArray, entry, conversation, where, issues));
     }
     if IsDefined(value) && value.IsString() {
         return AiNpcRecipeBlockOfParts(entry,
-            AiNpcRecipePartsFromLevel(value.GetString(), entry, where, issues));
+            AiNpcRecipePartsFromLevel(value.GetString(), entry, conversation, where, issues));
     }
 
     if IsDefined(value) && value.IsBool() {
         if value.GetBool() {
             return AiNpcRecipeBlockOfParts(entry, entry.parts);
         }
-        return AiNpcRecipeBlockOfParts(entry, AiNpcRecipeDropped(entry, where, issues));
+        return AiNpcRecipeBlockOfParts(entry, AiNpcRecipeDropped(entry, conversation, where, issues));
     }
 
     // A number is nobody's way of saying anything about a block, so it is named rather than
@@ -171,30 +207,31 @@ func AiNpcRecipeBlockFromJson(body: ref<JsonObject>, entry: ref<AiNpcRecipeBlock
     // branch is written rather than inherited. An absent key keeps the mod's answer, so a
     // block added by a later version reaches a file written today; a key written as null is
     // somebody saying "not this one", out loud, in a file they edited on purpose.
-    return AiNpcRecipeBlockOfParts(entry, AiNpcRecipeDropped(entry, where, issues));
+    return AiNpcRecipeBlockOfParts(entry, AiNpcRecipeDropped(entry, conversation, where, issues));
 }
 
 func AiNpcRecipeBlockFromObject(obj: ref<JsonObject>, entry: ref<AiNpcRecipeBlockSchema>,
-                                where: String, out issues: array<ref<AiNpcConfigIssue>>) -> ref<AiNpcRecipeBlock> {
+                                conversation: Bool, where: String,
+                                out issues: array<ref<AiNpcConfigIssue>>) -> ref<AiNpcRecipeBlock> {
     AiNpcRecipeReportUnknown(obj, ["level", "parts", "source"], where, "", issues);
 
     let parts = entry.parts;
     if obj.HasKey("parts") {
-        parts = AiNpcRecipePartsFromArray(AiNpcJsonArrayAt(obj, "parts"), entry, where, issues);
+        parts = AiNpcRecipePartsFromArray(AiNpcJsonArrayAt(obj, "parts"), entry, conversation, where, issues);
     } else {
         if obj.HasKey("level") {
-            parts = AiNpcRecipePartsFromLevel(AiNpcJsonString(obj, "level"), entry, where, issues);
+            parts = AiNpcRecipePartsFromLevel(AiNpcJsonString(obj, "level"), entry, conversation, where, issues);
         }
     }
 
     let block = AiNpcRecipeBlockOfParts(entry, parts);
     let source = AiNpcJsonString(obj, "source");
     if NotEquals(StrLen(source), 0) {
-        if !entry.sourced {
+        if !AiNpcRecipeIsSourced(entry) {
             ArrayPush(issues, AiNpcConfigIssueOf("warning", where,
                 s"\"source\" means nothing to this block; it is ignored."));
         } else {
-            let known = AiNpcTargetSources();
+            let known = entry.sources;
             if !ArrayContains(known, source) {
                 ArrayPush(issues, AiNpcConfigIssueOf("error", where,
                     s"source \"\(source)\" is not one of: \(AiNpcRecipeJoinNames(known)). The block keeps its built-in source."));
@@ -212,12 +249,13 @@ func AiNpcRecipeBlockFromObject(obj: ref<JsonObject>, entry: ref<AiNpcRecipeBloc
 // player types a word of their own -- "short", "brief" -- and a silent fallback there would
 // be the whole feature failing quietly.
 func AiNpcRecipePartsFromLevel(level: String, entry: ref<AiNpcRecipeBlockSchema>,
-                               where: String, out issues: array<ref<AiNpcConfigIssue>>) -> array<String> {
+                               conversation: Bool, where: String,
+                               out issues: array<ref<AiNpcConfigIssue>>) -> array<String> {
     if Equals(level, "full") {
         return entry.parts;
     }
     if Equals(level, "none") {
-        return AiNpcRecipeDropped(entry, where, issues);
+        return AiNpcRecipeDropped(entry, conversation, where, issues);
     }
 
     ArrayPush(issues, AiNpcConfigIssueOf("error", where,
@@ -229,7 +267,8 @@ func AiNpcRecipePartsFromLevel(level: String, entry: ref<AiNpcRecipeBlockSchema>
 // parts is the mod's -- <memory> reads oldest and blurriest first, and a file listing them
 // backwards must not reverse the block.
 func AiNpcRecipePartsFromArray(items: ref<JsonArray>, entry: ref<AiNpcRecipeBlockSchema>,
-                               where: String, out issues: array<ref<AiNpcConfigIssue>>) -> array<String> {
+                               conversation: Bool, where: String,
+                               out issues: array<ref<AiNpcConfigIssue>>) -> array<String> {
     let requested: array<String>;
     if IsDefined(items) {
         let i: Uint32 = 0u;
@@ -259,7 +298,7 @@ func AiNpcRecipePartsFromArray(items: ref<JsonArray>, entry: ref<AiNpcRecipeBloc
     }
 
     if ArraySize(ordered) == 0 {
-        return AiNpcRecipeDropped(entry, where, issues);
+        return AiNpcRecipeDropped(entry, conversation, where, issues);
     }
     return ordered;
 }
@@ -267,9 +306,14 @@ func AiNpcRecipePartsFromArray(items: ref<JsonArray>, entry: ref<AiNpcRecipeBloc
 // Dropping a block, or being told why it cannot be dropped. The schema answers, so the two
 // required blocks are stated once in the table instead of as a branch here and a sentence in
 // the documentation.
-func AiNpcRecipeDropped(entry: ref<AiNpcRecipeBlockSchema>, where: String,
+func AiNpcRecipeDropped(entry: ref<AiNpcRecipeBlockSchema>, conversation: Bool, where: String,
                         out issues: array<ref<AiNpcConfigIssue>>) -> array<String> {
-    if entry.required {
+    if entry.required && AiNpcRecipeBlockIsMessage(entry) {
+        ArrayPush(issues, AiNpcConfigIssueOf("error", where,
+            "this block cannot be removed: a request is two messages, and this one names one of them. It keeps its source."));
+        return entry.parts;
+    }
+    if entry.required && conversation {
         ArrayPush(issues, AiNpcConfigIssueOf("error", where,
             "this block cannot be removed: it carries what the mod and the player decided, not what a character says. It keeps every part."));
         return entry.parts;

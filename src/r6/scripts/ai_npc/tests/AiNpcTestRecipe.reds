@@ -37,8 +37,21 @@ func AiNpcTestRecipeSchema(t: ref<AiNpcTestRunner>) -> Void {
     t.Check("recipe/system is required", AiNpcRecipeSchemaOf("system").required);
     t.Check("recipe/explicitness is required", AiNpcRecipeSchemaOf("explicitness").required);
     t.Check("recipe/character can be dropped", !AiNpcRecipeSchemaOf("character").required);
-    t.Check("recipe/target carries a source", AiNpcRecipeSchemaOf("target").sourced);
-    t.Check("recipe/memory carries no source", !AiNpcRecipeSchemaOf("memory").sourced);
+    t.Check("recipe/target carries a source", AiNpcRecipeIsSourced(AiNpcRecipeSchemaOf("target")));
+    t.Check("recipe/memory carries no source", !AiNpcRecipeIsSourced(AiNpcRecipeSchemaOf("memory")));
+
+    // The two message blocks. A request is two messages whatever a file says, so neither can
+    // be dropped -- and they are the only blocks that render nothing themselves: they name the
+    // builder that writes each half.
+    t.Check("recipe/the instruction is a block",
+        IsDefined(AiNpcRecipeSchemaOf("instruction")));
+    t.Check("recipe/the ask is a block", IsDefined(AiNpcRecipeSchemaOf("ask")));
+    t.Check("recipe/the instruction carries a source",
+        AiNpcRecipeIsSourced(AiNpcRecipeSchemaOf("instruction")));
+    t.Check("recipe/the ask cannot be dropped",
+        AiNpcRecipeSchemaOf("ask").required);
+    t.Check("recipe/a part of the prompt is not a message",
+        !AiNpcRecipeBlockIsMessage(AiNpcRecipeSchemaOf("system")));
     t.Check("recipe/an unknown block has no schema entry",
         !IsDefined(AiNpcRecipeSchemaOf("no_such_block")));
 }
@@ -158,6 +171,40 @@ func AiNpcTestRecipeRefusals(t: ref<AiNpcTestRunner>) -> Void {
         AiNpcRecipeHas(stubborn, "explicitness"));
     t.Check("recipe/system survives being dropped", AiNpcRecipeHas(stubborn, "system"));
 
+    // And they are required OF A CONVERSATION RECIPE, which is what a recipe is until it says
+    // otherwise. One written for the compaction pass carries neither a <system> block nor a
+    // tier the player consented to, so it may drop both -- and a file that has never heard of
+    // the instruction block, which is every file written before this version, may not.
+    let exempt: array<ref<AiNpcConfigIssue>>;
+    let elsewhere = AiNpcTestRecipeOf(
+        "{\"instruction\": {\"source\": \"memory\"}, \"explicitness\": null, \"system\": null}", exempt);
+    t.EqInt("recipe/another pass's recipe drops them in silence", ArraySize(exempt), 0);
+    t.Check("recipe/and they really are dropped", !AiNpcRecipeHas(elsewhere, "system"));
+
+    let stillSpeaking: array<ref<AiNpcConfigIssue>>;
+    AiNpcTestRecipeOf("{\"instruction\": {\"source\": \"conversation\"}, \"system\": null}", stillSpeaking);
+    t.EqInt("recipe/a declared conversation recipe still refuses", ArraySize(stillSpeaking), 1);
+
+    // Neither message block can go, whatever the recipe is for: a request has two halves.
+    let halves: array<ref<AiNpcConfigIssue>>;
+    let both = AiNpcTestRecipeOf(
+        "{\"instruction\": {\"source\": \"memory\"}, \"ask\": null}", halves);
+    t.EqInt("recipe/a message cannot be removed", ArraySize(halves), 1);
+    t.EqString("recipe/removing a message is an error", halves[0].severity, "error");
+    t.Check("recipe/the message block stands", AiNpcRecipeHas(both, "ask"));
+
+    // The source list is the block's own. <target> knows nothing of the passes, and the two
+    // message blocks know nothing of who is being written to.
+    let crossed: array<ref<AiNpcConfigIssue>>;
+    AiNpcTestRecipeOf("{\"target\": {\"source\": \"memory\"}}", crossed);
+    t.EqInt("recipe/a source from another block is refused", ArraySize(crossed), 1);
+
+    let asked: array<ref<AiNpcConfigIssue>>;
+    let repair = AiNpcTestRecipeOf("{\"ask\": {\"source\": \"repair\"}}", asked);
+    t.EqInt("recipe/a pass source is taken", ArraySize(asked), 0);
+    t.EqString("recipe/a pass source is stored",
+        AiNpcRecipeSourceOf(repair, "ask"), "repair");
+
     // The source is a closed list, checked when the file is read rather than discovered as a
     // missing block ten minutes into a conversation.
     let source: array<ref<AiNpcConfigIssue>>;
@@ -253,6 +300,11 @@ func AiNpcTestRecipeTemplate(t: ref<AiNpcTestRunner>) -> Void {
     t.EqInt("recipe/the template renders every block at every part", missing, 0);
 
     // And the example of a trimmed one is a real trim, or it documents nothing.
+    // The default declares what it is: a conversation recipe. Silence would mean the same
+    // thing, and saying it is what documents the vocabulary a second recipe needs.
+    t.EqString("recipe/the template's default renders the conversation",
+        AiNpcRecipeSourceOf(active, "instruction"), "conversation");
+
     let compact = AiNpcTestRecipeNamed(book, "compact");
     t.Check("recipe/the template ships a trimmed example", IsDefined(compact));
     if IsDefined(compact) {
