@@ -748,6 +748,8 @@ docs/
   DISTRIBUTION.md         which lanes may be shipped, and to whom
   CREDITS.md              where the mod comes from, and what it owes
   PLAN_*.md               work briefed and not yet done
+  BRIEF_*.md              work briefed for one agent working alone: everything it needs,
+                          the question that can end it early, and what it may not claim
   ROADMAP.md              ideas deliberately deferred: what each would buy, and what to measure first
   branding/               the AGENT LINK icon, the AI NPC Nexus image, and how a .png becomes
                           an icon on a terminal
@@ -765,6 +767,9 @@ tools/
   inkatlas/, archive/     the two C# helpers those two use (WolvenKit 8.20 DLLs, dotnet 8)
   prompt/                 rebuilds offline the exact prompt the mod sends, and compares it
                           byte for byte to a capture. Run by test.ps1 -- see Tests
+  tts-lab/                the speech bench: the same replies through every engine, timed,
+                          with the machine that produced the numbers. Nothing ships from
+                          here -- it exists to settle which voice a given PC can afford
 ```
 
 **What is not here.** The bench that chose the shipped defaults lives in a separate,
