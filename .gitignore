@@ -20,3 +20,8 @@ tools/prompt/out/
 
 # Outillage d'agent et permissions locales
 .claude/
+
+# Le banc de synthese: les moteurs telecharges et les .wav produits. Des dizaines de Mo par
+# voix, refabricables par fetch.ps1 -- rien de tout cela n'est une source.
+tools/tts-lab/engines/
+tools/tts-lab/out/

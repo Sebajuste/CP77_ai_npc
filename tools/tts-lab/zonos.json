@@ -1,0 +1,18 @@
+{
+  "_comment": "Zonos, servi par la release SkyrimNet. L'ordre des arguments est lu sur le serveur; on ne met ici que ce qu'on veut changer, par NOM.",
+  "url": "http://127.0.0.1:7860",
+  "parameters": {
+    "language": "fr-fr",
+    "speaker_audio": null,
+    "_note_speaker": "chemin d'un .wav de reference pour cloner; None = voix par defaut du modele",
+    "pitch_std": 45.0,
+    "_note_pitch": "libelle du serveur: normal 20-45, expressif 60-150",
+    "speaking_rate": 15.0,
+    "unconditional_keys": [
+      "emotion"
+    ],
+    "_note_emotion": "l'emotion est DEBRANCHEE tant que 'emotion' est dans cette liste. La vider active e1..e8 (Happiness, Sadness, Disgust, Fear, Surprise, Anger, Other, Neutral).",
+    "randomize_seed": false,
+    "seed": 420
+  }
+}

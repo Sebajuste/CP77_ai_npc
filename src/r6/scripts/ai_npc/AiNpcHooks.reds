@@ -146,6 +146,22 @@ public final func SetActive(isActive: Bool) -> Void {
     }
 }
 
+// The call's two prompts are the game's own dialogue choices, so the press arrives at the
+// player rather than at the phone controller -- the phone is put away while a call is up.
+//
+// Reported before wrappedMethod for the same reason as the phone's handler: the answer decides
+// whether the game sees the press at all.
+@wrapMethod(PlayerPuppet)
+protected cb func OnAction(action: ListenerAction, consumer: ListenerActionConsumer) -> Bool {
+    let call = AiNpcCallSystem.Get();
+    if IsDefined(call)
+        && call.ReportAction(ListenerAction.GetName(action), ListenerAction.GetType(action)) {
+        return true;
+    }
+
+    return wrappedMethod(action, consumer);
+}
+
 @wrapMethod(PlayerPuppet)
 protected cb func OnCombatStateChanged(newState: Int32) -> Bool {  // newState uses the values specified in enum PlayerCombatState
     let r: Bool = wrappedMethod(newState);

@@ -7,7 +7,14 @@
 # It links only the files that have no RED4ext dependency, which is not a limitation but the
 # design: a backend that needed the game to be asserted would be a backend nobody asserts.
 #
-# Usage: powershell -File plugin\test\run.ps1
+# Usage: powershell -File plugin\test\run.ps1 [-Audible]
+#
+# -Audible makes the audio case play a tone instead of silence. Off by default: a suite
+# that beeps during unrelated work is a suite people stop running.
+
+param(
+    [switch]$Audible
+)
 
 $ErrorActionPreference = "Stop"
 
@@ -17,6 +24,8 @@ $outDir = Join-Path $root "plugin\build\test"
 # Plugin.cpp and ScriptApi.cpp are deliberately absent: they are the RED4ext half, and their
 # correctness is a launch checklist rather than a fixture.
 $sources = @(
+    "plugin\Audio.cpp",
+    "plugin\Speech.cpp",
     "plugin\Json.cpp",
     "plugin\Transport.cpp",
     "plugin\Process.cpp",
@@ -43,7 +52,9 @@ if (-not (Test-Path $vcvars)) { throw "vcvars64.bat not found at $vcvars" }
 New-Item -ItemType Directory -Path $outDir -Force | Out-Null
 
 $quoted = ($sources | ForEach-Object { "`"$_`"" }) -join " "
-$compile = "cl.exe /nologo /EHsc /std:c++20 /W3 /MD /O2 /DNDEBUG $quoted /Fe:ai_npc_tests.exe"
+# winmm.lib: Audio.cpp plays a buffer through waveOut, which is the only path that needs
+# no file on disk anywhere.
+$compile = "cl.exe /nologo /EHsc /std:c++20 /W3 /MD /O2 /DNDEBUG $quoted /Fe:ai_npc_tests.exe /link winmm.lib ole32.lib"
 
 Write-Output "Building the plugin test host..."
 $log = & cmd.exe /c "`"$vcvars`" >nul 2>&1 && cd /d `"$outDir`" && $compile" 2>&1
@@ -55,7 +66,9 @@ $log | Where-Object { $_ -match 'error|warning C' } | ForEach-Object { Write-Out
 
 $exe = Join-Path $outDir "ai_npc_tests.exe"
 Write-Output ""
-& $exe
+$arguments = @()
+if ($Audible) { $arguments += "-Audible" }
+& $exe @arguments
 $code = $LASTEXITCODE
 
 if ($code -ne 0) {

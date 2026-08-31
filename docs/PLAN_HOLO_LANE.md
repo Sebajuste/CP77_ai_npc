@@ -18,9 +18,17 @@ The steps below are ordered so that each one is verifiable alone and can kill th
 them in order and stop at the first that fails: the value of this plan is in what it lets you
 abandon cheaply, not in what it builds.
 
-**No existing file may change behaviour.** A step that needs the phone, the terminal, the
-session or the registry to be edited has found a wrong seam. Stop, say so, and do not paper
-over it — this is the whole subject of rule 2 of `CLAUDE.md`.
+**No existing file may change behaviour.** A step that needs the phone, the terminal or the
+registry to be edited has found a wrong seam. Stop, say so, and do not paper over it — this is
+the whole subject of rule 2 of `CLAUDE.md`.
+
+Step 0 is the one exception, and it is an exception because it was argued in writing rather
+than discovered halfway through a step: the channel takes ownership of the send and the
+delivery, which are written twice today. Every default reads Text and no existing behaviour
+changes — and the step that does it is verified on the phone and the terminal, before any holo
+exists. `docs/PLAN_HOLO_CHANNEL.md` § 7 holds
+the list. Anything else that wants out of this rule gets the same treatment or does not
+happen.
 
 The agent builds zips and runs the offline checks. The user installs through Vortex and
 launches. Nothing here is deployed by an agent.
@@ -51,6 +59,12 @@ So the holo is `AiNpcHolo*`, beside `AiNpcPhone*` and `AiNpcTerminal*`, and the 
 the whole of it.
 
 Two things are genuinely new, and they are the only two places this plan can go wrong.
+
+**A third one was found after this plan was written, and it invalidates the table above.** The
+holo is spoken, so what is said on it must not appear as a written message, while the memory
+stays shared. That is not a surface, it is a second **channel**, and a channel is a property of
+the stored line rather than of the widget that paints it. The model is
+`docs/PLAN_HOLO_CHANNEL.md`; it adds a step 0 to § 5 and amends § 8.
 
 ### The call is a state, not a surface
 
@@ -93,7 +107,11 @@ Idle --> Dialing --> Ringing --> Connected --> Ended
   the session that armed it, so it resolves through its lane or does nothing.
 - **Connected** is the only transition that crosses `AiNpcChatDoor`. A call that is never
   picked up must not open a conversation, must not publish `ConversationOpened`, and must not
-  reach the memory service.
+  reach the memory service. **It crosses the door on the holo's session, never on the phone's:**
+  the conversation a call opens is a spoken one, and opening the written thread instead is the
+  defect `docs/PLAN_HOLO_CHANNEL.md` exists to prevent. So the crossing waits for the channel
+  (step 0) and the surface (step 4); it is absent from step 2 rather than faked through the
+  phone.
 - **Ended** tears the widgets down, which unregisters the session — in that order, per rule 1.
 
 **A call does not survive a save.** No persistent field, no restore. A save taken mid-call
@@ -125,14 +143,19 @@ New, and nothing else:
 
 Touched:
 
+- the files of step 0, listed in `docs/PLAN_HOLO_CHANNEL.md` § 9, plus the three new `AiNpcChannel*`.
 - `AiNpcHooks.reds` — only if the call needs a vanilla callback, and then it reports a fact.
-- `tools\lint.ps1` — the four rules in § 6.
-- `src\r6\audioware\ai_npc\` — the manifest and the `.wav`. A new kind of artefact under
-  `src\`, so `tools\package.ps1` must learn to copy it, and the check afterwards is the
-  **contents of the zip**, never the contents of `src\`.
+- `tools\lint.ps1` — the four rules in § 6, plus the two the channel adds.
+- `plugin\Audio.{hpp,cpp}` — playing a buffer, with no RED4ext dependency, which is what lets
+  `plugin\test\run.ps1` build and run it outside the game.
+- `plugin\ScriptApi.cpp` and `AiNpcAudioNative.reds` — the second native class. Read the head of
+  `AiNpcCliNative.reds` first: each declared type is one more line in the error that stops the
+  **game** from starting when a plugin fails to load.
 
-`tools\package.ps1` needs nothing new unless an asset appears. If one does, extend the packager
-and **check the contents of the zip, not the contents of `src\`.**
+**No asset, so the packager needs nothing.** The tone is synthesised in the DLL. `src\r6\audioware\`
+was planned for a manifest and a `.wav`, and neither exists: if one ever does, extending
+`tools\package.ps1` is part of adding it, and the check afterwards is the **contents of the zip**,
+never the contents of `src\`.
 
 ### The input field comes from the terminal, not the phone
 
@@ -146,6 +169,80 @@ speech-to-text lane replaces a field the mod wrote itself.
 
 ## 4. The audio seam
 
+**Measured on 2026-08-31, in game, and it replaces the whole of what this section argued.**
+
+`ai_npc.dll` plays a PCM buffer held in memory through `waveOut`. No file is written, none is
+read, and Audioware is not in the loop. From a save, through the CET window's *Test speaker*
+button, the log said:
+
+```
+AiNpc.AiNpcCli registered.
+AiNpc.AiNpcAudio registered.
+beep: ok -- it went to the Windows default output (5 output(s) on this machine)
+```
+
+and it was heard. Three things are settled by those three lines:
+
+- **the game does not hold the audio device exclusively.** This was the one verdict that ended
+  the voice lane, and it is lifted: `waveOutOpen` was accepted from inside the running game;
+- **two native classes pass the script blob validation.** The boot risk of adding
+  `AiNpc.AiNpcAudio` beside `AiNpc.AiNpcCli` did not fire;
+- **a generated sound plays.** Not a declared one -- the tone is synthesised in the DLL, so it
+  has no manifest entry and no asset in the zip, which is exactly the shape a text-to-speech
+  lane produces.
+
+### The route not taken: a file, and Audioware
+
+**Neither is used.** No `.wav` is shipped, written or read; Audioware is not a dependency and
+the word appears nowhere in the code but one comment. What follows is why that route was
+rejected, kept so that nobody proposes it again -- the disk is closed on both sides, and no
+reading of the code can show it.
+
+`r6\audioware\` carries `__folder_managed_by_vortex` and its files answer **2 links** --
+
+```
+r6/audioware/CourierJobs/cj_boot.wav    2 links
+```
+
+-- so Audioware's depot is Vortex's, and its contents are hardlinks into the staging folder.
+Writing a generated `.wav` there writes **through the link, into the source copy of the mod**,
+silently, once per reply. The trap `CLAUDE.md` records for `r6\scripts\` is the same one.
+
+The mod's only writable place is `r6\storages\`, precisely because Vortex does not manage it
+(shipped files there answer 2 links; `anon-report.json`, written at runtime, answers 1). That
+is not a depot Audioware reads.
+
+Audioware itself is a RED4ext plugin that plays custom audio declared **at load**, in a YAML
+manifest, addressed by `CName`, with a dedicated `PlayOverThePhone` entry point. It cannot play
+a file produced at runtime: `HotReload()` is `private` to `module Audioware` and documented as
+doing nothing in a release build. So both halves of the file route are closed, and what is left
+is a buffer -- which now has a measurement behind it rather than a plan.
+
+### What it costs, and what it is not
+
+Playing outside the game's audio engine means no ducking against game audio, no game volume
+slider, playback that continues while the game is paused, and the system default output rather
+than the game's. Those are consequences of the route, not defects to fix here.
+
+**Measured 2026-08-31: the beep is heard over game audio, with no difficulty.** So the missing
+ducking is not a practical problem at this level, which was the one cost of the route with a
+chance of deciding anything. It says nothing about a full spoken line over combat.
+
+**Choosing the output belongs in the CET window** (noted 2026-08-31, not built). The test
+machine has five outputs and `WAVE_MAPPER` follows the Windows default, so a player wearing a
+headset the system does not call default hears nothing while every check passes. `Audio::Outputs()`
+already lists them; what is missing is a device parameter on `Play` and a setting to hold the
+choice. It is a setting, not a workaround: on a machine like that one, "which output does the
+voice use" is a real question with no right default. Audioware
+remains the answer **if** mixing turns out to matter for a shipped beep, and only for sounds
+that can be declared at load.
+
+**And a beep is not a voice.** What is proven is that arbitrary samples held in memory reach
+the speakers from inside the running game. What is not: the latency of a real synthesis chunk,
+several chunks played back to back without a gap, and whether any of it sounds like a person.
+
+### The seam in script
+
 redscript has no function values, so a callback is an object with one virtual method:
 
 ```
@@ -158,87 +255,69 @@ The renderer holds a speaker **or none**, and none means silent while everything
 That is what makes the audio lane optional by construction rather than by a setting somebody
 can get wrong.
 
-### The implementation is Audioware, and no C++ is needed
-
-Measured 2026-08-29 against the copy installed on this machine (`red4ext\plugins\audioware`,
-`r6\scripts\Audioware`). Audioware is a RED4ext plugin that plays custom audio files — `.wav`,
-`.ogg`, `.mp3`, `.flac` — declared in a YAML manifest and addressed by `CName`:
-
-```
-GetAudioSystemExt(game).PlayOverThePhone(n"ainpc_beep", emitterName, gender);
-```
-
-`PlayOverThePhone` is a dedicated entry point, not a repurposed one: the plugin already treats
-"a voice arriving through a call" as a case worth its own routing. `Play` takes a
-`scnDialogLineType` and `DefineSubtitles` registers subtitles for custom audio, so the
-dialogue-line and subtitle machinery is reachable from the same place.
-
-This removes the entire plugin half of this plan. No native to add, no `ScriptApi.cpp` change,
-no DLL-and-scripts version pairing to warn about.
-
-**Audioware is an optional dependency**, guarded like BrowserExtension:
-`@if(ModuleExists("Audioware"))`. The name is compared **case-sensitively** — a mistyped guard
-leaves the degraded half live and every compilation pass stays green.
-
-### What Audioware does not do, and it is the voice lane's real question
-
-Sounds are declared **at load**, in a manifest, and addressed by name. There is no API taking a
-path, and `HotReload()` is `private` to `module Audioware` *and* documented as doing nothing in
-a release build. A file produced at runtime — which is exactly what a TTS lane produces — has
-no manifest entry and cannot be played through Audioware as shipped.
-
-And **writing the file first is not a way round it**, for a reason that has nothing to do with
-Audioware. Measured 2026-08-29: `r6\audioware\` carries `__folder_managed_by_vortex`, and its
-files answer **2 links** —
-
-```
-r6/audioware/CourierJobs/cj_boot.wav    2 links
-```
-
-— so Audioware's depot is Vortex's, and its contents are hardlinks into the staging folder.
-Writing a generated `.wav` there writes **through the link, into the source copy of the mod**,
-silently, once per reply. The trap `CLAUDE.md` records for `r6\scripts\` is the same one.
-
-The mod's only writable place is `r6\storages\`, precisely because Vortex does not manage it
-(shipped files there answer 2 links, `anon-report.json`, written at runtime, answers 1). That
-is not a depot Audioware reads.
-
-So the disk is closed on both sides, and the consequence is a decision rather than a list of
-options:
-
-> **The beep is Audioware's. The voice is not, and the voice never touches disk.**
-
-A shipped `.wav` deployed by Vortex is exactly Audioware's supported case, and step 1 stands as
-written. A generated utterance belongs to `ai_npc.dll` — which already spawns processes for the
-CLI lanes — held in memory and played from there, outside the game's audio engine, with
-everything that costs: no mixing, no ducking, no volume setting.
-
-If an upstream request is ever worth making, it is therefore not "reload the manifest". It is
-"accept a buffer, or a path outside the mod depot".
-
 ---
 
 ## 5. Step order, with kill criteria
 
-**Step 1 — the beep, through Audioware.** A manifest, one `.wav`, one call to
-`PlayOverThePhone` from the CET console. No holo, no call, no widget, no C++.
+**Step 0 — the channel.** No pixels, no sound, no call: the field on the message, its JSON
+round trip, the channel on the generation, the two pure predicates, the call marker. Wholly
+offline. It comes first because it is the only part of this design that cannot be retrofitted
+once voice lines exist in players' journals. Stated in full in `docs/PLAN_HOLO_CHANNEL.md` § 7.
 
-> **Kill:** no sound at all, or a crash. Then this POC has no audio and the holo is a worse
-> phone — stop and report it.
+> **Kill:** the phone's behaviour changes at all on a thread with no voice line in it. Then the
+> default is not where it should be — stop.
+
+**Step 1 — the beep. DONE, measured in game on 2026-08-31.** Not through Audioware: a tone
+generated in `ai_npc.dll` and played from memory through `waveOut`, triggered by *Test speaker*
+in the CET window's Setup tab. The kill criterion — the game holding the audio device — did not
+fire. § 4 holds the log and what it settles.
+
+> **What it does not say:** a beep is not a voice. Synthesis latency, chunks played back to
+> back, and whether it sounds like a person are all still unmeasured. Never report step 1 as
+> "the voice lane works".
+
+**Step 2 — the call, with no holo. BUILT 2026-08-31, offline-green, never launched.**
+`AiNpcCallState.reds` (the transitions, pure), `AiNpcCallSystem.reds` (the machine and its
+timers), `tests\AiNpcTestCallState.reds`, and a *Call* tab in the CET window. The entry point is
+that tab and not a button on the phone, which is what keeps every phone file out of this step.
+
+**`Connected` opens nothing.** The first attempt had it open the phone's chat, which is what an
+earlier draft of this plan asked for -- and in game on 2026-08-31 it did exactly that: answering
+a call put an SMS thread on screen. Correct against the sentence, wrong against the mod: a call
+is spoken, and the written thread is the one place its content may not appear. The plan was
+written before the holo was understood to be a second channel and this line was not amended with
+the rest.
+
+So the crossing is deliberately missing here, and its absence is the honest state: the session a
+call opens belongs to the holo, the holo has no surface until step 4, and the channel that keeps
+a spoken line out of the written thread is step 0. Both come first.
+
+> What this step does prove, without a pixel: the transition table, the timers, and that a
+> refused or missed call reaches no ending that could open anything. The endings stay on screen
+> -- `missed -- judy` -- until the next call clears them, lazily, because a timer-driven expiry
+> does not survive a save.
 >
-> **Not a kill, and not a pass either:** the beep working proves that a *declared* sound plays
-> over the phone lane. It does **not** prove the voice lane, because a generated file has no
-> manifest entry — see § 4. Never report step 1 as "sound works" without that sentence
-> attached.
+> **Not verified in the shape above.** What was launched opened a chat; what is built now does
+> not. That needs its own launch.
 
-**Step 2 — the call, with no holo.** A "call" entry on the phone, the state machine, the timers.
-Connected opens the *existing* chat through the door.
+**Step 3 — the resolver. MEASURED 2026-08-31, and the answer is split.**
 
-> Verifiable with no new pixels: the chat opens after the ring, and never opens when the call
-> is refused. This is where the door discipline is proven, and it is proven before any widget
-> work can obscure it.
+A vanilla holocall **starts and shows without authoring a scene**: `questTriggerCallRequest`
+queued on `PhoneSystem` folds the phone away, brings up the call UI and, on `callMode = Video`,
+opens the real holo window. The contact is addressed by its journal id -- `judy` is the game's
+own, callable, with `PhoneAvatars.Avatar_Judy`. See `AiNpcCallVanilla.reds`.
 
-**Step 3 — the resolver.** Measure whether a vanilla call can be started and shown without a
+**The frame comes up empty, and `holocallInitializerPath` is not the answer.** Dumped on this
+save: of 176 journal contacts, `Character.<id>` exists for five, and all five -- Songbird
+included, who has holocalls in Phantom Liberty -- carry a NULL initializer. `Character.judy`
+does not exist at all: a journal contact id is not a character record id.
+
+So nothing in the character table puts an actor in the frame. In vanilla the quest's **scene**
+does it, and a call placed from script opens the window with nobody projected into it. Filling
+it is therefore its own piece of work -- spawning or puppeting an entity into the holo's render
+texture -- and it is the one part of this POC that a request cannot buy.
+
+**Step 3 (original wording) — the resolver.** Measure whether a vanilla call can be started and shown without a
 scene. Two outcomes, both fine: graft into the game's tree (as the phone does) or build our own
 (as AGENT LINK does). **Write one resolver either way.** The architecture does not depend on
 which answer comes back — that is the point, and it is why steps 1 and 2 come first.
@@ -263,12 +342,17 @@ failing loudly when they find nothing to check.
 4. **The game's call tree has exactly one owner**: extend the file list of the existing
    "foreign widget trees" rule (N+3) to name the holo resolver.
 
+Two more come with the channel, stated in `docs/PLAN_HOLO_CHANNEL.md` § 6: a channel is decided
+only by a renderer declaring its own and by a generation capturing one, and nothing outside the
+session filters by channel.
+
 ---
 
 ## 7. Acceptance
 
 Offline, and these must be green before anything is handed over: `compile-check.ps1` (with your
-own `-WorkDir`), `lint.ps1` including the four new rules, and `AiNpcTestCallState`.
+own `-WorkDir`), `lint.ps1` including the six new rules, `AiNpcTestCallState`, and the channel
+assertions of step 0 in `AiNpcTestSession`, `AiNpcTestJournal` and `AiNpcTestHistory`.
 
 In game, one launch, by the user:
 
@@ -276,7 +360,9 @@ In game, one launch, by the user:
 - refusing or letting it ring out opens no conversation and leaves no trace in the journal;
 - picking up shows the character and a field that takes a line;
 - a reply is painted on the holo and **not** on the phone;
-- a beep is heard when the reply lands;
+- reopening the thread afterwards shows the call as a line without its content, and the
+  character remembers what was said on it;
+- a beep is heard when the reply lands (measured, including over game audio);
 - hanging up gives the screen back, and the phone still works afterwards.
 
 The last one is the real check. The failure this design is built to avoid is a third surface
@@ -286,9 +372,14 @@ that quietly breaks the first two.
 
 ## 8. What must not be touched
 
-The phone files, the terminal files, `AiNpcChatSession.reds`, `AiNpcChatRegistry.reds` and the
-action lane. If a step needs one of them, the seam is wrong: stop and say so rather than
-widening the plan.
+The phone files, the terminal files, `AiNpcChatRegistry.reds`, `AiNpcConversationStore.reds`
+and the action lane. If a step needs one of them, the seam is wrong: stop and say so rather
+than widening the plan.
+
+`AiNpcChatSession.reds` left this list with the channel, and so did the two send sites: what
+step 0 touches, why it is additive, and what it removes rather than adds, is
+`docs/PLAN_HOLO_CHANNEL.md` § 9. Nothing else moves without the same treatment — a written
+amendment, not a step that quietly widens.
 
 ## 9. What must not be claimed
 

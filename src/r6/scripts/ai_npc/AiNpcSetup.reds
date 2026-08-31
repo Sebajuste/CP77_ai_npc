@@ -336,6 +336,27 @@ public class AiNpcSetupSystem extends ScriptableSystem {
         return s"Testing \(AiNpcProviderName(provider))...";
     }
 
+    // The other half of "is this install healthy": can the mod make a sound at all.
+    //
+    // Nothing here is asynchronous, unlike StartTest -- the DLL answers on the spot, so the
+    // sentence the window shows is the device's own and needs no polling.
+    //
+    // A session is not required. AiNpcAudio is a native class rather than a system, and the
+    // audio device has nothing to do with a savegame.
+    public func TestSpeaker() -> String {
+        return AiNpcAudio.Beep();
+    }
+
+    // The journal's own contact rows, to the log. The holo draws nothing for a contact the game
+    // cannot resolve, and this is what says which names it does resolve on THIS save.
+    public func DumpContacts() -> String {
+        let count = AiNpcDumpJournalContacts();
+        if count < 0 {
+            return "No journal manager: load a savegame first.";
+        }
+        return s"\(count) contact row(s) written to the redscript log. Enable Logs must be on.";
+    }
+
     // Polled by the window every frame, so it must be cheap and must never start anything.
     public func DescribeTest() -> String {
         if Equals(this.m_testState, "running") {

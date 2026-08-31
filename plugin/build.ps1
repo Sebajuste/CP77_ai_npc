@@ -57,7 +57,9 @@ $compile = @(
     # trouble: a trailing backslash inside quotes escapes the closing quote.
     "/Fe:ai_npc.dll",
     # user32.lib: the SDK's address resolver reports a failure with MessageBoxW.
-    "/link /DLL user32.lib"
+    # winmm.lib: Audio.cpp plays a generated buffer, which never becomes a file.
+    # ole32.lib: Speech.cpp drives SAPI, which is COM.
+    "/link /DLL user32.lib winmm.lib ole32.lib"
 ) -join " "
 
 Write-Output "Building ai_npc.dll ($Config) from $($sources.Count) source file(s)..."

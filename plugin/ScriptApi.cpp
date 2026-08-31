@@ -6,8 +6,10 @@
 //    and a queue carries the answer back. A CLI call takes seconds, and seconds on the game
 //    thread is a frozen game.
 //
-// 2. THE RTTI SURFACE STAYS MINIMAL. One class, one static function -- see AiNpcCliNative.reds
-//    for what each declared type costs on a day the DLL fails to load. The answer therefore
+// 2. THE RTTI SURFACE STAYS MINIMAL. Two classes, one static function each -- see
+//    AiNpcCliNative.reds for what each declared type costs on a day the DLL fails to load.
+//    Both are registered here, in one place, so the boot-blocking surface can be counted by
+//    reading one file. The answer therefore
 //    does NOT come back through a registered callback type: it is delivered by calling a
 //    plain redscript global function, which needs nothing registered at all.
 //
@@ -28,9 +30,11 @@
 
 #include "ScriptApi.hpp"
 
+#include "Audio.hpp"
 #include "Process.hpp"
 #include "Registry.hpp"
 #include "SettingsFile.hpp"
+#include "Speech.hpp"
 #include "Transport.hpp"
 
 #include <atomic>
@@ -432,6 +436,69 @@ void SendImpl(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, bool* aOut, i
     }
 }
 
+// Plays a tone, and answers what the device said. A String rather than a Bool because the
+// answer IS the measurement: "nothing came out" has two causes that look identical from a
+// chair, and only the device can tell them apart. The same sentence goes to the log, so a
+// player who read it on screen and an agent who read the file are looking at one fact.
+void BeepImpl(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, RED4ext::CString* aOut, int64_t)
+{
+    ++aFrame->code; // skip ParamEnd
+
+    // 700 ms at 40%, and both numbers were measured rather than chosen: 150 ms at 30% was
+    // played and NOT heard on 2026-08-31, because a device that has just been opened swallows
+    // the start of the first buffer. A beep too short to notice would be reported as a game
+    // holding the audio device, which is the one conclusion this function exists to rule out.
+    const audio::Sound sound = audio::Tone(0.7, 440.0, 0.40);
+    const audio::Status status = audio::Play(sound.samples.data(), sound.samples.size(), sound.format);
+
+    // The device is named in the answer, because "it says ok and I hear nothing" is one
+    // question with two causes, and the second one is a machine with five outputs where the
+    // listener is wearing the one Windows does not call default.
+    char message[400];
+    std::snprintf(message, sizeof(message), "beep: %s -- it went to %s", audio::Describe(status),
+                  audio::DeviceName().c_str());
+    if (status == audio::Status::Ok)
+    {
+        Log(message);
+    }
+    else
+    {
+        LogError(message);
+    }
+
+    if (aOut)
+    {
+        *aOut = RED4ext::CString(message);
+    }
+}
+
+// Says a line out loud. Queues and returns at once: synthesis takes hundreds of milliseconds
+// and the caller is the game thread.
+//
+// The answer describes the PREVIOUS line, not this one -- the current one has not been spoken
+// yet by the time this returns, and inventing a result for it would be the one thing a
+// measurement must not do. What comes back therefore reads as "ok -- 41216 bytes in 380 ms",
+// and 380 ms is the number the voice lane is judged on.
+void SpeakImpl(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, RED4ext::CString* aOut, int64_t)
+{
+    RED4ext::CString text;
+    RED4ext::GetParameter(aFrame, &text);
+    ++aFrame->code; // skip ParamEnd
+
+    const bool queued = speech::Speak(text.c_str());
+    const std::string answer = queued ? ("queued; previous: " + speech::LastResult())
+                                      : std::string("nothing to say");
+
+    char message[400];
+    std::snprintf(message, sizeof(message), "speak: %s", answer.c_str());
+    Log(message);
+
+    if (aOut)
+    {
+        *aOut = RED4ext::CString(message);
+    }
+}
+
 // Never instantiated: the class exists only to hang one static function on, which is the
 // smallest shape redscript will accept for `public native class AiNpcCli`. TTypedClass needs
 // a real type to size and construct, so it gets an empty one.
@@ -459,13 +526,28 @@ struct CliClassBody : RED4ext::IScriptable
 
 RED4ext::TTypedClass<CliClassBody> g_cliClass("AiNpc.AiNpcCli");
 
+// The same shape, and the same reason for every line of it: see CliClassBody above.
+struct AudioClassBody : RED4ext::IScriptable
+{
+    RED4ext::CClass* GetNativeType() override
+    {
+        return RED4ext::CRTTISystem::Get()->GetClass("AiNpc.AiNpcAudio");
+    }
+};
+
+RED4ext::TTypedClass<AudioClassBody> g_audioClass("AiNpc.AiNpcAudio");
+
 void RegisterTypes()
 {
     // The name has to be in the pool before anything can look the class up by it.
     RED4ext::CNamePool::Add("AiNpc.AiNpcCli");
+    RED4ext::CNamePool::Add("AiNpc.AiNpcAudio");
 
     g_cliClass.flags = {.isNative = true};
     RED4ext::CRTTISystem::Get()->RegisterType(&g_cliClass);
+
+    g_audioClass.flags = {.isNative = true};
+    RED4ext::CRTTISystem::Get()->RegisterType(&g_audioClass);
 }
 
 void PostRegisterTypes()
@@ -491,6 +573,27 @@ void PostRegisterTypes()
     cls->RegisterFunction(send);
 
     Log("AiNpc.AiNpcCli registered.");
+
+    auto* audioClass = rtti->GetClass("AiNpc.AiNpcAudio");
+    if (!audioClass)
+    {
+        LogError("AiNpc.AiNpcAudio did not register: the mod will make no sound.");
+        return;
+    }
+    audioClass->parent = rtti->GetClass("IScriptable");
+
+    auto* beep = RED4ext::CClassStaticFunction::Create(audioClass, "Beep", "Beep", &BeepImpl);
+    beep->flags = {.isNative = true, .isStatic = true, .isPublic = true};
+    beep->SetReturnType("String");
+    audioClass->RegisterFunction(beep);
+
+    auto* speak = RED4ext::CClassStaticFunction::Create(audioClass, "Speak", "Speak", &SpeakImpl);
+    speak->flags = {.isNative = true, .isStatic = true, .isPublic = true};
+    speak->AddParam("String", "text");
+    speak->SetReturnType("String");
+    audioClass->RegisterFunction(speak);
+
+    Log("AiNpc.AiNpcAudio registered.");
 }
 } // namespace
 
@@ -533,6 +636,8 @@ void Start(RED4ext::v1::PluginHandle aHandle, const RED4ext::v1::Sdk* aSdk, cons
 
 void Stop()
 {
+    speech::Shutdown();
+
     g_running.store(false);
     g_wake.notify_all();
 

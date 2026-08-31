@@ -38,6 +38,17 @@ public abstract class AiNpcThinkingLaneCallback extends DelayCallback {
     protected func Run(lane: ref<AiNpcMemoryService>) -> Void {}
 }
 
+abstract class AiNpcCallLaneCallback extends DelayCallback {
+    public func Call() {
+        let call = AiNpcCallSystem.Get();
+        if IsDefined(call) {
+            this.Run(call);
+        }
+    }
+
+    protected func Run(call: ref<AiNpcCallSystem>) -> Void {}
+}
+
 public abstract class AiNpcSetupCallback extends DelayCallback {
     public func Call() {
         let setup = GameInstance.GetScriptableSystemsContainer(GetGameInstance()).Get(NameOf<AiNpcSetupSystem>()) as AiNpcSetupSystem;

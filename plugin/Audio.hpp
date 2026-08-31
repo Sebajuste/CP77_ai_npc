@@ -1,0 +1,91 @@
+// Playing sound from memory, with no file anywhere.
+//
+// The mod's own depot is not writable: r6\audioware\ is Vortex's, its files are hardlinks
+// into the staging folder, and writing there writes through the link into the source copy of
+// a mod. r6\storages\ is writable and is not a depot any audio engine reads. So a generated
+// utterance -- which is what a text-to-speech lane produces -- has nowhere to be a file, and
+// the only remaining path is a buffer.
+//
+// This plays that buffer through waveOut, which is Windows' own mixer and not the game's.
+// What that costs is stated once, here, because no caller can work it out:
+//
+//   - no ducking against game audio, and no game volume slider;
+//   - it keeps playing while the game is paused or alt-tabbed;
+//   - it goes to the system default device, which is not necessarily the game's.
+//
+// No RED4ext dependency, on purpose: that is what lets plugin\test\run.ps1 build and run it
+// outside the game.
+
+#pragma once
+
+#include <cstddef>
+#include <cstdint>
+#include <string>
+#include <vector>
+
+namespace ainpc::audio
+{
+// Uncompressed PCM, the only thing waveOut takes.
+struct Format
+{
+    uint32_t sampleRate = 22050;
+    uint16_t channels = 1;
+    uint16_t bitsPerSample = 16;
+};
+
+// Why a buffer was refused. Every failure names itself: a voice that does not come out is
+// otherwise indistinguishable from a voice that was never asked for.
+enum class Status
+{
+    Ok = 0,
+    EmptyBuffer,
+    UnsupportedFormat,
+    NoDevice,       // waveOutOpen refused -- no output, or the device is held exclusively
+    WriteFailed,
+    NotWave,        // the RIFF image is not a WAVE
+    NotPcm,         // a WAVE, but compressed
+    Truncated,      // the image ends inside the data it announces
+};
+
+const char* Describe(Status aStatus);
+
+// Plays raw samples. The buffer is COPIED, so the caller's memory is free on return.
+//
+// Returns immediately: playback runs on a thread of its own, which is why this is callable
+// from the game thread. A second call replaces what is playing -- one voice at a time, since
+// two characters talking over each other is not a feature.
+Status Play(const void* aSamples, size_t aBytes, const Format& aFormat);
+
+// The same, from a WAV image held in memory: header and samples as a file would have them,
+// but never written down. The whole RIFF walk is here and validates as one -- a caller gets
+// a Status, never a half-parsed header.
+Status PlayWav(const void* aImage, size_t aBytes);
+
+// A tone, generated rather than loaded: the one sound this mod can make with no asset to
+// ship, no manifest to declare and no file to read. It is what proves the path.
+struct Sound
+{
+    std::vector<uint8_t> samples;
+    Format format;
+};
+
+Sound Tone(double aSeconds, double aHertz, double aAmplitude);
+
+// Which output the last Play() actually went to, as Windows names it.
+//
+// "It played, and I heard nothing" is the answer that costs the most time, and it has one
+// ordinary cause: WAVE_MAPPER picks the system default, which is not necessarily the device
+// the listener is wearing. Naming it turns that hour into a glance. Empty before the first
+// play, or when the device could not be named.
+std::string DeviceName();
+
+// Every output Windows can see, in its own order. The sound goes to whichever of these is
+// the system default, and a listener wearing a different one hears nothing while every check
+// passes.
+std::vector<std::string> Outputs();
+
+// Silence now. Safe to call when nothing is playing.
+void Stop();
+
+bool IsPlaying();
+}

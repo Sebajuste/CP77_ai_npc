@@ -1,0 +1,29 @@
+{
+  "_comment": "Les répliques du banc. Français, dans le registre du mod, avec ce qui casse un moteur : apostrophes, élisions, argot, un nombre, une heure, et des longueurs qui vont du claquement à la tirade. Les accents sont là exprès : « passe » et « passé » ne se prononcent pas pareil, et un moteur qui les ignore s'entend tout de suite.",
+  "lines": [
+    {
+      "id": "court",
+      "text": "Ouais, quoi ?"
+    },
+    {
+      "id": "elisions",
+      "text": "T'as qu'à passer, j'suis à l'atelier jusqu'à 22h."
+    },
+    {
+      "id": "nombre",
+      "text": "Je t'ai envoyé 500 eddies, prends soin de toi."
+    },
+    {
+      "id": "argot",
+      "text": "Écoute, choom, cette histoire pue le Scav à plein nez. Laisse tomber."
+    },
+    {
+      "id": "longue",
+      "text": "J'ai passé la nuit à repenser à ce que t'as dit, et honnêtement je sais pas quoi en faire. On a fait ce qu'on avait à faire, et ça n'a rien changé du tout. Peut-être que c'est ça, Night City : t'as beau gagner, la ville s'en fout."
+    },
+    {
+      "id": "question",
+      "text": "Tu comptes rester planté là longtemps, ou tu montes ?"
+    }
+  ]
+}

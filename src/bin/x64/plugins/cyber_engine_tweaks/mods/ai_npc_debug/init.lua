@@ -26,6 +26,7 @@
 
 local STORE = "AiNpc.AiNpcConversationStore"
 local SETUP = "AiNpc.AiNpcSetupSystem"
+local CALL  = "AiNpc.AiNpcCallSystem"
 
 local ui = {
     windowOpen = true,
@@ -237,6 +238,9 @@ local setup = {
     fields = {},            -- the current provider's editable settings
     output = "",            -- the last thing that happened
     test = "",              -- the last test result
+    beep = "",              -- what the audio device said to the last beep
+    callContact = "judy",   -- who the Call tab dials
+    callOutput = "",        -- what the call system answered last
     testing = false,        -- whether a request is in flight, so we only poll while it is
     showKeys = false,
 }
@@ -323,6 +327,53 @@ local function setupPoll()
     end
 end
 
+-- The call, with no holo: the state machine driven by hand, so the door discipline can be
+-- watched before any widget exists to hide it.
+--
+-- Dialing rings for a moment and then waits. Pick up and the conversation opens through
+-- AiNpcChatDoor, exactly as a message notification opens one; let it ring out, or decline, and
+-- nothing opens -- no announcement, no memory service, nothing in the journal.
+local function drawCall()
+    local state = callOn(CALL, "Describe")
+    ImGui.Text("State: " .. (state or "no session"))
+
+    ImGui.SetNextItemWidth(220)
+    local typed, changed = ImGui.InputText("contact##call", setup.callContact, 64)
+    if changed then
+        setup.callContact = typed
+    end
+
+    if ImGui.Button("Dial") then
+        local text, err = callOn(CALL, "Dial", setup.callContact)
+        setup.callOutput = err or text or ""
+    end
+    ImGui.SameLine()
+    if ImGui.Button("Pick up") then
+        local text, err = callOn(CALL, "PickUp")
+        setup.callOutput = err or text or ""
+    end
+    ImGui.SameLine()
+    if ImGui.Button("Decline") then
+        local text, err = callOn(CALL, "Decline")
+        setup.callOutput = err or text or ""
+    end
+    ImGui.SameLine()
+    if ImGui.Button("Hang up") then
+        local text, err = callOn(CALL, "HangUp")
+        setup.callOutput = err or text or ""
+    end
+
+    if ImGui.Button("Dump journal contacts to the log") then
+        local text, err = callSetup("DumpContacts")
+        setup.callOutput = err or text or ""
+    end
+
+    if setup.callOutput ~= "" then
+        ImGui.Separator()
+        ImGui.TextWrapped(setup.callOutput)
+    end
+end
+
 local function drawSetup()
     if not setup.loaded then
         setupRefresh()
@@ -398,6 +449,17 @@ local function drawSetup()
     end
     if setup.test ~= "" then
         ImGui.TextWrapped(setup.test)
+    end
+
+    -- The audio path, which has nothing to do with the provider: it asks ai_npc.dll to play a
+    -- tone it generates itself, and shows what the device answered. The same sentence is in
+    -- red4ext\logs\ai_npc-*.log, so a silent beep can be told from a refused one.
+    if ImGui.Button("Test speaker (beep)") then
+        local text, err = callSetup("TestSpeaker")
+        setup.beep = err or text or ""
+    end
+    if setup.beep ~= "" then
+        ImGui.TextWrapped(setup.beep)
     end
 
     if setup.output ~= "" then
@@ -497,6 +559,11 @@ registerForEvent("onDraw", function()
         setupPoll()
 
         if ImGui.BeginTabBar("aiNpcTabs") then
+            if ImGui.BeginTabItem("Call") then
+                drawCall()
+                ImGui.EndTabItem()
+            end
+
             if ImGui.BeginTabItem("Setup") then
                 drawSetup()
                 ImGui.EndTabItem()

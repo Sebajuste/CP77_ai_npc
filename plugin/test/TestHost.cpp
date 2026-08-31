@@ -14,6 +14,8 @@
 //
 // Build and run: powershell -File plugin\test\run.ps1
 
+#include "../Audio.hpp"
+#include "../Speech.hpp"
 #include "../ClaudeCli.hpp"
 #include "../CodexCli.hpp"
 #include "../Json.hpp"
@@ -21,8 +23,14 @@
 #include "../Registry.hpp"
 #include "../Transport.hpp"
 
+#include <chrono>
+#include <cmath>
 #include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <string>
+#include <thread>
+#include <vector>
 
 namespace
 {
@@ -821,10 +829,212 @@ void TestJson()
     Check("its number survived", nested && nested->IntAt("in") == 7);
     Check("its bool survived", nested && nested->BoolAt("ok"));
 }
+
+// Sound, from memory and never from a file.
+//
+// The device is real, so these run against whatever output the machine has. What is asserted
+// is what code can see: the format was accepted, the buffer was taken, and it was handed back
+// once it had played. Whether a human HEARD it is the one thing this cannot answer -- run with
+// -Audible and listen.
+//
+// Silent by default: a suite that beeps during unrelated work is a suite people stop running.
+
+// Waits for the device to hand the buffer back, and answers how long it took.
+//
+// Not a fixed sleep: opening an output device costs a start latency that belongs to the
+// hardware -- a Bluetooth or HDMI sink that has gone idle takes noticeably longer than a warm
+// one -- and a suite that fails on a slow speaker measures the speaker. What is asserted is
+// the property, "the memory comes back", with a bound loose enough that only a stuck device
+// crosses it.
+int WaitUntilSilent(int aMaxMilliseconds)
+{
+    int waited = 0;
+    while (ainpc::audio::IsPlaying() && waited < aMaxMilliseconds)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        waited += 10;
+    }
+    return waited;
+}
+
+void PutU32(std::vector<uint8_t>& aOut, uint32_t aValue)
+{
+    aOut.push_back(static_cast<uint8_t>(aValue & 0xFF));
+    aOut.push_back(static_cast<uint8_t>((aValue >> 8) & 0xFF));
+    aOut.push_back(static_cast<uint8_t>((aValue >> 16) & 0xFF));
+    aOut.push_back(static_cast<uint8_t>((aValue >> 24) & 0xFF));
+}
+
+void PutU16(std::vector<uint8_t>& aOut, uint16_t aValue)
+{
+    aOut.push_back(static_cast<uint8_t>(aValue & 0xFF));
+    aOut.push_back(static_cast<uint8_t>((aValue >> 8) & 0xFF));
+}
+
+void PutTag(std::vector<uint8_t>& aOut, const char* aTag)
+{
+    aOut.insert(aOut.end(), aTag, aTag + 4);
+}
+
+// A .wav exactly as a file would hold it, assembled in RAM and never written down.
+std::vector<uint8_t> WavImage(const std::vector<uint8_t>& aPcm, uint32_t aRate)
+{
+    std::vector<uint8_t> image;
+    PutTag(image, "RIFF");
+    PutU32(image, static_cast<uint32_t>(36 + aPcm.size()));
+    PutTag(image, "WAVE");
+    PutTag(image, "fmt ");
+    PutU32(image, 16);
+    PutU16(image, 1);             // PCM
+    PutU16(image, 1);             // mono
+    PutU32(image, aRate);
+    PutU32(image, aRate * 2);     // bytes per second
+    PutU16(image, 2);             // block align
+    PutU16(image, 16);            // bits per sample
+    PutTag(image, "data");
+    PutU32(image, static_cast<uint32_t>(aPcm.size()));
+    image.insert(image.end(), aPcm.begin(), aPcm.end());
+    return image;
+}
+
+// The synthesis half of the voice lane, with no sound and no game.
+//
+// It runs the machine's own SAPI voice into a buffer and checks that bytes come back. That is
+// the whole offline claim: a line of text becomes samples. Whether those samples are worth
+// listening to is a launch, and whether a real text-to-speech service is better is a different
+// question -- what is asserted here is that the LANE works end to end without a file.
+//
+// The elapsed time is printed rather than asserted. It is the number the voice lane is judged
+// on -- Mantella's players report latency as their first complaint, and all of it is synthesis
+// -- but a threshold on somebody else's machine would fail for being slow rather than wrong.
+void TestSpeech()
+{
+    std::printf("Speech (text to samples, in memory)\n");
+
+    std::vector<uint8_t> samples;
+    std::string why = "unset";
+
+    Check("an empty line says nothing", !ainpc::speech::Render("", samples, why));
+
+    const auto started = std::chrono::steady_clock::now();
+    const bool rendered = ainpc::speech::Render("Testing, one two three.", samples, why);
+    const auto elapsed =
+        std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - started)
+            .count();
+
+    Check("a line becomes samples", rendered);
+    if (!rendered)
+    {
+        std::printf("        the voice said: %s\n", why.c_str());
+        std::printf("        (no SAPI voice installed is a machine fact, not a code failure)\n");
+        return;
+    }
+
+    Check("and there are enough of them to hear", samples.size() > 1000u);
+    std::printf("        %zu bytes in %lld ms, %u Hz mono\n", samples.size(),
+                static_cast<long long>(elapsed), ainpc::speech::SampleRate());
+
+    // The buffer is handed to the audio path exactly as the worker hands it over, so a format
+    // the player could never hear fails here rather than in game.
+    ainpc::audio::Format format;
+    format.sampleRate = ainpc::speech::SampleRate();
+    format.channels = ainpc::speech::Channels();
+    format.bitsPerSample = ainpc::speech::BitsPerSample();
+    Check("the audio path accepts what the voice produced",
+          ainpc::audio::Play(samples.data(), samples.size(), format) == ainpc::audio::Status::Ok);
+    ainpc::audio::Stop();
+}
+
+void TestAudio(bool aAudible)
+{
+    std::printf("Audio (from memory)\n");
+    // Said out loud, because the listener is the instrument here: a run that plays nothing and
+    // a run whose sound went to another device look identical from a chair.
+    std::printf("        mode: %s\n", aAudible ? "AUDIBLE -- a tone is played below"
+                                                : "silent (pass -Audible to hear it)");
+    const std::vector<std::string> outputs = ainpc::audio::Outputs();
+    std::printf("        outputs Windows can see (%zu):\n", outputs.size());
+    for (size_t i = 0; i < outputs.size(); ++i)
+    {
+        std::printf("          [%zu] %s\n", i, outputs[i].c_str());
+    }
+    using ainpc::audio::Status;
+
+    Check("an empty buffer is refused", ainpc::audio::Play(nullptr, 0, {}) == Status::EmptyBuffer);
+
+    const std::vector<uint8_t> silence = ainpc::audio::Tone(0.2, 0.0, 0.0).samples;
+    ainpc::audio::Format format;
+    format.sampleRate = 22050;
+    format.channels = 1;
+
+    format.bitsPerSample = 24;
+    Check("an unsupported sample width is refused",
+          ainpc::audio::Play(silence.data(), silence.size(), format) == Status::UnsupportedFormat);
+    format.bitsPerSample = 16;
+
+    const Status status = ainpc::audio::Play(silence.data(), silence.size(), format);
+    Check("the device takes a PCM buffer", status == Status::Ok);
+    if (status != Status::Ok)
+    {
+        std::printf("        device said: %s\n", ainpc::audio::Describe(status));
+    }
+    Check("it reports playing", ainpc::audio::IsPlaying());
+
+    const int waited = WaitUntilSilent(3000);
+    Check("it hands the buffer back once it is done", !ainpc::audio::IsPlaying());
+    if (ainpc::audio::IsPlaying())
+    {
+        std::printf("        still playing after %d ms of 200 ms of audio\n", waited);
+    }
+
+    // Long enough to be recognised rather than missed: a device that has just been opened
+    // swallows the start, and a 150 ms blip is over before a listener knows it began.
+    const double seconds = aAudible ? 0.7 : 0.2;
+    const std::vector<uint8_t> image =
+        WavImage(ainpc::audio::Tone(seconds, 440.0, aAudible ? 0.40 : 0.0).samples, 22050);
+    if (aAudible)
+    {
+        std::printf("        playing 700 ms at 440 Hz now...\n");
+    }
+    Check("a WAV image in RAM plays", ainpc::audio::PlayWav(image.data(), image.size()) == Status::Ok);
+    Check("and it too comes back", WaitUntilSilent(5000) < 5000);
+    std::printf("        it went to: %s\n",
+                ainpc::audio::DeviceName().empty() ? "<the device would not name itself>"
+                                                   : ainpc::audio::DeviceName().c_str());
+
+    std::vector<uint8_t> notWave = image;
+    notWave[9] = 'X';
+    Check("a non-WAVE image is refused",
+          ainpc::audio::PlayWav(notWave.data(), notWave.size()) == Status::NotWave);
+
+    std::vector<uint8_t> compressed = image;
+    compressed[20] = 3;  // IEEE float, not PCM
+    Check("a compressed WAVE is refused",
+          ainpc::audio::PlayWav(compressed.data(), compressed.size()) == Status::NotPcm);
+
+    const std::vector<uint8_t> cut(image.begin(), image.end() - 100);
+    Check("an image ending inside its own data is refused",
+          ainpc::audio::PlayWav(cut.data(), cut.size()) == Status::Truncated);
+
+    ainpc::audio::Play(silence.data(), silence.size(), format);
+    ainpc::audio::Stop();
+    Check("Stop() silences it", !ainpc::audio::IsPlaying());
+    ainpc::audio::Stop();
+    Check("Stop() on silence is harmless", !ainpc::audio::IsPlaying());
+}
 } // namespace
 
-int main()
+int main(int argc, char** argv)
 {
+    bool audible = false;
+    for (int i = 1; i < argc; ++i)
+    {
+        if (std::strcmp(argv[i], "-Audible") == 0)
+        {
+            audible = true;
+        }
+    }
+
     std::printf("ai_npc plugin, offline suite\n\n");
 
     TestJson();
@@ -840,6 +1050,8 @@ int main()
     TestShimRefusal();
     TestRegistry();
     TestScrub();
+    TestAudio(audible);
+    TestSpeech();
 
     std::printf("\n%d check(s), %d failure(s)\n", g_checks, g_failures);
     if (g_failures == 0)
