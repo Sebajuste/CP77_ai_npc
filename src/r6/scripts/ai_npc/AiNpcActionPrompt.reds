@@ -120,12 +120,10 @@ func AiNpcActionBlockAround(lines: String, opt definitions: String) -> String {
 // prose -- asking a model to fix prose against an empty rulebook is how a good reply gets
 // replaced by a worse one.
 //
-// Which is why the recipe is asked HERE and not only in the prompt: a recipe that removed
-// <commands> and left this answering would repair a reply against a vocabulary the model was
-// never shown. Same question, same answer, one decision -- and the short-circuit needs no
-// branch of its own, because "no vocabulary" already means "the brackets are prose".
-func AiNpcActionVocabularyFor(contactId: String) -> String {
-    if !AiNpcRecipeHas(AiNpcPromptRecipe(), "commands") {
+// The recipe is handed in rather than read: this is the same block <commands> renders in the
+// prompt, so it has to be the same recipe. Reading one here made the two answers divergeable.
+func AiNpcActionVocabularyFor(contactId: String, recipe: ref<AiNpcRecipe>) -> String {
+    if !AiNpcRecipeHas(recipe, "commands") {
         return "";
     }
     let ctx = AiNpcBuildContactContext(contactId);

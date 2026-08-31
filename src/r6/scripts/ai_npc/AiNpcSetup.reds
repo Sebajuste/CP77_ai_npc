@@ -380,26 +380,19 @@ public class AiNpcSetupSystem extends ScriptableSystem {
         }
 
         this.m_testUrl = AiNpcLlmChatUrl(provider);
-        // Bound to locals so the record can measure each half: a serialised body cannot be
-        // taken apart again.
-        let instruction = "You are a connection test. Answer with a single word.";
-        let ask = "Reply with the single word OK.";
-        this.m_testSlot = AiNpcGetSlotForPass(AiNpcLaneTest());
-        let body = AiNpcLlmChatBody(provider, this.m_testSlot, instruction, ask);
 
-        // Recorded like any other request: it appears in the log with its size and cost, and
-        // what it spends is charged to the day.
-        this.m_record = AiNpcRequestRecord.Sent(AiNpcLaneTest(), "", provider, this.m_testSlot,
-            instruction, ask);
-
-        // Through the same seam the two real lanes use.
+        // Through the same seam every lane uses, so what a test proves is what a reply is sent
+        // through: it is recorded, charged to the day, and on the speaking slot.
         this.m_testSerial += 1;
-        if !AiNpcSendChat(provider, body, this, n"OnTestResponse",
-                AiNpcCliRequestId(AiNpcCliLaneTest(), this.m_testSerial)) {
+        let request = AiNpcPassSend(AiNpcPassProbe.Of(), provider, "", this, n"OnTestResponse",
+                AiNpcCliRequestId(AiNpcCliLaneTest(), this.m_testSerial));
+        if !IsDefined(request) {
             this.m_testState = "done";
             this.m_testResult = "FAILED: the transport refused the request. On a CLI lane that means ai_npc.dll did not load - check red4ext\\logs\\ai_npc-*.log.";
             return this.m_testResult;
         }
+        this.m_testSlot = request.slot;
+        this.m_record = request.record;
 
         this.m_testState = "running";
         this.m_testResult = "";

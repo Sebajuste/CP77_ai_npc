@@ -71,6 +71,7 @@ public class AiNpcRequestRecord {
     private let m_provider: String;
     private let m_model: String;
     private let m_slot: String;
+    private let m_recipe: String;
     private let m_systemChars: Int32;
     private let m_userChars: Int32;
 
@@ -81,14 +82,19 @@ public class AiNpcRequestRecord {
     // that read the dialogue model itself would name it whatever sent the request, and the one
     // failure this format exists to make payable -- a mistyped parameter coming back a 400 --
     // is only diagnosable if the line says which slot produced it.
+    //
+    // The recipe is named for the same reason and answers the other half: the slot says what
+    // the request was sent with, the recipe says what was in it.
     public static func Sent(lane: String, contactId: String, provider: AiNpcProvider,
-            slot: ref<AiNpcSlot>, instructionText: String, askText: String) -> ref<AiNpcRequestRecord> {
+            slot: ref<AiNpcSlot>, recipeName: String, instructionText: String,
+            askText: String) -> ref<AiNpcRequestRecord> {
         let self = new AiNpcRequestRecord();
         self.m_lane = lane;
         self.m_contactId = contactId;
         self.m_provider = AiNpcProviderName(provider);
         self.m_model = AiNpcLlmSlotModel(provider, slot);
         self.m_slot = AiNpcSlotNameOf(slot);
+        self.m_recipe = recipeName;
         self.m_systemChars = StrLen(instructionText);
         self.m_userChars = StrLen(askText);
         return self;
@@ -97,7 +103,7 @@ public class AiNpcRequestRecord {
     // Before the first send of a session, and for a callback that fires with no record behind
     // it. A line that names nobody rather than a null every callback would have to check.
     public static func Idle() -> ref<AiNpcRequestRecord> {
-        return AiNpcRequestRecord.Sent("", "", AiNpcProvider.OpenRouter, null, "", "");
+        return AiNpcRequestRecord.Sent("", "", AiNpcProvider.OpenRouter, null, "", "", "");
     }
 
     // The one call the lanes make when a response lands, whatever the status. A failure is
@@ -141,6 +147,7 @@ public class AiNpcRequestRecord {
         // saying whether the memory block or the transcript did it.
         let line = s"request lane=\(this.m_lane) contact=\(this.m_contactId)"
             + s" provider=\(this.m_provider) model=\(this.m_model) slot=\(this.m_slot)"
+            + s" recipe=\(this.m_recipe)"
             + s" chars_system=\(this.m_systemChars) chars_user=\(this.m_userChars)"
             + s" status=\(status)";
 

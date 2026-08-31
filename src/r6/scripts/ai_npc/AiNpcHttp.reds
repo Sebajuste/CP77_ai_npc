@@ -223,44 +223,29 @@ public class AiNpcHttpSystem extends ScriptableSystem {
     }
 
     // Consumed here, not inside the builder: building a prompt must have no side effect, and
-    // spending a mod's seeded context is an act. Bound to locals rather than passed straight
-    // in, because the record measures the two halves and the serialised body cannot be split.
-    this.m_slot = AiNpcGetSlotForPass(AiNpcLaneSpeaking());
-
-    let instructionText = AiNpcBuildSystemPromptWith(this.m_generation.Contact(),
+    // spending a mod's seeded context is an act.
+    let builder = AiNpcPassConversation.Of(this.m_generation.Contact(),
       AiNpcTakePendingContext(this.m_generation.Contact()),
       this.m_generation.Intent(),
-      AiNpcPassRecipe(AiNpcLaneSpeaking()));
-
-    // The only place the choice is made. Measured 2026-08-23 on a captured prompt: a reason
-    // placed in <now> is an afterthought in half the replies and dropped in the other half,
-    // while the same reason in V's slot is the subject every time. <now> holds what she
-    // knows; this slot holds why she is writing.
-    let askText = this.m_generation.SpeaksFirst()
-      ? AiNpcBuildUnpromptedTranscript(this.m_generation.Contact(), this.m_generation.Ask())
-      : AiNpcBuildTranscript(this.m_generation.Contact(), this.m_generation.Ask());
-    let body = AiNpcLlmChatBody(provider, this.m_slot, instructionText, askText);
-
-    this.m_record = AiNpcRequestRecord.Sent(AiNpcLaneSpeaking(), this.m_generation.Contact(),
-      provider, this.m_slot, instructionText, askText);
+      this.m_generation.Ask(),
+      this.m_generation.SpeaksFirst());
 
     // One send for both transports, and this lane is not told which one runs. Naming the CLI
     // type in one file limits the blast radius of a plugin that failed to load.
     this.m_chatSerial += 1;
-    if !AiNpcSendChat(provider, body, this, n"OnOpenAIResponse",
-        AiNpcCliRequestId(AiNpcCliLaneChat(), this.m_chatSerial)) {
+    let request = AiNpcPassSend(builder, provider, this.m_generation.Contact(), this,
+      n"OnOpenAIResponse", AiNpcCliRequestId(AiNpcCliLaneChat(), this.m_chatSerial));
+    if !IsDefined(request) {
       // Refused before anything left, reported through the single failure exit so the
       // indicator comes down and the input is released.
       this.HandleRequestFailure("the transport refused the request - is ai_npc.dll installed?");
       return;
     }
 
-    // Debug Mode's, not Enable Logs': the whole prompt and the whole player message once per
-    // turn. Enable Logs gets the record line instead, safe to paste into a bug report.
-    if AiNpcDebugEnabled() {
-      AiNpcLog(s"== Chat POST \(this.m_generation.Url()) ==");
-      AiNpcLog(body);
-    }
+    // Both outlive the send: the deadline is armed below, and the cost is charged when the
+    // answer lands.
+    this.m_slot = request.slot;
+    this.m_record = request.record;
     this.ToggleIsGenerating(true);
   }
 
@@ -586,9 +571,12 @@ public class AiNpcHttpSystem extends ScriptableSystem {
   // judged against a rulebook that did not contain it, and the model was asked to correct a
   // word it had never been shown.
   private func TryRepairActions(contactId: String, text: String, candidates: array<String>) -> Bool {
-    let vocabulary = AiNpcActionVocabularyFor(contactId);
+    // Built before the claim, because the claim is made against the vocabulary this pass would
+    // send: the builder is the one place that renders it, and the tag it aims at comes out of
+    // the claim itself.
+    let builder = AiNpcPassRepair.Of(contactId, "");
     let provider = AiNpcProviderSetting();
-    let tag = this.m_generation.Repair().Claim(text, candidates, vocabulary,
+    let tag = this.m_generation.Repair().Claim(text, candidates, builder.Instruction(),
       AiNpcRetryActionsEnabled(),
       Equals(StrLen(AiNpcLlmCredentialIssue(provider)), 0),
       AiNpcHasTokenBudgetLeft());
@@ -596,34 +584,33 @@ public class AiNpcHttpSystem extends ScriptableSystem {
     if Equals(StrLen(tag), 0) {
       return false;
     }
+    builder.tag = tag;
 
     // False means not deferred, and the caller delivers the reply as written: it is already in
     // hand and only one bracket is wrong, so a transport that was not there must not cost the
     // player the message.
-    return this.RepairPostRequest(tag, vocabulary, provider);
+    return this.RepairPostRequest(builder, provider);
   }
 
-  // The send, and only the send. What goes in the body is AiNpcRepairAsk's.
-  private func RepairPostRequest(tag: String, vocabulary: String, provider: AiNpcProvider) -> Bool {
+  // The send, and only the send. What goes in the two messages is the builder's.
+  private func RepairPostRequest(builder: ref<AiNpcPassRepair>, provider: AiNpcProvider) -> Bool {
     this.m_generation.SendingTo(AiNpcLlmChatUrl(provider));
 
-    let ask = AiNpcRepairAsk(tag);
-    this.m_slot = AiNpcGetSlotForPass(AiNpcLaneRepair());
-    this.m_record = AiNpcRequestRecord.Sent(AiNpcLaneRepair(), this.m_generation.Contact(),
-      provider, this.m_slot, vocabulary, ask);
-
     this.m_repairSerial += 1;
-    if !AiNpcSendChat(provider, AiNpcLlmChatBody(provider, this.m_slot, vocabulary, ask), this,
-        n"OnRepairResponse", AiNpcCliRequestId(AiNpcCliLaneRepair(), this.m_repairSerial)) {
-      AiNpcLog(s"Repair for \(tag) could not be sent; delivering as written.");
+    let request = AiNpcPassSend(builder, provider, this.m_generation.Contact(), this,
+      n"OnRepairResponse", AiNpcCliRequestId(AiNpcCliLaneRepair(), this.m_repairSerial));
+    if !IsDefined(request) {
+      AiNpcLog(s"Repair for \(builder.tag) could not be sent; delivering as written.");
       return false;
     }
+    this.m_slot = request.slot;
+    this.m_record = request.record;
 
     // Re-arms the watchdog, which the first answer disarmed: without it the lane would sit in
     // its generating state for good if the repair never came back, send button greyed.
     this.ToggleIsGenerating(true);
     this.ToggleTypingIndicator(true);
-    AiNpcLog(s"== Repair POST \(this.m_generation.Url()) for \(tag) ==");
+    AiNpcLog(s"Repair sent for \(builder.tag).");
     return true;
   }
 

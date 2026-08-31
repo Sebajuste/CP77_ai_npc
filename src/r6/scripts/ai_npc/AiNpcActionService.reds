@@ -67,10 +67,14 @@ public class AiNpcActionService extends ScriptableSystem {
             return;
         }
 
-        let vocabulary = AiNpcActionVocabularyFor(contactId);
-        if Equals(StrLen(vocabulary), 0) {
-            // No table means no command this contact may run: the recipe dropped the block, or
-            // nothing is offered here. Nothing to select from, and nothing to pay for.
+        let npcName = AiNpcGetCharacterName(contactId);
+        let window = AiNpcHistoryTrim(AiNpcStoredMessages(contactId), AiNpcActionSelectorWindow());
+        let builder = AiNpcPassActions.Of(contactId, npcName,
+            AiNpcHistoryTranscript(window, npcName), reply);
+
+        // No table means no command this contact may run: the recipe dropped the block, or
+        // nothing is offered here. Nothing to select from, and nothing to pay for.
+        if !builder.Ready() {
             return;
         }
 
@@ -79,30 +83,19 @@ public class AiNpcActionService extends ScriptableSystem {
             return;
         }
 
-        let npcName = AiNpcGetCharacterName(contactId);
-        let window = AiNpcHistoryTrim(AiNpcStoredMessages(contactId), AiNpcActionSelectorWindow());
-        let ask = AiNpcActionSelectorAsk(AiNpcHistoryTranscript(window, npcName), npcName, reply);
-
-        this.m_slot = AiNpcGetSlotForPass(AiNpcLaneActions());
-        let body = AiNpcLlmChatBody(provider, this.m_slot, vocabulary, ask);
-        this.m_record = AiNpcRequestRecord.Sent(AiNpcLaneActions(), contactId, provider,
-            this.m_slot, vocabulary, ask);
-
         this.m_contact = contactId;
         this.m_serial += 1;
-        if !AiNpcSendChat(provider, body, this, n"OnActionResponse",
-                AiNpcCliRequestId(AiNpcCliLaneActions(), this.m_serial)) {
+        let request = AiNpcPassSend(builder, provider, contactId, this, n"OnActionResponse",
+            AiNpcCliRequestId(AiNpcCliLaneActions(), this.m_serial));
+        if !IsDefined(request) {
             AiNpcLog(s"The action selection for '\(contactId)' was refused by the transport.");
             return;
         }
+        this.m_slot = request.slot;
+        this.m_record = request.record;
 
         AiNpcArmTimeout(AiNpcActionTimeoutCallback.Create(this.m_watchdog.Arm()),
             AiNpcLlmRequestTimeout(provider, this.m_slot));
-
-        if AiNpcDebugEnabled() {
-            AiNpcLog("== Action POST ==");
-            AiNpcLog(body);
-        }
     }
 
     /// The answer ///

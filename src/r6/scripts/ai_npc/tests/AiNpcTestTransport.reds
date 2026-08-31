@@ -527,13 +527,16 @@ func AiNpcTestRequestLog(t: ref<AiNpcTestRunner>) -> Void {
     // derives its whole section table from. The line has to re-produce it, because that is
     // the point of writing it -- the ratio stops being a constant taken once by hand.
     let record = AiNpcRequestRecord.Sent(AiNpcLaneSpeaking(), "panam", AiNpcProvider.OpenRouter,
-        null, AiNpcTestFiller(16321), AiNpcTestFiller(853));
+        null, "default", AiNpcTestFiller(16321), AiNpcTestFiller(853));
     let line = record.Line(200, AiNpcTestRequestLogUsage(4504, 312), "stop");
 
     t.Check("record/names the lane", StrContains(line, "lane=speaking"));
     // A mistyped parameter is not refused by the mod: it goes out and comes back a 400, which
     // is only payable if the line says which slot produced it.
     t.Check("record/names the slot", StrContains(line, "slot=dialogue"));
+    // The other half of the same question: the slot says what the request was sent with, the
+    // recipe says what was in it.
+    t.Check("record/names the recipe", StrContains(line, "recipe=default"));
     t.Check("record/names the contact", StrContains(line, "contact=panam"));
     t.Check("record/counts both halves separately",
         StrContains(line, "chars_system=16321") && StrContains(line, "chars_user=853"));

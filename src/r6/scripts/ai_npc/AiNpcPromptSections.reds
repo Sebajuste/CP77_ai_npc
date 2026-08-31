@@ -83,20 +83,6 @@ func AiNpcGetPromptConfig() -> ref<AiNpcPromptConfig> {
     return new AiNpcPromptConfig();
 }
 
-// Never null either, and for the same reason: a recipes file that failed to load reads as
-// every block at every part, which is what "no opinion" means for a prompt. A caller that had
-// to guard would be one caller away from a prompt built with no blocks at all.
-func AiNpcPromptRecipe() -> ref<AiNpcRecipe> {
-    let service = AiNpcConfigService.Get();
-    if IsDefined(service) {
-        let recipe = service.GetRecipe();
-        if IsDefined(recipe) {
-            return recipe;
-        }
-    }
-    return AiNpcRecipeFull();
-}
-
 /// Sections ///
 
 // <interactions>: what a character can and cannot do to reach V.

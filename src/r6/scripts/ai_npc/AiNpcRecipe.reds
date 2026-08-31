@@ -60,6 +60,14 @@ func AiNpcRecipeSourceOf(recipe: ref<AiNpcRecipe>, blockKey: String) -> String {
     return block.source;
 }
 
+// The recipe's own name, for a log line that has to say which one rendered the request.
+func AiNpcRecipeNameOf(recipe: ref<AiNpcRecipe>) -> String {
+    if !IsDefined(recipe) {
+        return "";
+    }
+    return recipe.name;
+}
+
 func AiNpcRecipeBlockNamed(recipe: ref<AiNpcRecipe>, blockKey: String) -> ref<AiNpcRecipeBlock> {
     if !IsDefined(recipe) {
         return null;

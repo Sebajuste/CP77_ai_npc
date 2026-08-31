@@ -79,15 +79,9 @@ func AiNpcSection(tag: String, body: String) -> String {
 
 // Keyed by the contact id it was handed. Nothing reads the current selection, so the prompt
 // describes the character the request is for even if the player is looking at somebody else.
-func AiNpcBuildSystemPrompt(contactId: String, pendingContext: String,
-                                   opt intentOverride: String) -> String {
-    return AiNpcBuildSystemPromptWith(contactId, pendingContext, intentOverride,
-        AiNpcPromptRecipe());
-}
-
-// The same, against a recipe the caller names. The recipe is a parameter rather than a read,
-// so a prompt can be built against one in a test, and so the whole build is one function of
-// its arguments.
+//
+// The recipe is a parameter rather than a read: the whole build is one function of its
+// arguments, and the caller that names it is the pass builder, which knows its own.
 func AiNpcBuildSystemPromptWith(contactId: String, pendingContext: String,
                                        intentOverride: String,
                                        recipe: ref<AiNpcRecipe>) -> String {

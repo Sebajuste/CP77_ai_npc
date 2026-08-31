@@ -143,21 +143,10 @@ public class AiNpcMemoryService extends ScriptableSystem {
         let npcName = AiNpcGetCharacterName(contactId);
         let base = this.SeedIfEmpty(previous, contactProvider);
 
-        // Decided once and handed to both halves of the request: the instruction must ask for
-        // a CHRONICLE exactly when the body carries an ARCHIVE to build it from.
-        let folding = AiNpcMemoryShouldFold(base);
-        let exact = AiNpcMemoryChronicleExact();
-
-        // Bound to locals: the record measures each half, and a serialised body cannot be
-        // taken apart again.
-        let instruction = AiNpcMemoryInstruction(folding);
-        let request = AiNpcMemoryRequestBody(base, npcName, AiNpcGenderFact(),
-            AiNpcHistoryTranscript(evicted, npcName), exact);
-        let slot = AiNpcGetSlotForPass(AiNpcLaneThinking());
-        let body = AiNpcLlmChatBody(backend, slot, instruction, request);
-
-        this.m_record = AiNpcRequestRecord.Sent(AiNpcLaneThinking(), contactId,
-            backend, slot, instruction, request);
+        // The builder decides once for both halves: the instruction asks for a CHRONICLE
+        // exactly when the body carries an ARCHIVE to build it from.
+        let builder = AiNpcPassCompaction.Of(base, npcName,
+            AiNpcHistoryTranscript(evicted, npcName));
 
         this.m_contact = contactId;
         this.m_base = base;
@@ -170,23 +159,25 @@ public class AiNpcMemoryService extends ScriptableSystem {
         // type here would put a third file at risk of the validation failure AiNpcCliNative
         // describes.
         this.m_serial += 1;
-        if !AiNpcSendChat(backend, body, this, n"OnMemoryResponse",
-                AiNpcCliRequestId(AiNpcCliLaneMemory(), this.m_serial)) {
+        let request = AiNpcPassSend(builder, backend, contactId, this, n"OnMemoryResponse",
+                AiNpcCliRequestId(AiNpcCliLaneMemory(), this.m_serial));
+        if !IsDefined(request) {
             // Refused before anything was spawned. The log is the only place a silent lane can
             // say so, and nothing was armed, so the lane is already free.
             AiNpcLog(s"Compaction for '\(contactId)' was refused by the transport.");
             return;
         }
+        this.m_record = request.record;
 
         // After the send and not before: arming is what marks this lane busy, so a request
         // that never left cannot occupy it.
         AiNpcArmTimeout(AiNpcThinkingTimeoutCallback.Create(this.m_watchdog.Arm()),
-            AiNpcLlmRequestTimeout(backend, slot));
+            AiNpcLlmRequestTimeout(backend, request.slot));
 
         let trigger = full ? "batch" : "silence";
-        if folding {
-            let pending = ArraySize(base.archive) - AiNpcMemoryChronicleFrom(base, exact);
-            AiNpcLog(s"Folding \(pending) archived fact(s) into the chronicle for '\(contactId)' (\(exact ? "exact" : "incremental")).");
+        if builder.folding {
+            let pending = ArraySize(base.archive) - AiNpcMemoryChronicleFrom(base, builder.exact);
+            AiNpcLog(s"Folding \(pending) archived fact(s) into the chronicle for '\(contactId)' (\(builder.exact ? "exact" : "incremental")).");
         }
 
         AiNpcLog(s"Compacting \(this.m_absorbed) message(s) for '\(contactId)' (\(trigger)).");

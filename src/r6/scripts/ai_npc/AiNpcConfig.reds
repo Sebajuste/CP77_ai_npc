@@ -77,22 +77,10 @@ public class AiNpcConfigService extends ScriptableService {
         return this.m_prompts;
     }
 
-    // What the system prompt renders. Never null once a load has happened: the template the
-    // mod ships is parsed even when nothing is on disk.
-    public func GetRecipe() -> ref<AiNpcRecipe> {
-        this.EnsureLoaded();
-        return this.m_recipe;
-    }
-
-    // A recipe by name, for a pass that names one. Null when the loaded file declares no such
-    // recipe -- which the pass table has already reported, by name, at load.
-    public func GetRecipeNamed(name: String) -> ref<AiNpcRecipe> {
-        this.EnsureLoaded();
-        return AiNpcRecipeBookNamed(this.m_book, name);
-    }
-
-    // What a pass is bound to. Both answers fall back the way an absent `passes` block does:
-    // the active recipe, and the dialogue slot.
+    // What a pass renders with, and the only way a recipe leaves this service: the active one
+    // is not offered, because a caller that could ask for it could render one pass under
+    // another's. Both answers fall back the way an absent `passes` block does: the active
+    // recipe, and the dialogue slot.
     public func GetPassRecipe(pass: String) -> ref<AiNpcRecipe> {
         this.EnsureLoaded();
         let binding = AiNpcPassBindingNamed(this.m_passes, pass);
@@ -1144,9 +1132,12 @@ public class AiNpcConfigService extends ScriptableService {
 
 }
 
-// The two questions a call site asks about its own pass, guarded the way AiNpcPromptRecipe is:
-// a config that failed to load answers "the dialogue slot, the built-in recipe", which is what
-// the mod sent before either table existed.
+// The two questions a call site asks about its own pass. A config that failed to load answers
+// "the dialogue slot, the built-in recipe", which is what the mod sent before either table
+// existed -- a caller that had to guard would be one caller away from a prompt with no blocks.
+//
+// AiNpcPassRecipe has ONE caller, AiNpcPassBuilder.Recipe(), and tools\lint.ps1 holds it there:
+// a renderer reaching the recipe by any other route is a renderer that can read another pass's.
 func AiNpcPassSlotName(pass: String) -> String {
     let service = AiNpcConfigService.Get();
     if IsDefined(service) {

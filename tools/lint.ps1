@@ -1783,6 +1783,82 @@ if ($presetProblems) {
     Report-Pass "a preset writes what the mod declares ($($presetNames.Count) preset(s), $($recipeNames.Count) recipe binding(s))"
 }
 
+# --- the pass pipeline -------------------------------------------------------------------
+#
+# One request is assembled in one place. Every pass resolves a slot, renders two messages,
+# serialises, records and sends; that column is AiNpcPassSend's, and a lane that wrote it again
+# would be a sixth copy free to drift -- which is exactly how the recipe came to be read from
+# two places at once.
+#
+# Two agreements:
+#
+#   * the four steps of the column are called from AiNpcPassSend.reds and nowhere else;
+#   * the recipe has ONE door. AiNpcPassRecipe is called by AiNpcPassBuilder.Recipe(), which
+#     asks for its own pass, so a builder cannot render against another pass's recipe. Anything
+#     else reaching for a recipe by name can.
+$pipelineProblems = @()
+
+$spine = @{
+    "AiNpcLlmChatBody("        = @("AiNpcPassSend.reds", "AiNpcLlm.reds")
+    "AiNpcSendChat("           = @("AiNpcPassSend.reds", "AiNpcTransport.reds")
+    "AiNpcRequestRecord.Sent(" = @("AiNpcPassSend.reds", "AiNpcRequestLog.reds")
+    "AiNpcPassRecipe("         = @("AiNpcPassBuilder.reds", "AiNpcConfig.reds")
+}
+foreach ($call in $spine.Keys) {
+    foreach ($f in $files) {
+        if (Test-IsSelfTest $f) { continue }
+        if ($spine[$call] -contains $f.Name) { continue }
+        if ((Read-Code $f.FullName) -match [regex]::Escape($call)) {
+            $pipelineProblems += "$($f.Name) calls $call) - the request pipeline is written in one place, AiNpcPassSend.reds"
+        }
+    }
+}
+
+# The active recipe is reachable only through a pass. A renderer that read it directly would
+# describe whichever recipe is active rather than the one the request is being sent under.
+foreach ($f in $files) {
+    if ((Read-Code $f.FullName) -match 'AiNpcPromptRecipe') {
+        $pipelineProblems += "$($f.Name) names AiNpcPromptRecipe - a recipe is read through its pass, never off the active one"
+    }
+}
+
+# Every pass makes requests, so every pass has a builder. One, and its own.
+$passText = Read-Code (Join-Path $modSrc "AiNpcPass.reds")
+$namesBody = [regex]::Match($passText, '(?s)func AiNpcPassNames\(\)[^\{]*\{(?<body>.*?)\n\}')
+$declaredLanes = @()
+if (-not $namesBody.Success) {
+    $pipelineProblems += "AiNpcPassNames not found - the rule is reading nothing"
+} else {
+    foreach ($m in [regex]::Matches($namesBody.Groups["body"].Value, 'AiNpcLane\w+\(\)')) {
+        $declaredLanes += $m.Value
+    }
+}
+
+$builtLanes = @()
+foreach ($m in [regex]::Matches($allText, '(?s)func Pass\(\) -> String \{\s*return (AiNpcLane\w+\(\));')) {
+    $lane = $m.Groups[1].Value
+    if ($builtLanes -contains $lane) {
+        $pipelineProblems += "two builders declare pass $lane - a pass has one"
+    }
+    $builtLanes += $lane
+}
+foreach ($lane in $declaredLanes) {
+    if ($builtLanes -notcontains $lane) {
+        $pipelineProblems += "pass $lane is in AiNpcPassNames and no builder declares it - it could be bound to a slot and a recipe and never sent"
+    }
+}
+foreach ($lane in $builtLanes) {
+    if ($declaredLanes -notcontains $lane) {
+        $pipelineProblems += "a builder declares pass $lane, which AiNpcPassNames does not - it can be sent and never configured"
+    }
+}
+
+if ($pipelineProblems) {
+    Report-Fail "a request is assembled in one place" (($pipelineProblems | Select-Object -Unique) -join "`n")
+} else {
+    Report-Pass "a request is assembled in one place ($($builtLanes.Count) pass builder(s), one spine)"
+}
+
 Write-Output ""
 if ($script:failures -gt 0) {
     Write-Output "$($script:failures) check(s) failed."
