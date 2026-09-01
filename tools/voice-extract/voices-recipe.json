@@ -344,37 +344,6 @@
       ]
     },
     {
-      "contactId": "jackie_dead",
-      "language": "en",
-      "seconds": 31.98,
-      "lines": [
-        {
-          "hash": "005d2ff32356480d",
-          "path": "base\\localization\\en-us\\vo\\jackie_q001_f_16866585842ef000.wem"
-        },
-        {
-          "hash": "006fa4fe21fcabb9",
-          "path": "base\\localization\\en-us\\vo\\jackie_q003_f_17da40a7614b6000.wem"
-        },
-        {
-          "hash": "00ff609771f669e4",
-          "path": "base\\localization\\en-us\\vo\\jackie_q000_f_19281608792ef000.wem"
-        },
-        {
-          "hash": "01226edfd402fba0",
-          "path": "base\\localization\\en-us\\vo\\jackie_q005_f_1abeb8f78b405000.wem"
-        },
-        {
-          "hash": "027334f94af6bb6f",
-          "path": "base\\localization\\en-us\\vo\\jackie_q000_f_180228b1042ef000.wem"
-        },
-        {
-          "hash": "0297047fd6460261",
-          "path": "base\\localization\\en-us\\vo\\jackie_q000_f_170c2b36ca405000.wem"
-        }
-      ]
-    },
-    {
       "contactId": "judy",
       "language": "fr",
       "seconds": 33.04,
@@ -676,41 +645,6 @@
     },
     {
       "contactId": "jackie",
-      "language": "fr",
-      "seconds": 30.96,
-      "lines": [
-        {
-          "hash": "001b84026b1557dd",
-          "path": "base\\localization\\fr-fr\\vo\\jackie_q005_f_1ad874f9e7405000.wem"
-        },
-        {
-          "hash": "00ae29c5ca94c2fa",
-          "path": "base\\localization\\fr-fr\\vo\\jackie_q003_f_17b5cedaaa4b6000.wem"
-        },
-        {
-          "hash": "0103b91f684c510d",
-          "path": "base\\localization\\fr-fr\\vo\\jackie_q003_f_185adee7622ef000.wem"
-        },
-        {
-          "hash": "019d31a27af43149",
-          "path": "base\\localization\\fr-fr\\vo\\jackie_q005_f_168a2a88272cd000.wem"
-        },
-        {
-          "hash": "024ef6481bcf60fc",
-          "path": "base\\localization\\fr-fr\\vo\\jackie_q000_f_18e53c3f552ef000.wem"
-        },
-        {
-          "hash": "031e112eb119cf53",
-          "path": "base\\localization\\fr-fr\\vo\\jackie_q001_f_16663a5ec85b6000.wem"
-        },
-        {
-          "hash": "032de654e8f61f97",
-          "path": "base\\localization\\fr-fr\\vo\\jackie_q001_m_19e64b4c3f627000.wem"
-        }
-      ]
-    },
-    {
-      "contactId": "jackie_dead",
       "language": "fr",
       "seconds": 30.96,
       "lines": [

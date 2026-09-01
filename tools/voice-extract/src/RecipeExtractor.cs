@@ -13,13 +13,18 @@ internal static class RecipeExtractor
     public static int Run(Options options)
     {
         var recipe = JsonSerializer.Deserialize<Recipe>(File.ReadAllText(options.RecipeFile));
-        using var source = VoiceSource.Open(options.Game, options.Language);
+        var language = LanguageFor(recipe, options.Language);
+        if (!string.Equals(language, options.Language, StringComparison.OrdinalIgnoreCase))
+        {
+            Console.WriteLine($"pas de recette en '{options.Language}', repli sur '{language}'");
+        }
+        using var source = VoiceSource.Open(options.Game, language);
         var settings = SettingsFrom(recipe.Settings);
         var mismatched = 0;
 
         foreach (var voice in recipe.Voices)
         {
-            if (!string.Equals(voice.Language, options.Language, StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(voice.Language, language, StringComparison.OrdinalIgnoreCase))
             {
                 continue;
             }
@@ -87,6 +92,25 @@ internal static class RecipeExtractor
             Console.WriteLine($"    DIFFERENT de {expected}");
         }
         return same;
+    }
+
+    // La langue du joueur d'abord : son doublage est dans sa langue, et un clone fabrique
+    // ailleurs parlerait avec l'accent de la mauvaise. L'anglais n'est le repli que si la
+    // recette ignore la sienne -- ce qui, sur une installation ordinaire, n'arrive pas.
+    private static string LanguageFor(Recipe recipe, string wanted)
+    {
+        bool Has(string language) => recipe.Voices.Any(
+            v => string.Equals(v.Language, language, StringComparison.OrdinalIgnoreCase));
+
+        if (Has(wanted))
+        {
+            return wanted;
+        }
+        if (Has("en"))
+        {
+            return "en";
+        }
+        return recipe.Voices.FirstOrDefault()?.Language ?? wanted;
     }
 
     private static ClipRecipe SettingsFrom(RecipeSettings settings) => new()

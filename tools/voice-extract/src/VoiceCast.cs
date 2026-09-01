@@ -19,11 +19,11 @@ internal static class VoiceCast
         new("victor_vector", "^victor_vector_", null),
         new("kerry_eurodyne", "^kerry_", null),
         new("jackie", "^jackie_", null),
-        new("jackie_dead", "^jackie_", "meme voix que jackie"),
     };
 
-    // "stud" (Jesse) est un personnage original du mod : aucun doublage vanilla.
-    public static readonly string[] WithoutVanillaVoice = { "stud" };
+    // Des contacts du mod qui ne sont pas des voix. `stud` (Jesse) est un personnage original :
+    // aucun doublage vanilla. `jackie_dead` est un etat de contact, pas quelqu'un qui parle.
+    public static readonly string[] WithoutVanillaVoice = { "stud", "jackie_dead" };
 
     public static VoiceCharacter Find(string contactId)
         => All.FirstOrDefault(c => string.Equals(c.ContactId, contactId, StringComparison.OrdinalIgnoreCase));

@@ -50,6 +50,11 @@ Ce mode **n'ouvre pas le dictionnaire** : chaque replique est demandee a l'archi
 FNV1a64, qui est la seule chose qu'une archive connaisse. `-Against <dossier>` compare ce qu'il
 produit a une sortie de reference, octet pour octet.
 
+**La langue est celle du joueur**, et c'est normalement la bonne : son doublage est installe dans
+sa langue, et un clone fabrique ailleurs parlerait avec l'accent de la mauvaise. L'anglais n'est
+le repli que si la recette ignore la sienne, et le mode le dit alors :
+`pas de recette en 'de', repli sur 'en'`.
+
 **Verifie le 2026-08-31, dictionnaire deplace hors du disque** : les dix extraits francais et les
 dix anglais ressortent identiques. Le fichier fait 25 Ko pour vingt voix et 149 repliques.
 
@@ -134,7 +139,7 @@ compare a la table de l'archive. Il n'y a rien a deviner.
 | `rogue` | `^rogue_` | 1 061 | 1 060 |
 | `victor_vector` | `^victor_vector_` | 380 | 402 |
 | `kerry_eurodyne` | `^kerry_` | 845 | 871 |
-| `jackie`, `jackie_dead` | `^jackie_` | 1 208 | 1 206 |
+| `jackie` | `^jackie_` | 1 208 | 1 206 |
 
 Les noms de fichiers sont les memes dans les deux archives ; les comptes different de quelques
 unites parce que chaque doublage a ses propres variantes de prise.
@@ -144,8 +149,10 @@ est dans le deuxieme jeton du nom : ses 1 067 repliques se repartissent sur `sq0
 `sq012` — *I Fought the Law*, *The Hunt*, *Following the River*, exactement sa ligne de quetes.
 Meme logique pour `victor_vector`, ou l'orthographe du jeu est `victor`.
 
-`stud` (Jesse) est un personnage ecrit pour le mod : il n'a pas de doublage vanilla, et l'outil
-le dit au lieu de sortir un fichier vide.
+Deux contacts du mod ne sont pas des voix, et l'outil le dit au lieu de sortir un fichier vide :
+`stud` (Jesse) est un personnage ecrit pour le mod, sans doublage vanilla, et `jackie_dead` est
+un **etat** du contact Jackie, pas quelqu'un qui parle. Neuf voix, donc -- et ce nombre n'a rien
+de definitif, le casting est une table.
 
 ### Songbird n'a pas de source propre, et c'est un resultat
 
