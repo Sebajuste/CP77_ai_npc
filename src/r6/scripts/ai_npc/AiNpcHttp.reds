@@ -2,7 +2,6 @@ module AiNpc
 
 import Codeware.*
 import RedData.Json.*
-import RedHttpClient.*
 import RedFileSystem.*
 
 
@@ -251,9 +250,6 @@ public class AiNpcHttpSystem extends ScriptableSystem {
   }
 
   // No logic, so an answer cannot be handled one way here and another from the plugin.
-  private cb func OnOpenAIResponse(response: ref<HttpResponse>) {
-    this.HandleChatReply(AiNpcReply.FromHttp(response));
-  }
 
   // Called from AiNpcCliDeliver. A request that timed out was never cancelled: the process is
   // still running and will deliver when it finishes, by which time the player has been told
@@ -625,9 +621,6 @@ public class AiNpcHttpSystem extends ScriptableSystem {
   // Every failure here has the same answer: deliver what was already in hand. The reply reads
   // correctly apart from one bracket, so nothing below branches on the outcome -- an empty
   // correction is a valid one.
-  private cb func OnRepairResponse(response: ref<HttpResponse>) {
-    this.HandleRepairReply(AiNpcReply.FromHttp(response));
-  }
 
   public func OnCliRepairReply(serial: Int32, reply: ref<AiNpcReply>) -> Void {
     if NotEquals(serial, this.m_repairSerial) {

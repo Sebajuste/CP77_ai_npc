@@ -91,6 +91,14 @@ func AiNpcProviderSetting() -> AiNpcProvider {
     if !IsDefined(settings) {
         return AiNpcProvider.OpenRouter;
     }
+    // Un reglage ecrit quand la voie streamee etait un fournisseur a part se relit comme
+    // OpenRouter, qui est desormais cette voie-la. Sans ce repli, Mod Settings rendrait une
+    // valeur qui ne designe plus rien.
+    if NotEquals(EnumInt(settings.aiModel), EnumInt(AiNpcProvider.OpenRouter))
+            && NotEquals(EnumInt(settings.aiModel), EnumInt(AiNpcProvider.ClaudeCli))
+            && NotEquals(EnumInt(settings.aiModel), EnumInt(AiNpcProvider.CodexCli)) {
+        return AiNpcProvider.OpenRouter;
+    }
     return settings.aiModel;
 }
 

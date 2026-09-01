@@ -21,7 +21,6 @@
 module AiNpc
 
 import RedData.Json.*
-import RedHttpClient.*
 
 /// The three things that send ///
 

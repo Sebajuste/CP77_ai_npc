@@ -1,6 +1,7 @@
 // How a CLI answer finds its way back to the lane that asked for it.
 //
-// The HTTP transport does not need this file: RedHttpClient carries a target object and a
+// Ce fichier a existe parce qu'un second transport, RedHttpClient, portait lui-meme un objet
+// cible et une methode. Il n'y en a plus qu'un, et c'est celui-ci.
 // method name in its callback, so the answer lands on the object that sent the request. The
 // plugin has no such channel by design -- carrying one would mean registering a second
 // native class, and AiNpcCliNative explains what each of those costs.

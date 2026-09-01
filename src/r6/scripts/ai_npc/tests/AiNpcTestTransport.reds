@@ -133,6 +133,15 @@ func AiNpcTestWatchdog(t: ref<AiNpcTestRunner>) -> Void {
     t.Check("transport/openrouter is not a cli lane", !AiNpcProviderIsCli(AiNpcProvider.OpenRouter));
     t.Check("transport/claude is a cli lane", AiNpcProviderIsCli(AiNpcProvider.ClaudeCli));
     t.Check("transport/codex is a cli lane", AiNpcProviderIsCli(AiNpcProvider.CodexCli));
+
+    // Toutes les voies passent par le plugin depuis que RedHttpClient a ete retire. La question
+    // « est-ce une voie CLI » reste, elle, un decoupage different : ce qui en depend est
+    // l'espace de noms des modeles et l'absence de cle, pas le transport.
+    t.Check("transport/openrouter runs in the plugin",
+        AiNpcProviderIsNative(AiNpcProvider.OpenRouter));
+    t.Check("transport/and so do the cli lanes",
+        AiNpcProviderIsNative(AiNpcProvider.ClaudeCli));
+
 }
 
 // The debug-mode second message. Pure, so what is covered here is the whole of it except

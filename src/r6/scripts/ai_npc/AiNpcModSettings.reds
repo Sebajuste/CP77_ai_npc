@@ -47,7 +47,6 @@ public class AiNpcSettingsService extends ScriptableService {
     @runtimeProperty("ModSettings.displayName", "Model")
     @runtimeProperty("ModSettings.description", "Which AI service generates the replies. OpenRouter is the supported way to play; the streamed entry is the same service and the same key, read as it is written so a voice can start speaking sooner. The two CLI lanes are for mod authors testing their own work: playing through a coding-agent subscription is outside what those plans are sold for, and the provider may limit or suspend your account without warning.")
     @runtimeProperty("ModSettings.displayValues.OpenRouter", "OpenRouter (API key) - supported")
-    @runtimeProperty("ModSettings.displayValues.OpenRouterStream", "OpenRouter, streamed (API key) - new")
     @runtimeProperty("ModSettings.displayValues.ClaudeCli", "Claude CLI - mod authors only")
     @runtimeProperty("ModSettings.displayValues.CodexCli", "Codex CLI - mod authors only")
     public let aiModel: AiNpcProvider = AiNpcProvider.OpenRouter;

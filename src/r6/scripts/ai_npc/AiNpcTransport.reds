@@ -17,7 +17,6 @@
 
 module AiNpc
 
-import RedHttpClient.*
 
 // Sends one chat-shaped request and returns whether it left.
 //
@@ -28,16 +27,9 @@ import RedHttpClient.*
 // False means nothing was sent and nothing will be delivered. The caller reports it the same
 // way it reports any other failure -- there is no separate ending for "the transport refused
 // it", because from the player's side there is no difference.
-func AiNpcSendChat(provider: AiNpcProvider, body: String, target: wref<IScriptable>,
-        httpMethod: CName, requestId: Int32) -> Bool {
-    if AiNpcProviderIsNative(provider) {
-        // The provider is named rather than numbered on the way across: the plugin has its
-        // own registry keyed by that name, and a number would make the two halves agree by
-        // coincidence of ordering rather than by saying the same word.
-        return AiNpcCli.Send(AiNpcProviderName(provider), body, requestId);
-    }
-
-    let callback = HttpCallback.Create(target, httpMethod);
-    AsyncHttpClient.Post(callback, AiNpcLlmChatUrl(provider), body, AiNpcLlmChatHeaders(provider));
-    return true;
+func AiNpcSendChat(provider: AiNpcProvider, body: String, requestId: Int32) -> Bool {
+    // The provider is named rather than numbered on the way across: the plugin has its own
+    // registry keyed by that name, and a number would make the two halves agree by coincidence
+    // of ordering rather than by saying the same word.
+    return AiNpcCli.Send(AiNpcProviderName(provider), body, requestId);
 }

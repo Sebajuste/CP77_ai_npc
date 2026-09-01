@@ -38,15 +38,22 @@ enum AiNpcGender {
 }
 
 // Four lanes, and two of them are OpenRouter: the same service, the same key, one reached
-// through RedHttpClient and one through ai_npc.dll, which reads the reply as it is written and
+// through ai_npc.dll, which reads the reply as it is written and
 // hands each finished sentence to the voice. Numbered contiguously and appended, never
 // inserted: a hole would mean a persisted setting that reads as a provider nobody can select,
 // and a member added in the middle silently reassigns what a player already chose.
+// OpenRouter garde la valeur 0, et c'est la seule reponse correcte : Mod Settings persiste
+// l'entier et non le nom, donc renumeroter relirait le choix d'un joueur comme un autre
+// fournisseur. Ce qui a change sous ce nom, c'est le tuyau -- la voie passe par ai_npc.dll, qui
+// lit la reponse pendant qu'elle s'ecrit.
+//
+// La valeur 3 a existe, le temps de mesurer la nouvelle voie contre l'ancienne. Elle n'existe
+// plus, et AiNpcProviderSetting ramene un 3 persiste sur 0 : le meme service, la meme cle, le
+// meme modele.
 enum AiNpcProvider {
     OpenRouter = 0,
     ClaudeCli = 1,
-    CodexCli = 2,
-    OpenRouterStream = 3
+    CodexCli = 2
 }
 
 // Where the choice of a command is made. Embedded is what the mod has always done and stays

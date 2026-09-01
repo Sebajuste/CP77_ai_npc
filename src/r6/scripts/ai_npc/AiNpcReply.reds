@@ -1,10 +1,10 @@
 // What an answer is, once the transport is out of the way.
 //
-// Two transports -- RedHttpClient for OpenRouter, the plugin for the CLI lanes -- and exactly
-// ONE handler per lane that reads an answer. Those only fit together if the answer stops
-// being an `HttpResponse`: that type belongs to one of the two transports, and a handler
-// typed on it forces every caller to be an HTTP caller. So there are two factories instead,
-// and no `switch` on the provider anywhere in AiNpcHttp.reds or AiNpcMemoryService.reds.
+// One transport now -- ai_npc.dll, for every provider -- and exactly ONE handler per lane that
+// reads an answer. This type is what made that possible while there were two: an answer typed
+// on `HttpResponse` would have forced every caller to be an HTTP caller. RedHttpClient is gone
+// and the seam stays, because what it separates is the lane from the wire, not one wire from
+// another.
 //
 // Three facts, and not one more: a status code, a parsed body, and the day the answer was
 // dated. That is everything the lanes, the failure messages and the token ledger read from a
@@ -17,7 +17,6 @@
 module AiNpc
 
 import RedData.Json.*
-import RedHttpClient.*
 
 public class AiNpcReply {
     private let m_status: Int32;
@@ -26,16 +25,6 @@ public class AiNpcReply {
     private let m_date: String;
 
     /// The two factories ///
-
-    // The proxy over RedHttpClient. A null response is not an error to report here: it is
-    // status 0 with nothing to quote, which is exactly what the transport-failure message
-    // already describes.
-    public static func FromHttp(response: ref<HttpResponse>) -> ref<AiNpcReply> {
-        if !IsDefined(response) {
-            return AiNpcReply.Of(0, "", "");
-        }
-        return AiNpcReply.Of(response.GetStatusCode(), response.GetText(), response.GetHeader("Date"));
-    }
 
     // The plugin's answer. `body` is OpenAI-shaped JSON, `status` plays the part of the HTTP
     // status code, and `date` is the machine clock in Date-header format -- see

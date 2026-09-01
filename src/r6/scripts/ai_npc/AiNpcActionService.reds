@@ -18,7 +18,6 @@
 
 module AiNpc
 
-import RedHttpClient.*
 import RedData.Json.*
 
 public class AiNpcActionService extends ScriptableSystem {
@@ -100,9 +99,6 @@ public class AiNpcActionService extends ScriptableSystem {
 
     /// The answer ///
 
-    private cb func OnActionResponse(response: ref<HttpResponse>) {
-        this.HandleActionReply(AiNpcReply.FromHttp(response));
-    }
 
     public func OnCliActionReply(serial: Int32, reply: ref<AiNpcReply>) -> Void {
         if NotEquals(serial, this.m_serial) {

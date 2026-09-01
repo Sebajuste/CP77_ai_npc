@@ -16,7 +16,6 @@ Install these first (all are standard framework mods):
 | [RED4ext](https://github.com/WopsS/RED4ext) | plugin loader |
 | [redscript](https://github.com/jac3km4/redscript) | compiles this mod's `.reds` at launch |
 | [Codeware](https://github.com/psiberx/cp2077-codeware) | UI + input callbacks |
-| [RedHttpClient](https://github.com/rayshader/cp2077-red-httpclient) | HTTPS calls to OpenRouter |
 | [RedData](https://github.com/psiberx/cp2077-red-data) | JSON parsing |
 | [RedFileSystem](https://github.com/psiberx/cp2077-red-filesystem) | reads/writes settings + history |
 | [Mod Settings](https://www.nexusmods.com/cyberpunk2077/mods/4885) | in-game settings menu |

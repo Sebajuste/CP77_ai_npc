@@ -37,7 +37,7 @@ func AiNpcPassSend(builder: ref<AiNpcPassBuilder>, provider: AiNpcProvider, cont
     let record = AiNpcRequestRecord.Sent(pass, contactId, provider, slot,
         AiNpcRecipeNameOf(builder.Recipe()), instruction, ask);
 
-    if !AiNpcSendChat(provider, body, target, httpMethod, requestId) {
+    if !AiNpcSendChat(provider, body, requestId) {
         return null;
     }
 

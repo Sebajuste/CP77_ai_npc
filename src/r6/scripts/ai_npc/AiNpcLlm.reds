@@ -16,7 +16,6 @@
 
 module AiNpc
 
-import RedHttpClient.*
 import RedData.Json.*
 
 /// Wire shapes ///
@@ -50,8 +49,11 @@ public class AiNpcOpenRouterRequestDTO {
 // streaming lane runs in the plugin like a CLI lane, and is OpenRouter in every other respect.
 
 // Whether ai_npc.dll runs it. Asked in exactly one place, AiNpcSendChat.
+// Toutes les voies passent maintenant par ai_npc.dll. La fonction reste parce qu'elle nomme un
+// fait -- « c'est le plugin qui parle au reseau » -- et qu'un jour ou une voie ne le ferait plus,
+// c'est ici que ca se dirait plutot que dans un test disperse.
 func AiNpcProviderIsNative(provider: AiNpcProvider) -> Bool {
-    return AiNpcProviderIsCli(provider) || Equals(provider, AiNpcProvider.OpenRouterStream);
+    return true;
 }
 
 // Whether it is a coding-agent CLI. What hangs on this is the model namespace and the absence of
@@ -63,7 +65,7 @@ func AiNpcProviderIsCli(provider: AiNpcProvider) -> Bool {
 // Whether it is OpenRouter, by whichever pipe. Same endpoint, same key, same model namespace, so
 // everything a player configures is shared and the menu shows one set of rows for both.
 func AiNpcProviderIsOpenRouter(provider: AiNpcProvider) -> Bool {
-    return Equals(provider, AiNpcProvider.OpenRouter) || Equals(provider, AiNpcProvider.OpenRouterStream);
+    return Equals(provider, AiNpcProvider.OpenRouter);
 }
 
 // Where the request goes. The CLI lanes have no endpoint, and "" would be worse than useless:
@@ -73,7 +75,6 @@ func AiNpcLlmChatUrl(provider: AiNpcProvider) -> String {
     switch provider {
         case AiNpcProvider.OpenRouter:
             return "https://openrouter.ai/api/v1/chat/completions";
-        case AiNpcProvider.OpenRouterStream:
             // Not the https:// url it dials: nothing in script sends this request, so a lane
             // reading this string must not be told to look for a TLS problem it cannot have.
             return "plugin://openrouter";
@@ -104,7 +105,6 @@ func AiNpcLlmSlotModel(provider: AiNpcProvider, slot: ref<AiNpcSlot>) -> String 
 func AiNpcLlmChatModel(provider: AiNpcProvider) -> String {
     switch provider {
         case AiNpcProvider.OpenRouter:
-        case AiNpcProvider.OpenRouterStream:
             return AiNpcGetOpenRouterModel();
         case AiNpcProvider.ClaudeCli:
             return AiNpcGetClaudeCliModel();
@@ -154,7 +154,6 @@ func AiNpcLlmRequestTimeout(provider: AiNpcProvider, slot: ref<AiNpcSlot>) -> Fl
 func AiNpcLlmCredentialIssue(provider: AiNpcProvider) -> String {
     switch provider {
         case AiNpcProvider.OpenRouter:
-        case AiNpcProvider.OpenRouterStream:
             let key = AiNpcGetOpenRouterApiKey();
             if Equals(key, "0000000000") || StrLen(key) < 10 {
                 return "no openRouterApiKey set in r6\\storages\\AiNpc\\settings.json";
@@ -169,23 +168,9 @@ func AiNpcLlmCredentialIssue(provider: AiNpcProvider) -> String {
     }
 }
 
-func AiNpcLlmChatHeaders(provider: AiNpcProvider) -> array<HttpHeader> {
-    let headers: array<HttpHeader>;
-    ArrayPush(headers, HttpHeader.Create("Content-Type", "application/json"));
-
-    switch provider {
-        case AiNpcProvider.OpenRouter:
-            ArrayPush(headers, HttpHeader.Create("Authorization", "Bearer " + AiNpcGetOpenRouterApiKey()));
-            ArrayPush(headers, HttpHeader.Create("HTTP-Referer", "https://www.nexusmods.com/cyberpunk2077"));
-            ArrayPush(headers, HttpHeader.Create("X-Title", "Cyberpunk 2077 AI NPC"));
-            break;
-        default:
-            // The plugin lanes never reach an HTTP client, so these headers are never read.
-            // The streamed one sends its own, from OpenRouterStream.cpp.
-            break;
-    }
-    return headers;
-}
+// Les en-tetes ne sont plus construits ici : ai_npc.dll ecrit les siens, dans
+// OpenRouterStream.cpp, parce que c'est lui qui tient la connexion. Ce qui vivait ici servait
+// RedHttpClient, qui n'est plus une dependance de ce mod.
 
 /// Request bodies ///
 
@@ -248,7 +233,7 @@ func AiNpcLlmWithSlot(body: ref<JsonVariant>, slot: ref<AiNpcSlot>) -> String {
 // Display name of a provider, matching the Mod Settings labels closely enough to be searched
 // for by someone reading the log next to the menu. Also the word sent across to the plugin,
 // which routes on it: a contract with Registry.cpp for the CLI lanes and with
-// OpenRouterStream.cpp for the streamed one, not just a label.
+// OpenRouterStream.cpp, not just a label.
 func AiNpcProviderName(provider: AiNpcProvider) -> String {
     switch provider {
         case AiNpcProvider.OpenRouter:
@@ -257,8 +242,6 @@ func AiNpcProviderName(provider: AiNpcProvider) -> String {
             return "ClaudeCli";
         case AiNpcProvider.CodexCli:
             return "CodexCli";
-        case AiNpcProvider.OpenRouterStream:
-            return "OpenRouterStream";
     }
     return "unknown";
 }

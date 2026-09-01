@@ -162,7 +162,7 @@ AI NPC answers you through OpenRouter: one account, one key, and you pay only fo
 
 The only lane supported for playing. The next page sets it up.
 
-Needs RedHttpClient 0.7.1 or newer: github.com/rayshader/cp2077-red-httpclient
+Needs nothing else installed: ai_npc.dll talks to OpenRouter itself.
                             </description>
                             <conditionFlags>
                                 <flag name="PROVIDER">OpenRouter</flag>
@@ -308,7 +308,7 @@ If the Setup tab says Claude was not found, paste the full path to claude.exe in
 
 3. Start the game, open the CET overlay, tab AI NPC, tab Setup. Paste the key there and press Test, which sends one real message.
 
-This lane needs the RedHttpClient mod, version 0.7.1 or newer: github.com/rayshader/cp2077-red-httpclient
+This lane needs nothing else installed: ai_npc.dll talks to OpenRouter itself.
 
 Everything here is repeated in "AI NPC - read me.txt", which lands in your Cyberpunk 2077 folder, where the links can be copied instead of retyped. The model, the language and the rest are in Mod Settings, and none of it is permanent.
                             </description>

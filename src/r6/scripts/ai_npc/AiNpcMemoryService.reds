@@ -14,7 +14,6 @@ module AiNpc
 
 import Codeware.*
 import RedData.Json.*
-import RedHttpClient.*
 
 public class AiNpcMemoryService extends ScriptableSystem {
 
@@ -205,9 +204,6 @@ public class AiNpcMemoryService extends ScriptableSystem {
 
     // No logic: everything below the translation is shared with the CLI transport, so an
     // answer cannot be handled one way here and another there.
-    private cb func OnMemoryResponse(response: ref<HttpResponse>) {
-        this.HandleMemoryReply(AiNpcReply.FromHttp(response));
-    }
 
     // Called from AiNpcCliDeliver. The serial makes a late answer harmless: a compaction that
     // timed out is not cancelled, and by the time it delivers this lane may hold a different

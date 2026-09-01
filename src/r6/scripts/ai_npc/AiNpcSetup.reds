@@ -1,6 +1,5 @@
 module AiNpc
 
-import RedHttpClient.*
 import RedData.Json.*
 
 // Read the current setup, change it, and prove it works, from inside a running game.
@@ -105,7 +104,6 @@ public class AiNpcSetupSystem extends ScriptableSystem {
         }
 
         switch provider {
-            case AiNpcProvider.OpenRouterStream:
             case AiNpcProvider.OpenRouter:
                 // The resolved model, not the key it is stored under: with a slots block the
                 // legacy setting is no longer what goes out, and a line naming it would be a
@@ -152,7 +150,6 @@ public class AiNpcSetupSystem extends ScriptableSystem {
             // mod using it. Either reads as a broken install without this line.
             "OpenRouter    the supported way to play. Needs a key from openrouter.ai/keys. Model ids ending in :free cost nothing, but they are a shared pool: expect 429 (busy) or 404 (retired), and change the model when one stops answering.\n" +
             "\n" +
-            "OpenRouterStream  the same service and the same key, over a socket ai_npc.dll owns rather than RedHttpClient. It reads the reply as it is written and hands each finished sentence to the voice, so a spoken line can start before the model has finished writing. Nothing else about a reply changes. New, and not measured against the lane above in game yet.\n" +
             "\n" +
             // Not a footnote under the lanes above: the window renders this verbatim, and a
             // reader picking a lane reads the lane. Said on each, in the same words, so
@@ -228,7 +225,6 @@ public class AiNpcSetupSystem extends ScriptableSystem {
         }
 
         switch AiNpcProviderSetting() {
-            case AiNpcProvider.OpenRouterStream:
             case AiNpcProvider.OpenRouter:
                 return this.Row("openRouterApiKey", "API key", AiNpcMaskSecret(AiNpcGetOpenRouterApiKey()), true)
                     + "\n" + this.Row("openRouterModel", "Model", AiNpcSpeakingModel(), false)
@@ -267,7 +263,7 @@ public class AiNpcSetupSystem extends ScriptableSystem {
     public func SetProvider(name: String) -> String {
         let provider: AiNpcProvider;
         if !AiNpcProviderFromName(name, provider) {
-            return s"Unknown provider '\(name)'. One of: OpenRouter, OpenRouterStream, ClaudeCli, CodexCli.";
+            return s"Unknown provider '\(name)'. One of: OpenRouter, ClaudeCli, CodexCli.";
         }
 
         if !AiNpcSetProviderSetting(provider) {
@@ -442,9 +438,6 @@ public class AiNpcSetupSystem extends ScriptableSystem {
         return Equals(this.m_testState, "running");
     }
 
-    private cb func OnTestResponse(response: ref<HttpResponse>) {
-        this.HandleTestReply(AiNpcReply.FromHttp(response));
-    }
 
     // Called from AiNpcCliDeliver. A test the player gave up on still finishes in the plugin,
     // and its answer must not overwrite a newer one.
@@ -593,7 +586,7 @@ func AiNpcProviderFromName(name: String, out provider: AiNpcProvider) -> Bool {
         return true;
     }
     if Equals(key, "openrouterstream") || Equals(key, "stream") {
-        provider = AiNpcProvider.OpenRouterStream;
+        provider = AiNpcProvider.OpenRouter;
         return true;
     }
     if Equals(key, "claudecli") || Equals(key, "claude") {

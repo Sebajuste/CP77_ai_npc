@@ -26,9 +26,7 @@ built around and the only one supported for playing.
   3. Start the game, open the CET overlay, tab AI NPC, tab Setup,
      paste the key and press Test.
 
-This lane needs the RedHttpClient mod, version 0.7.1 or newer:
-
-     https://github.com/rayshader/cp2077-red-httpclient/releases
+This lane needs nothing else installed: ai_npc.dll talks to OpenRouter itself.
 
 
 -----------------------------------------------------------------------------------
@@ -120,7 +118,7 @@ Some things are kept on purpose so that anyone arriving from those mods finds wh
 they already know: T still opens the chat from the phone, and the characters carry
 the same contact names.
 
-Built on RED4ext, redscript, Codeware, RedData, RedFileSystem, RedHttpClient and
+Built on RED4ext, redscript, Codeware, RedData, RedFileSystem and
 Mod Settings. Thank you to WopsS, jac3km4, psiberx and rayshader. Cyber Engine
 Tweaks is optional and unlocks the Setup and Journal windows.
 
