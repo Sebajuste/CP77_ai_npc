@@ -463,3 +463,202 @@ n'est installe**, et il n'en sera pas installe sur la foi de dix points.
 Ce qui reste, et c'est une decision, pas une mesure : accepter `jackie` tel quel, ou changer de
 moteur pour tout le monde. Une exception de configuration pour lui seul est exclue par la
 contrainte.
+
+## PocketTTS : le POC hors jeu — a lancer
+
+Le pendant de `clone-refs.py` pour l'autre moteur, ecrit et non lance : PocketTTS n'est pas
+installe sur cette machine.
+
+```
+pip install pocket-tts
+python tools	ts-lab\pocket-refs.py                    # les neuf voix, replique "argot"
+python tools	ts-lab\pocket-refs.py judy panam         # deux d'entre elles
+```
+
+Sortie : `out\pocket-<personnage>-<replique>.wav`, a cote des `clone-*` de Zonos et sur la
+**meme replique**, ce qui est tout l'interet -- l'A/B se fait fichier contre fichier.
+
+### Pourquoi celui-la merite d'etre essaye
+
+| | PocketTTS | Zonos |
+|---|---|---|
+| ou il tourne | **processeur seul**, 2 coeurs | GPU 6 Go et plus, Ada ou Blackwell |
+| clonage | oui, zero-shot, un `.wav` de 5 s | oui |
+| premier son | ~200 ms annonces (30 ms pour le runtime C++) | ~2,9 s mesures |
+| code | MIT | fork tiers, Python + torch + CUDA |
+| poids | CC-BY-4.0, 672 Mo en fp32 pour le francais | non redistribuable en pratique |
+
+Il repond a la contrainte que Zonos ne peut pas tenir -- **le mod embarque ce dont il a besoin**
+-- et il repond aussi a l'autre : un repli qui clone n'a pas besoin d'un catalogue de voix, il
+en fabrique autant qu'il y a de personnages. Une seule chaine servirait alors les deux paliers,
+et l'extracteur servirait les deux au lieu d'un.
+
+Il existe un runtime C++ en un seul fichier ([PocketTTS.cpp](https://github.com/VolgaGerm/PocketTTS.cpp),
+MIT, ONNX Runtime, INT8 environ quatre fois plus petit) : c'est lui qui irait dans le plugin.
+Son README annonce GCC et Clang, **pas MSVC**, et `pluginuild.ps1` compile avec `cl.exe` --
+a verifier avant de compter sur une integration en process.
+
+### Ce que ce banc mesure et que Zonos ne permettait pas
+
+L'etat de voix se calcule explicitement (`get_state_for_audio_prompt`) et le script **chronometre
+le clonage separement de la parole**. C'est la question que le mod pose : « cloner une fois par
+PNJ » coute-t-il quelque chose a chaque replique. Zonos cachait cet etat dans son serveur, par
+nom de fichier, et ca a fausse trois mesures avant d'etre trouve.
+
+### Mesure du 2026-09-01, sur cette machine
+
+Installe et lance. `pip install pocket-tts` a suffi -- torch 2.5.1 etait deja la -- et le modele
+francais s'est telecharge et charge en 17 s la premiere fois, 2,2 s ensuite.
+
+**Le francais n'existe qu'en 24 couches.** Le paquet refuse `--language french` :
+« for technical reasons, only a larger 24-layer model is available for French ». Il n'y a donc
+pas de variante rapide a esperer, c'est celle-la ou rien.
+
+**Le defaut de torch est UN fil, et c'est le pire des reglages.** Sur les 32 coeurs logiques de
+cette machine :
+
+| fils | debit | premier son |
+|---|---|---|
+| 1, le defaut | 1,02x le temps reel | 411 ms |
+| 2 | 1,37x | 274 ms |
+| 4 | 1,46x | **190 ms** |
+| 8 | 1,66x | **164 ms** |
+
+`pocket-refs.py` force donc quatre fils, reglable par `--threads`.
+
+**Ce que ces chiffres disent, et c'est le point.** Un debit superieur a 1 avec `generate_audio_stream`
+signifie que le son ne manque jamais : le modele fabrique plus vite que le joueur n'ecoute. La
+voix commence donc **164 a 190 ms apres que le texte est pret**, et ne s'interrompt plus. A
+comparer aux ~2,9 s de Zonos avant le premier son, GPU obligatoire.
+
+La quantification (`quantize=True`) donne 1,28x et 263 ms, mais coute 6,9 s de chargement contre
+2,2. Sans interet ici ; elle vaudra pour la taille du modele embarque, pas pour la vitesse.
+
+### Le clonage est sur liste d'autorisation, la parole ne l'est pas
+
+Ce sont **deux depots**, et un seul est ferme :
+
+| depot | contenu | acces |
+|---|---|---|
+| `kyutai/pocket-tts-without-voice-cloning` | le modele qui parle | libre |
+| `kyutai/pocket-tts` | le modele qui clone | **sur liste** |
+
+Mesure du 2026-09-01 : un compte authentifie et a jour (`whoami` repond) recoit quand meme
+`GatedRepoError 403 -- you are not in the authorized list`. **Ce n'est pas une case a cocher,
+c'est une demande a faire approuver par Kyutai.**
+
+**Et le paquet avale l'erreur.** `load_model` tente les poids avec clonage, attrape n'importe
+quelle exception, et charge silencieusement ceux sans. On obtient un modele qui parle
+parfaitement et qui refuse de cloner, sans qu'aucun message ne dise pourquoi -- il faut appeler
+`download_if_necessary` a la main sur le chemin des poids pour voir le 403.
+
+Consequence sur la licence, et elle n'est pas mince : les poids sont annonces CC-BY-4.0, mais
+une porte d'autorisation par-dessus dit que Kyutai veut controler la distribution. Livrer ces
+poids-la dans un zip de mod contournerait cette porte. **A leur demander avant de compter
+dessus** -- ce que la licence permet et ce que l'auteur attend ne sont pas la meme question.
+
+Sans acces, le paquet propose son catalogue de vingt-six voix pretes.
+
+Et ce catalogue a une limite qu'il faut voir avant de compter dessus : ce sont **des clips de
+reference**, pas des voix entrainees, et leurs origines sont surtout anglaises -- VCTK, EARS,
+expresso. Une seule est francaise (`estelle`), avec une italienne, une espagnole et une
+allemande. Un catalogue de vingt-six voix dont une seule parle francais sans accent ne distingue
+pas neuf PNJ francais.
+
+Les vingt-six ont ete rendues sur la replique `argot`. Sur l'axe « distinguer beaucoup de PNJ »
+le catalogue tient : les hauteurs medianes vont de **79 Hz** (`charles`) a **234 Hz**
+(`estelle`), hommes et femmes repartis sur tout le registre. Aucune n'est coupee ni saturee.
+
+Trois sont a ecarter d'emblee : `marius` ne rend presque rien (RMS 0,007, six trames voisees),
+`stuart_bell` est tres bas (0,014), et `lola` etire la meme phrase sur **11,04 s** contre 3,9 a
+6,4 s pour les autres.
+
+**C'est l'accent qui rend l'acceptation non negociable**, pas le nombre de voix : sans elle,
+PocketTTS parle francais avec un accent anglais vingt-cinq fois sur vingt-six. Avec elle, il
+clone nos neuf references et en fera autant que le casting en comptera.
+
+### Ce qui est verifie, et ce qui ne l'est pas
+
+Verifie : l'installation, le chargement, le catalogue, les debits, le premier son, et que la
+moitie du banc qui ne depend d'aucun moteur (`voice_bench.py`) redonne exactement les memes
+chiffres qu'avant sur les rendus Zonos existants.
+
+**Pas verifie : la qualite, et le clonage.** Personne n'a ecoute, et le clonage n'a pas pu etre
+essaye. Les rendus du catalogue sont dans `out\pocket-voix-<voix>-argot.wav`, sur la meme
+replique que les `clone-*` de Zonos.
+
+## Le palier de repli : quelle voix pour quel personnage
+
+Le repli ne clone pas ; il **choisit** dans le catalogue. `assign-fallback.py` propose une voix
+par personnage en approchant sa hauteur, et rend l'attribution ecoutable.
+
+```
+python tools	ts-lab\pocket-refs.py --catalogue     # d'abord, rendre le catalogue
+python tools	ts-labssign-fallback.py             # puis, proposer et copier
+```
+
+Proposition du 2026-09-01, ecart maximal 13 Hz :
+
+| personnage | F0 | voix | F0 |
+|---|---|---|---|
+| `river_ward` | 94 | `michael` | 93 |
+| `jackie` | 110 | `jean` | 98 |
+| `takemura` | 111 | `paul` | 112 |
+| `victor_vector` | 113 | `bill_boerst` | 124 |
+| `kerry_eurodyne` | 140 | `george` | 133 |
+| `rogue` | 155 | `eponine` | 164 |
+| `songbird` | 166 | `vera` | 194 |
+| `judy` | 183 | `eve` | 182 |
+| `panam` | 190 | `mary` | 195 |
+
+Quatorze voix restent libres, donc le casting peut grandir sans manquer de timbres.
+
+**Deux attributions ont ete corrigees a l'oreille**, et elles montrent ce que la hauteur ne voit
+pas : `rogue` avait recu `rafael`, une voix d'homme de meme tessiture, et `songbird` demandait
+une voix plus chantante que sa hauteur ne l'indiquait. La hauteur a propose, l'oreille a
+tranche.
+
+**Ce que cette mesure vaut, et ce qu'elle ne vaut pas.** La hauteur ne dit pas si une voix
+« fait » le personnage -- seule l'oreille le dit. Elle dit qu'on ne donnera pas une voix aigue a
+Takemura, et le genre est le premier signal que l'oreille attrape. Deux reserves connues : elle
+ne distingue pas un homme d'une femme de meme tessiture -- `rogue` a 155 Hz recoit `rafael` --,
+et elle ignore l'accent, qui est la vraie limite du catalogue.
+
+`fallback-voices.json` est donc **faite pour etre editee a la main**. Le script ne l'ecrase pas :
+il garde les attributions presentes et n'en propose que pour les personnages qui n'en ont pas.
+
+A ecouter : `out
+epli-<personnage>-argot.wav`, l'attribution entendue plutot que le catalogue.
+
+## Le clonage PocketTTS, mesure du 2026-09-01 : il bat Zonos, sur processeur
+
+Acces accorde, les neuf references passees dans PocketTTS. Aucun rendu coupe, aucun sature.
+
+| | cout |
+|---|---|
+| cloner une reference | **1,7 a 2,9 s, une fois par personnage** |
+| parler | 3,3 a 5,0 s pour 4,6 a 6,4 s d'audio, soit ~1,3x le temps reel |
+| premier son | ~190 ms (mesure separement, a 4 fils) |
+
+**Le transfert de timbre, ecoute le 2026-09-01, et la mesure avait tort.**
+
+| moteur | a l'oreille |
+|---|---|
+| Zonos (GPU) | **tres proche des originaux** |
+| PocketTTS (processeur) | s'en eloigne, **garde les intonations** |
+
+L'enveloppe spectrale en 32 bandes mel disait l'inverse -- rang moyen 1,11 pour PocketTTS contre
+3,56 pour Zonos, soit un transfert quasi parfait d'un cote et a peine mieux que le hasard de
+l'autre. **C'est faux.** L'instrument avait ete valide a l'interieur d'une seule chaine
+d'enregistrement (6 fois sur 8 sur des repliques brutes du jeu) et la reserve etait ecrite :
+comparer un doublage de jeu a une sortie de synthese lui fait mesurer la chaine plutot que le
+locuteur. Il ne sert donc a rien ici, et il n'est plus invoque.
+
+**Et l'ecart de PocketTTS est ce qu'on veut.** « La meme facon de parler, pas exactement la meme
+voix » n'est pas un defaut a corriger : c'est une meilleure position sur la question du
+consentement, parce que reproduire une maniere n'est pas reproduire une interpretation. La
+distance devient donc un objectif de conception, pas une erreur a minimiser -- et le moteur qui
+clone le moins bien est celui qu'on garde.
+
+**Pas verifie : l'ecoute.** Les rendus sont dans `out\pocket-<personnage>-argot.wav`, a cote
+des `clone-*` de Zonos, sur la meme replique.

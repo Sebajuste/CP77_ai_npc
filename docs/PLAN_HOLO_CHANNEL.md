@@ -403,6 +403,39 @@ channel cannot supply the rule itself without breaking its own contract — *« 
 construit aucune requête »*. The channel id already travels with the request
 (`TriggerPostRequest(contactId, text, this.Id())`), so the seam is on the pass side.
 
+### The voice is lent, not granted — decided 2026-09-01
+
+A character's voice is only used for what stays inside the register the performance was recorded
+for. A reply that leaves it is **not spoken in that voice**: it falls back to the catalogue voice,
+or stays written.
+
+The reasoning is the user's, and it is about scope of consent rather than about taste. An actor
+agreed to their voice being recorded and distributed *in a video game*. The Skyrim affair of
+July 2023 produced complaints — Cindy Robinson asked for a mod to be taken down — because of
+**what was said**, not because of the technique. Keeping the voice inside the register the
+performance was made for is the closest a mod can come to that scope.
+
+**And it must be a guarantee, not a request**, for the reason § 6 already states about narration
+and numbers. A prompt clause depends on the model reading it, and this project has measured what
+that is worth: the same explicitness tier, read at run time, gives **0/24 on glm-5.3-flash, 1/24
+on Maverick and 23/24 on Qwen** (`docs\MODEL_BENCH.md`). The player chooses the model. A
+safeguard that carries a rights argument cannot rest on a setting the mod does not control.
+
+**So the gate is on the voice, not on the text.** That is the shape that makes it a guarantee:
+
+- nothing is censored — the reply is written, sent, and read as it always was;
+- what changes is **whose voice says it**;
+- and the decision needs nothing from the model, so no model can defeat it.
+
+It also keeps the two concerns apart. The explicitness tier answers a question the player was
+asked, and § 2 of the recipe schema is explicit that a recipe is not a better position from
+which to answer it. The voice gate answers a different question — what a third party consented
+to — and neither should be allowed to move the other.
+
+Where it lives: the same seam as `Clean`, on the channel that speaks. What decides a reply is
+out of register is **not written yet**, and it is the whole of the work: an enumerated test is
+what `docs\PLAN_PRESETS.md` says a prose rule cannot replace.
+
 **A channel already written by hand.** Jackie's sheet drops the Heist entry entirely, because
 "he is beside V from the Afterlife briefing to the Delamain, so the phone is never the channel".
 That is an `InPerson` conversation reasoned about in prose before the concept existed, and it is

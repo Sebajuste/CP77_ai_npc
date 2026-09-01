@@ -24,16 +24,11 @@ import sys
 import time
 import urllib.request
 import uuid
-import wave
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import lab  # noqa: E402
-
-
-def read_lines():
-    with io.open(os.path.join(HERE, "lines.json"), encoding="utf-8") as handle:
-        return {entry["id"]: entry["text"] for entry in json.load(handle)["lines"]}
+import voice_bench  # noqa: E402
 
 
 def upload(url, path):
@@ -113,38 +108,6 @@ def nyquist(path):
         return handle.getframerate() // 2
 
 
-def samples(path):
-    """Zonos rend du PCM 32 bits entier."""
-    with wave.open(path) as handle:
-        frames = handle.readframes(handle.getnframes())
-        rate = handle.getframerate()
-    width = 4
-    scale = float(1 << (8 * width - 1))
-    values = [int.from_bytes(frames[i * width:(i + 1) * width], "little", signed=True) / scale
-              for i in range(len(frames) // width)]
-    return values, rate
-
-
-def level(values):
-    total = sum(v * v for v in values)
-    return (total / max(len(values), 1)) ** 0.5, max((abs(v) for v in values), default=0.0)
-
-
-def truncated(values, rate, rms):
-    """Le rendu s'arrete-t-il en pleine voix ?
-
-    Une phrase finie retombe dans le silence ; une phrase coupee garde son energie jusqu'au
-    dernier echantillon. Mesure du 2026-08-31 : Zonos coupe **une fois sur deux environ, et
-    c'est la graine qui decide** -- 420 et 422 coupent, 421 et 423 non, pour deux voix
-    differentes et le meme texte. Ni la voix ni le debit n'y sont pour rien.
-    """
-    tail = values[-int(0.05 * rate):]
-    if not tail or rms < 1e-9:
-        return False
-    tail_rms = (sum(v * v for v in tail) / len(tail)) ** 0.5
-    return tail_rms / rms > 0.35
-
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("characters", nargs="*")
@@ -152,7 +115,7 @@ def main():
     # portent un nombre, et un nombre colle a son unite ("22h") fait deraper le moteur --
     # ce qui masque la voix qu'on cherche justement a juger.
     parser.add_argument("--line", default="argot")
-    parser.add_argument("--voices", default=os.path.join(HERE, "..", "..", "dist", "voices"))
+    parser.add_argument("--voices", default=voice_bench.VOICES)
     parser.add_argument("--tag", default="",
                         help="suffixe du nom de sortie, pour comparer deux jeux de references")
     parser.add_argument("--cfg", type=float, default=3.0,
@@ -163,7 +126,7 @@ def main():
                              "resultat est coupe")
     args = parser.parse_args()
 
-    text = read_lines()[args.line]
+    text = voice_bench.lines()[args.line]
     print(u'replique "%s" : %s' % (args.line, text))
 
     engine = lab.Zonos()
@@ -174,18 +137,9 @@ def main():
     out = os.path.join(HERE, "out")
     if not os.path.isdir(out):
         os.makedirs(out)
-    with io.open(os.path.join(args.voices, "voices.json"), encoding="utf-8") as handle:
-        manifest = json.load(handle)
-
-    seen = set()
-    for entry in manifest["voices"]:
-        contact = entry["contactId"]
+    for contact, source in voice_bench.references(args.voices):
         if args.characters and contact not in args.characters:
             continue
-        if entry["file"] in seen:
-            continue
-        seen.add(entry["file"])
-        source = os.path.join(args.voices, entry["file"])
         reference = upload(engine.config["url"], source)
         target = os.path.join(out, "clone-%s-%s%s.wav" % (contact, args.line, args.tag))
         conditioning = {"fmax": nyquist(source), "cfg_scale": args.cfg}
@@ -194,20 +148,14 @@ def main():
         for attempt in range(args.tries):
             engine.config["parameters"]["seed"] = seed + attempt
             took = render(engine, order, text, reference, target, conditioning)
-            values, rate = samples(target)
-            rms, peak = level(values)
-            if not truncated(values, rate, rms):
+            values, rate = voice_bench.samples(target)
+            rms, _ = voice_bench.level(values)
+            if not voice_bench.truncated(values, rate, rms):
                 break
         engine.config["parameters"]["seed"] = seed
 
-        notes = ""
-        if attempt:
-            notes += "  graine +%d" % attempt
-        if truncated(values, rate, rms):
-            notes += "  COUPE"
-        if peak > 0.99:
-            notes += "  SATURE"
-        print("%-16s %5.1f s  RMS %.4f  crete %.3f%s" % (contact, took, rms, peak, notes))
+        voice_bench.report(contact, took, target,
+                           "  graine +%d" % attempt if attempt else "")
 
 
 if __name__ == "__main__":

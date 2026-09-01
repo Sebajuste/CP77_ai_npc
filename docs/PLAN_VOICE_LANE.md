@@ -230,3 +230,81 @@ un modele contraint a n'y puiser que ce qui existe.
 Rien de tout cela ne change l'echelle du § 1. Ce qui change, c'est que la moitie « fabriquer le
 clone » peut cesser d'etre une installation, et que la moitie « parler » ne le peut pas — sauf
 en renoncant a dire un texte quelconque.
+
+---
+
+## 7. Ce que chaque partie autorise, et la decision du 2026-09-01
+
+Trois textes s'appliquent a un palier clone, et ils ne disent pas la meme chose. Ils sont
+resumes ici parce que l'envie de supposer est forte et que chacun se verifie en une minute.
+
+### CDPR : le confinement est leur clause, pas notre attenuation
+
+Le **REDmod EULA** exige :
+
+> You may use Mods created and developed with REDmod **only as part of Cyberpunk and not with
+> other games or on a standalone basis and only for non-commercial purposes**
+
+Un mod qui ne laisse pas la voix sortir du jeu satisfait donc CDPR sur ce point, et ce n'est pas
+une interpretation genereuse : c'est le texte. **Le document est en revanche silencieux sur
+l'audio** -- pas un mot sur les voix, les comediens, l'extraction ou les oeuvres derivees. Il
+n'autorise rien de ce cote, il n'interdit rien non plus.
+
+Les **Fan Content Guidelines** ajoutent la reserve qui compte : CDPR ne detient pas tous les
+droits sur tout ce que le jeu contient, et des tiers peuvent devoir etre consultes. Les droits
+d'interpretes sont exactement cette couche.
+
+### PocketTTS : la clause vise l'acte, pas la diffusion
+
+Les poids qui savent cloner sont sur liste d'autorisation, et la politique qu'on accepte pour
+l'obtenir interdit :
+
+> voice impersonation or cloning **without explicit and lawful consent**
+
+Le confinement au jeu ne l'ecarte pas : ce qui est interdit est de **cloner**, pas de diffuser
+le clone. Cette clause n'a rien de propre a PocketTTS -- Zonos, XTTS et ElevenLabs ont
+l'equivalent, ElevenLabs plus strict. PocketTTS a seulement le merite de l'ecrire et de la faire
+accepter.
+
+### Nexus : pas une interdiction, un retrait sur plainte
+
+Position publiee en avril 2023, apres l'affaire ci-dessous :
+
+> AI-generated mod content is **not against our rules**, but may be removed if we receive a
+> credible complaint from an affected creator/rights holder.
+
+Le risque est donc un **retrait**, pas une infraction aux regles de la plateforme.
+
+### L'affaire qui a produit cette position
+
+Juillet 2023 : des mods pornographiques pour Skyrim mettaient en scene des personnages du jeu
+avec les voix de leurs comediens d'origine, synthetisees par ElevenLabs sans accord. Cindy
+Robinson (Valerica) a demande le retrait d'un mod la mettant en scene ; Ben Diskin a pose qu'il
+fallait un consentement « absolu, clair, specifique et indubitable » ; la NAVA a souligne que
+les comediens n'ont pas de recours juridique efficace.
+
+**Ce qui a declenche les plaintes etait le contenu, pas la technique.** Un mod de conversation
+n'a pas la meme exposition -- difference de degre, pas de nature.
+
+Et le fait que d'autres mods clonent n'etablit rien : c'est une information sur ce qui est
+tolere, pas sur ce qui est permis.
+
+### La decision
+
+**Le palier de repli est construit, le palier clone reste une possibilite technique.**
+
+Le repli -- les voix du catalogue de PocketTTS, depot libre -- ne rencontre aucune de ces trois
+clauses. Il coute une dependance embarquee et rien d'autre, et il donne un mod distribuable
+sans reserve.
+
+Le clone reste **possible et non promis**. L'architecture du § 2 le permet sans effort : le mod
+lit ce qu'il trouve dans `voices\` et ne sait pas d'ou ca vient, il ne livre aucune voix, et
+l'extracteur vit dans `tools\` qui n'atteint pas le zip.
+
+**La ligne est documentaire avant d'etre technique.** « La voix de Judy » ne doit pas devenir un
+argument de la page Nexus : la capacite reste, la promesse non. C'est cette distinction qui
+tient ou qui s'use, et elle ne s'use que si on la vend.
+
+Ce qui n'a pas ete fait et qui trancherait : demander a Kyutai, dont le formulaire d'acces
+collecte justement les coordonnees, et demander a Nexus, qui a une position ecrite. Une reponse
+vaut mieux qu'une lecture -- y compris celle-ci, qui n'est pas un avis juridique.
