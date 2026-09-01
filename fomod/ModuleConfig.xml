@@ -106,8 +106,10 @@
     2026-08-27: r6\scripts\ai_npc\AiNpcCliNative.reds declares the native class it registers,
     so the two are one artefact, and splitting them would mean a second redscript module, a
     guard on the Mod Settings field, and TWO compile configurations to check at every change.
-    The DLL is inert for a player on OpenRouter, since nothing calls it while that provider
-    is selected. See requiredInstallFiles below for what happens when it is absent.
+    The DLL is no longer inert for anybody: since RedHttpClient was removed on 2026-09-01 it
+    is the transport for OpenRouter too, not only for the CLI lanes. That strengthens the
+    decision above rather than changing it. See requiredInstallFiles below for what happens
+    when it is absent.
 
     An XML comment cannot contain a double dash, which is why this block is punctuated
     differently from every other comment in this repo. It is not a style rule: Vortex
