@@ -50,10 +50,14 @@ foreach ($p in @($scc, $vanillaCache, $modSrc)) {
 
 # Declared dependencies only. If ai_npc ever compiles here but fails for a user, the
 # cause is a missing entry in this list -- which is exactly what we want to detect.
+#
+# RedHttpClient a quitte cette liste le 2026-09-01, avec la voie qui l'utilisait. Son absence
+# ici n'est pas un oubli : c'est la preuve, refaite a chaque compilation et sur chaque machine,
+# que le mod ne le reference plus. Le reintroduire dans une source ferait echouer cette
+# verification immediatement, sans lancement et sans desinstaller quoi que ce soit.
 $deps = @{
     "RedData"       = (Join-Path $GameDir "r6\scripts\RedData")
     "RedFileSystem" = (Join-Path $GameDir "r6\scripts\RedFileSystem")
-    "RedHttpClient" = (Join-Path $GameDir "r6\scripts\RedHttpClient")
     "Codeware"      = (Join-Path $GameDir "red4ext\plugins\Codeware\Scripts")
     "ModSettings"   = (Join-Path $GameDir "red4ext\plugins\mod_settings")
 }
