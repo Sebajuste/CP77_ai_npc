@@ -16,7 +16,10 @@ internal sealed class ArchiveIndex : IDisposable
     private ArchiveIndex(string path)
     {
         FilePath = path;
-        _stream = File.OpenRead(path);
+        // FileShare.ReadWrite et non le partage par defaut de File.OpenRead : le jeu tient ces
+        // memes archives ouvertes, et un lecteur ne doit jamais poser un verrou plus fort que ce
+        // qu'il lit. C'est ce qui autorise une extraction pendant que le jeu tourne.
+        _stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
 
         var header = Read(0, 32);
         if (header[0] != 'R' || header[1] != 'D' || header[2] != 'A' || header[3] != 'R')

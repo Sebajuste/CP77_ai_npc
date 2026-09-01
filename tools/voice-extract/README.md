@@ -53,6 +53,21 @@ produit a une sortie de reference, octet pour octet.
 **Verifie le 2026-08-31, dictionnaire deplace hors du disque** : les dix extraits francais et les
 dix anglais ressortent identiques. Le fichier fait 25 Ko pour vingt voix et 149 repliques.
 
+Ce que ce mode coute, mesure le 2026-09-01 :
+
+| | temps |
+|---|---|
+| demarrage et lecture des deux index (10 Mo dans 6,7 Go d'archives) | 184 ms |
+| par personnage ensuite | ~250 ms |
+| les dix personnages | 2 752 ms |
+
+Le cout est **par personnage**, et c'est ce qui autorise une extraction paresseuse : la voix d'un
+contact se fabrique quand ce contact en a besoin, pas au lancement.
+
+Les archives sont ouvertes en `FileShare.ReadWrite`, pour qu'une extraction ne pose aucun verrou
+que le jeu ne puisse partager. **Non verifie jeu lance** : c'est la seule chose a essayer avant
+de croire qu'une extraction peut se faire pendant une partie.
+
 C'est ce qui rend une extraction cote joueur possible : il ne lui reste qu'a lire l'archive,
 decoder et coller. Le detail de ce qui resterait a porter est dans `docs\PLAN_VOICE_LANE.md` § 5.
 
