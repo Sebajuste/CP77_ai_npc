@@ -185,6 +185,14 @@ n'ajoute aucune installation pour le joueur.
 Ce qui reste a ecrire est un seul portage : **ww2ogg puis `stb_vorbis`**, tous deux tenant dans
 un fichier et tous deux redistribuables. C'est le seul vrai travail de cette moitie.
 
+**Et le jeu partage ses archives** -- mesure le 2026-09-01, jeu lance : l'extraction sort les dix
+extraits en 2,9 s au lieu de 2,8, identiques octet pour octet. C'etait la seule hypothese qui
+pouvait tuer l'idee, et elle tient. Le cout est par personnage : 200 ms pour ouvrir les index,
+puis ~250 ms chacun. Fabriquer la voix d'un contact **la premiere fois qu'il doit parler** met
+donc ces 250 ms dans l'aller-retour vers le modele, ou personne ne les voit. Au lancement, en
+revanche, ce serait 2,9 s ajoutees au chargement pour dix voix dont neuf ne serviront peut-etre
+pas.
+
 ### Le risque a nommer
 
 Une recette est liee a une version du jeu **et** a une langue. Un correctif qui reencode le

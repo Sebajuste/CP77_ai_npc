@@ -53,20 +53,26 @@ produit a une sortie de reference, octet pour octet.
 **Verifie le 2026-08-31, dictionnaire deplace hors du disque** : les dix extraits francais et les
 dix anglais ressortent identiques. Le fichier fait 25 Ko pour vingt voix et 149 repliques.
 
-Ce que ce mode coute, mesure le 2026-09-01 :
+### Ce que ce mode coute, et il coute la meme chose jeu lance
 
-| | temps |
-|---|---|
-| demarrage et lecture des deux index (10 Mo dans 6,7 Go d'archives) | 184 ms |
-| par personnage ensuite | ~250 ms |
-| les dix personnages | 2 752 ms |
+Mesure du 2026-09-01, les deux colonnes sur la meme machine et la meme recette :
 
-Le cout est **par personnage**, et c'est ce qui autorise une extraction paresseuse : la voix d'un
-contact se fabrique quand ce contact en a besoin, pas au lancement.
+| | jeu eteint | jeu lance |
+|---|---|---|
+| demarrage et lecture des deux index (10 Mo dans 6,7 Go d'archives) | 184 ms | 200 ms |
+| un personnage | 658 ms | 703 ms |
+| les dix personnages | 2 752 ms | 2 867 ms |
 
-Les archives sont ouvertes en `FileShare.ReadWrite`, pour qu'une extraction ne pose aucun verrou
-que le jeu ne puisse partager. **Non verifie jeu lance** : c'est la seule chose a essayer avant
-de croire qu'une extraction peut se faire pendant une partie.
+**Cyberpunk partage ses archives.** L'extraction tourne pendant que le jeu tourne, sa sortie est
+identique octet pour octet a celle obtenue jeu eteint, et la concurrence coute 4 %. Le lecteur
+les ouvre en `FileShare.ReadWrite`, pour ne poser aucun verrou que le jeu ne puisse partager.
+
+C'etait la seule hypothese qui pouvait tuer l'idee d'une extraction en jeu. Elle tient.
+
+Le cout est **par personnage** -- 184 ms d'ouverture payes une fois, puis ~250 ms chacun -- et
+c'est ce qui autorise une extraction paresseuse : la voix d'un contact se fabrique quand ce
+contact en a besoin, pas au lancement. Ces 250 ms se glissent alors dans l'aller-retour vers le
+modele, qui dure des secondes.
 
 C'est ce qui rend une extraction cote joueur possible : il ne lui reste qu'a lire l'archive,
 decoder et coller. Le detail de ce qui resterait a porter est dans `docs\PLAN_VOICE_LANE.md` § 5.
