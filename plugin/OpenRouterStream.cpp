@@ -33,9 +33,19 @@ long long MillisecondsSince(const std::chrono::steady_clock::time_point& aStart)
 }
 } // namespace
 
+// The name the script side sends, and the only place it is written on this side.
+//
+// It is "OpenRouter" and not "OpenRouterStream" since 2026-09-01: the two lanes collapsed into
+// one when RedHttpClient was removed, and the script enum kept the name it always had. This
+// file keeps its own, because it describes HOW -- a client that owns a socket and reads the
+// reply as it is written -- rather than who is on the other end.
+//
+// The two halves agree by saying the same word: a mismatch is not a compile error, it is a
+// request the registry refuses with a typed error and a 400 that looks like the API's own.
+// Measured 2026-09-01, when the script said OpenRouter and this said OpenRouterStream.
 const char* ProviderName()
 {
-    return "OpenRouterStream";
+    return "OpenRouter";
 }
 
 Streamed Stream(const std::string& aChatBody, const std::string& aApiKey, const SentenceSink& aOnSentence)

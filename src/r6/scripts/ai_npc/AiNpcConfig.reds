@@ -92,6 +92,27 @@ public class AiNpcConfigService extends ScriptableService {
         if IsDefined(named) {
             return named;
         }
+
+        // Rien de lie : la recette que la passe DECLARE, quand le livre charge la contient.
+        //
+        // Le repli d'avant etait la recette active, ce qui revient a envoyer un appel avec le
+        // prompt d'un SMS. La table `passes` de settings.json n'est ecrite que par un preset,
+        // donc toute installation anterieure a une passe nouvelle l'ignore en silence -- une
+        // recette peut ainsi etre livree, correcte, et jamais montee. Mesure en jeu le
+        // 2026-09-02 : lane=holo recipe=default.
+        //
+        // Un joueur qui remplace recipes.json par le sien reprend la main : sans le nom dans
+        // son livre, la recette active reste le repli.
+        let declaredName = AiNpcPassRecipeName(pass);
+        let declared = AiNpcRecipeBookNamed(this.m_book, declaredName);
+        if IsDefined(declared) {
+            return declared;
+        }
+
+        let builtIn = AiNpcRecipeBuiltInNamed(declaredName);
+        if IsDefined(builtIn) {
+            return builtIn;
+        }
         return this.m_recipe;
     }
 
@@ -358,12 +379,47 @@ public class AiNpcConfigService extends ScriptableService {
         AiNpcLog(s"Loaded \(loaded) character(s) from \(fileName).");
     }
 
+    // {"voice": {"clone": "judy.wav", "fallback": "eve"}}
+    //
+    // Les deux entrees sont independantes : une fiche peut nommer un repli sans toucher au
+    // clone, ce qui est le cas ordinaire -- le clone porte deja le bon nom par defaut.
+    //
+    // Un objet absent laisse la fiche livree intacte, comme partout ailleurs ici. Un objet
+    // present mais vide est une erreur de frappe qu'on prefere signaler : il ne peut vouloir
+    // dire que « la meme chose qu'en l'ecrivant pas ».
+    private func LoadVoice(entry: ref<JsonObject>, def: ref<AiNpcCharacterDef>, fileName: String) -> Void {
+        if !entry.HasKey("voice") {
+            return;
+        }
+        let raw = entry.GetKey("voice") as JsonObject;
+        if !IsDefined(raw) {
+            this.AddIssue("error", fileName, s"\(def.contactId) has a \"voice\" that is not an object; ignored.");
+            return;
+        }
+        this.ReportUnknownKeys(raw, ["clone", "fallback"], fileName, s"\(def.contactId).voice.");
+
+        let voice = new AiNpcVoiceDef();
+        if IsDefined(def.voice) {
+            voice.clone = def.voice.clone;
+            voice.fallback = def.voice.fallback;
+        }
+        if raw.HasKey("clone") { voice.clone = raw.GetKeyString("clone"); }
+        if raw.HasKey("fallback") { voice.fallback = raw.GetKeyString("fallback"); }
+
+        if Equals(StrLen(voice.clone), 0) && Equals(StrLen(voice.fallback), 0) {
+            this.AddIssue("warning", fileName,
+                s"\(def.contactId) has a \"voice\" that names neither a clone nor a fallback; it says nothing.");
+            return;
+        }
+        def.voice = voice;
+    }
+
     private func LoadCharacter(entry: ref<JsonObject>, fileName: String, index: Int32) -> Bool {
         let allowed = [
             "contactId", "displayName", "bio", "relationship", "romance",
-            "liveContext", "speechStyle", "intent", "prompts", "romanceable", "romanced",
+            "liveContext", "speechStyle", "spokenStyle", "intent", "prompts", "romanceable", "romanced",
             "suppressActions", "tags", "allowsMemory", "seedFacts", "enabled", "variants",
-            "questContexts", "questIntents", "actions", "comment"
+            "questContexts", "questIntents", "actions", "voice", "comment"
         ];
         this.ReportUnknownKeys(entry, allowed, fileName, s"characters[\(index)].");
 
@@ -409,9 +465,13 @@ public class AiNpcConfigService extends ScriptableService {
         if entry.HasKey("speechStyle") {
             def.speechStyle = this.ReadCharacterString(entry, "speechStyle", def, fileName);
         }
+        if entry.HasKey("spokenStyle") {
+            def.spokenStyle = this.ReadCharacterString(entry, "spokenStyle", def, fileName);
+        }
         if entry.HasKey("intent") {
             def.intent = this.ReadCharacterString(entry, "intent", def, fileName);
         }
+        this.LoadVoice(entry, def, fileName);
         if entry.HasKey("romanceable") { def.romanceable = entry.GetKeyBool("romanceable"); }
         if entry.HasKey("romanced") { def.romanced = entry.GetKeyBool("romanced"); }
         if entry.HasKey("suppressActions") {

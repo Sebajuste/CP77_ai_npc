@@ -131,6 +131,17 @@ public func AiNpcCharacterInOpenChat() -> ref<AiNpcContactProvider> {
 //
 // The expensive call in this file -- the full history, not a window. For "has this
 // conversation started", use AiNpcPlayerHasWritten.
+// Who V is on a holo call with, or "" when there is none. A call that has ended keeps naming
+// its contact until the next one is placed, so a caller reading just after it ended still knows
+// who it was about.
+public func AiNpcCharacterOnCall() -> String {
+    let calls = AiNpcCallSystem.Get();
+    if !IsDefined(calls) {
+        return "";
+    }
+    return calls.ContactId();
+}
+
 public func AiNpcReadConversation(contactId: String) -> array<ref<AiNpcMessage>> {
     return AiNpcStoredMessages(contactId);
 }

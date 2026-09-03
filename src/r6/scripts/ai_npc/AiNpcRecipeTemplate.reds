@@ -58,6 +58,8 @@ func AiNpcRecipeTemplate() -> String {
         "            \"quest\": [\"name\", \"context\", \"objective\"],\n" +
         "            \"_now\": \"<now>: the only block that changes every message. clock is the time, weather the sky, pending what another mod seeded, live the character's own current state.\",\n" +
         "            \"now\": [\"clock\", \"weather\", \"pending\", \"live\"],\n" +
+        "            \"_channel\": \"The surface this reply lands on, and what it accepts. Cannot be removed -- a character that believed it was texting during a call would write for a screen, and the rules here are measured rather than editorial. It carries no parts: the mod writes one text per channel.\",\n" +
+        "            \"channel\": \"full\",\n" +
         "            \"_instruction\": \"The first message: every block above. source is the pass that builds it -- conversation, memory, commands or test. Cannot be removed.\",\n" +
         "            \"instruction\": { \"source\": \"conversation\" },\n" +
         "            \"_ask\": \"The second message: the transcript, ending on the turn handed to the character. source is conversation, memory, repair or test. Cannot be removed.\",\n" +
@@ -85,6 +87,13 @@ func AiNpcRecipeTemplate() -> String {
         "        \"actions\": {\n" +
         "            \"instruction\": { \"source\": \"commands\" },\n" +
         "            \"ask\": { \"source\": \"selector\" }\n" +
+        "        },\n" +
+        "        \"_spoken\": \"A reply that is SAID, on a holo call. Same blocks as the written one -- it is a character speaking either way -- but its own recipe, because what is spoken cannot be re-read: the length rule and the form rule are the two you will want to change first. Bind it with \\\"passes\\\": { \\\"holo\\\": { \\\"recipe\\\": \\\"spoken\\\" } }. Left unbound, a call renders exactly like a text.\",\n" +
+        "        \"spoken\": {\n" +
+        "            \"_commands\": \"No command is written on a call: the mod only offers them in the dedicated mode, and a bracketed tag read out loud is not a thing anyone says. Dropping the block also drops the repair pass that would chase a malformed one.\",\n" +
+        "            \"commands\": false,\n" +
+        "            \"instruction\": { \"source\": \"conversation\" },\n" +
+        "            \"ask\": { \"source\": \"conversation\" }\n" +
         "        },\n" +
         "        \"_test\": \"The connection check: two sentences, sent on the slot the reply is written on. Bound by passes.test.\",\n" +
         "        \"test\": {\n" +

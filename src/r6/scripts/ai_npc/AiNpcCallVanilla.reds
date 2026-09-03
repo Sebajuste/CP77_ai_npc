@@ -118,6 +118,30 @@ func AiNpcVanillaRingStop() -> Void {
     GameInstance.GetAudioSystem(GetGameInstance()).Play(n"ui_phone_initiation_call_stop");
 }
 
+// Le declic de connexion, quand le personnage decroche.
+//
+// TOUT LE VOCABULAIRE AUDIO DU TELEPHONE, extrait du bundle vanilla le 2026-09-01 -- sept
+// evenements, et c'est la liste entiere :
+//
+//   ui_phone_initiation_call         la tonalite d'un appel SORTANT
+//   ui_phone_initiation_call_stop    et son arret
+//   ui_phone_incoming_call           la sonnerie d'un appel RECU
+//   ui_phone_incoming_call_stop      et son arret
+//   ui_phone_incoming_call_positive  l'appel recu est accepte
+//   ui_phone_incoming_call_negative  il est refuse
+//   ui_phone_sms, ui_phone_navigation
+//
+// Il n'existe donc AUCUN evenement de connexion pour un appel sortant : la paire `initiation`
+// n'a pas de `positive`. Celui-ci vient de la famille `incoming`, et c'est un emprunt assume --
+// c'est le son que le jeu joue quand un appel est accepte, et ce qui se passe ici est
+// exactement cela, vu de l'autre bout de la ligne.
+//
+// Apres l'arret de la tonalite, jamais avant : les deux partent sur le meme systeme audio et
+// l'arret couperait le declic.
+func AiNpcVanillaCallAnswered() -> Void {
+    GameInstance.GetAudioSystem(GetGameInstance()).Play(n"ui_phone_incoming_call_positive");
+}
+
 // What the journal knows about this save's contacts, written to the log.
 //
 // The holo shows an empty frame for a contact the game cannot resolve, and the mod addresses a

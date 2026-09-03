@@ -459,6 +459,76 @@ func AiNpcTestGapMarkers(t: ref<AiNpcTestRunner>) -> Void {
     t.EqString("transcript/untimed message keeps the chain",
         AiNpcHistoryTranscriptAt(mixed, "Judy", AiNpcTimeUnknown()),
         "V: hey\nJudy: seeded line\n(2 hours later)\nV: back\n");
+
+    AiNpcTestChannelSeparation(t, base);
+}
+
+// Deux conversations, une memoire : ce que chaque canal porte, et ce qu'il laisse a l'autre.
+func AiNpcTestChannelSeparation(t: ref<AiNpcTestRunner>, base: Int32) -> Void {
+    let blank = AiNpcTestEmptyHistory();
+
+    // Un SMS, un appel de six minutes, un SMS.
+    let both = AiNpcHistoryAppendAt(blank, "t'es dispo ?", true, base);
+    both = AiNpcHistoryAppendAt(both, "appelle-moi", false, base + 60, AiNpcChannelId.Text);
+    both = AiNpcHistoryAppendAt(both, "je t'ecoute", false, base + 120, AiNpcChannelId.Call);
+    both = AiNpcHistoryAppendAt(both, "on se voit ce soir", true, base + 480, AiNpcChannelId.Call);
+    both = AiNpcHistoryAppendAt(both, "a ce soir alors", true, base + 600, AiNpcChannelId.Text);
+
+    // Le fil ecrit : les SMS, et l'appel reduit a sa duree. Aucune replique parlee.
+    t.EqString("channel/the written transcript traces the call",
+        AiNpcHistoryTranscriptOn(both, "Judy", AiNpcTimeUnknown(), AiNpcChannelId.Text),
+        "V: t'es dispo ?\nJudy: appelle-moi\n(a voice call, 6 minutes)\nV: a ce soir alors\n");
+
+    // L'appel : ses propres repliques, et rien des SMS qui l'entourent.
+    t.EqString("channel/the spoken transcript carries the call alone",
+        AiNpcHistoryTranscriptOn(both, "Judy", AiNpcTimeUnknown(), AiNpcChannelId.Call),
+        "Judy: je t'ecoute\nV: on se voit ce soir\n");
+
+    // Deux appels separes par un SMS font deux traces : la frontiere vient de l'ordre du
+    // magasin, et un filtre applique avant le rendu l'aurait effacee.
+    let twice = AiNpcHistoryAppendAt(blank, "premier", false, base, AiNpcChannelId.Call);
+    twice = AiNpcHistoryAppendAt(twice, "entre les deux", true, base + 300, AiNpcChannelId.Text);
+    twice = AiNpcHistoryAppendAt(twice, "second", false, base + 600, AiNpcChannelId.Call);
+    t.EqString("channel/two calls are two traces",
+        AiNpcHistoryTranscriptOn(twice, "Judy", AiNpcTimeUnknown(), AiNpcChannelId.Text),
+        "(a voice call)\nV: entre les deux\n(a voice call)\n");
+
+    // La borne de l'appel en cours : ce qui precede le decroche appartient a l'appel d'avant.
+    let window = AiNpcHistorySince(both, AiNpcChannelId.Call, base + 480);
+    t.EqInt("channel/the call window starts at pick-up", ArraySize(window), 1);
+    t.EqString("channel/the call window keeps the current exchange",
+        window[0].text, "on se voit ce soir");
+
+    // Le fil affiche une bulle a la place de l'appel, portee par le canal du fil.
+    let shown = AiNpcHistoryForThread(both);
+    t.EqInt("thread/a call becomes one line", ArraySize(shown), 4);
+    t.EqString("thread/the line says a call happened", shown[2].text, "(a voice call, 6 minutes)");
+    t.EqBool("thread/the trace belongs to the written thread",
+        Equals(shown[2].channel, AiNpcChannelId.Text), true);
+
+    // Un appel en cours n'a pas encore de bilan : le fil ecrit ne montre rien, et surement pas
+    // une trace qui grandit a chaque replique.
+    let live = AiNpcHistoryWithoutLiveCall(both, base + 120);
+    t.EqInt("live/the current call is not history yet", ArraySize(live), 3);
+    let liveShown = AiNpcHistoryForThread(live);
+    t.EqInt("live/nothing else is removed", ArraySize(liveShown), 3);
+
+    // L'appel d'avant, lui, garde sa trace : la borne separe les deux.
+    let earlier = AiNpcHistoryAppendAt(blank, "vieil appel", false, base, AiNpcChannelId.Call);
+    earlier = AiNpcHistoryAppendAt(earlier, "en cours", false, base + 3600, AiNpcChannelId.Call);
+    let settled = AiNpcHistoryWithoutLiveCall(earlier, base + 3600);
+    let settledShown = AiNpcHistoryForThread(settled);
+    t.EqInt("live/an older call keeps its trace", ArraySize(settledShown), 1);
+
+    // Hors appel, rien n'est retire.
+    let untouched = AiNpcHistoryWithoutLiveCall(both, 0);
+    t.EqInt("live/no call removes nothing", ArraySize(untouched), 5);
+
+    // Sans horodatage utilisable, la trace dit qu'il y a eu un appel et se tait sur sa duree.
+    let untimed = AiNpcHistoryAppendAt(blank, "allo", false, AiNpcTimeUnknown(), AiNpcChannelId.Call);
+    t.EqString("thread/an untimed call still leaves a line",
+        AiNpcHistoryTranscriptOn(untimed, "Judy", AiNpcTimeUnknown(), AiNpcChannelId.Text),
+        "(a voice call)\n");
 }
 
 /// Journal ///

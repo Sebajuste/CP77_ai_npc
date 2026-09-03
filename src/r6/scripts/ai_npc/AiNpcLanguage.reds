@@ -151,6 +151,29 @@ func AiNpcGameTextLanguage() -> CName {
     return var.GetValue();
 }
 
+// The locale the game SPEAKS in, which is not the one it writes in.
+//
+// Cyberpunk installs voice-over and subtitles separately, and a player on French subtitles with
+// English voice-over is an ordinary configuration -- the launcher offers exactly that. The
+// reference clips a cloned voice is built from live in lang_<code>_voice.archive, so this is the
+// one that decides which archive to open. Reading the text language here would clone the wrong
+// performance, and it would do it silently: the accent is the only symptom.
+//
+// n"" before the settings system exists. The DLL answers "no voice-over is known for the locale"
+// and falls back to the system voice, which is the truthful outcome.
+func AiNpcVoiceOverLocale() -> String {
+    let settings = GameInstance.GetSettingsSystem(GetGameInstance());
+    if !IsDefined(settings) {
+        return "";
+    }
+
+    let var = settings.GetVar(n"/language", n"VoiceOver") as ConfigVarListName;
+    if !IsDefined(var) {
+        return "";
+    }
+    return NameToString(var.GetValue());
+}
+
 // Locale code to the closest language the mod can write prompts in. Anything unmapped falls
 // back to English rather than to silence: an English instruction produces an English reply,
 // where no instruction produces whatever the model feels like.

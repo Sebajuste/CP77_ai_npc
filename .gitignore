@@ -31,3 +31,17 @@ tools/tts-lab/out/
 tools/voice-extract/cache/
 tools/voice-extract/src/bin/
 tools/voice-extract/src/obj/
+
+# Le moteur de parole. La copie amont se re-clone (build.ps1 -Fetch) et se patche
+# (patch-runtime.py) : versionner la copie patchee ferait de `git checkout` un retour vers une
+# source deja modifiee, et le patch a deux sources de verite.
+vendor/PocketTTS.cpp/
+vendor/pocket-deps/
+
+# Les modeles ONNX exportes : 380 Mo par langue, refabricables par export-models.py.
+models/
+
+# Le decodeur des repliques du jeu, meme raison que ci-dessus : clone et fichier telecharges,
+# patches par tools\pocket-engine\patch-decoder.py.
+vendor/ww2ogg/
+vendor/stb/

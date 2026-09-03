@@ -317,20 +317,50 @@ func AiNpcHistoryTranscript(messages: array<ref<AiNpcMessage>>, npcName: String)
 // does not break the chain and the next timed message still measures from the last real
 // timestamp.
 func AiNpcHistoryTranscriptAt(messages: array<ref<AiNpcMessage>>, npcName: String, nowSeconds: Int32) -> String {
+    return AiNpcHistoryTranscriptOn(messages, npcName, nowSeconds, AiNpcChannelId.Text);
+}
+
+// La transcription d'un canal, les autres reduits a leur trace.
+//
+// Elle recoit l'historique entier plutot qu'un tableau deja filtre, parce qu'une trace se
+// DERIVE d'une suite : filtrer d'abord effacerait la frontiere entre deux appels et rendrait
+// une seule ligne la ou il y en a eu trois. L'ordre du magasin porte cette frontiere.
+//
+// Les lignes d'un autre canal avancent l'horloge comme les autres : le marqueur d'ecart qui
+// suit un appel compte depuis la fin de l'appel, pas depuis le dernier SMS d'avant.
+func AiNpcHistoryTranscriptOn(messages: array<ref<AiNpcMessage>>, npcName: String,
+                              nowSeconds: Int32, channel: AiNpcChannelId) -> String {
     let result = "";
     let previous = AiNpcTimeUnknown();
+    let run: array<ref<AiNpcMessage>>;
 
     let i = 0;
-    while i < ArraySize(messages) {
-        let marker = AiNpcHistoryGapMarker(previous, messages[i].gameTimeSeconds);
-        if NotEquals(StrLen(marker), 0) {
-            result += marker + "\n";
-        }
-
-        if messages[i].fromPlayer {
-            result += "V: " + AiNpcTranscriptLine(messages[i].text) + "\n";
+    let count = ArraySize(messages);
+    while i < count {
+        if NotEquals(messages[i].channel, channel) {
+            // Seul un canal qui ne s'ecrit pas laisse une trace. L'inverse -- annoncer les SMS
+            // pendant un appel -- dirait a un personnage qui parle qu'un fil existe ailleurs,
+            // et l'appel en cours est tout ce qu'il a a savoir.
+            if !AiNpcChannelOf(messages[i].channel).ShowsInThread() {
+                ArrayPush(run, messages[i]);
+            }
         } else {
-            result += npcName + ": " + AiNpcTranscriptLine(messages[i].text) + "\n";
+            let trace = AiNpcHistoryCallTrace(run);
+            if NotEquals(StrLen(trace), 0) {
+                result += trace + "\n";
+                ArrayClear(run);
+            }
+
+            let marker = AiNpcHistoryGapMarker(previous, messages[i].gameTimeSeconds);
+            if NotEquals(StrLen(marker), 0) {
+                result += marker + "\n";
+            }
+
+            if messages[i].fromPlayer {
+                result += "V: " + AiNpcTranscriptLine(messages[i].text) + "\n";
+            } else {
+                result += npcName + ": " + AiNpcTranscriptLine(messages[i].text) + "\n";
+            }
         }
 
         if AiNpcMessageHasTime(messages[i]) {
@@ -339,11 +369,156 @@ func AiNpcHistoryTranscriptAt(messages: array<ref<AiNpcMessage>>, npcName: Strin
         i += 1;
     }
 
+    let tail = AiNpcHistoryCallTrace(run);
+    if NotEquals(StrLen(tail), 0) {
+        result += tail + "\n";
+    }
+
     let trailing = AiNpcHistoryGapMarker(previous, nowSeconds);
     if NotEquals(StrLen(trailing), 0) {
         result += trailing + "\n";
     }
     return result;
+}
+
+// Ce qu'un fil ecrit peint : les lignes ecrites, et une bulle par appel a la place des
+// repliques parlees. Le canal decide, et c'est le premier appelant que `ShowsInThread` ait eu.
+//
+// Le filtre existait deja, une ligne parlee ne s'affichait pas -- elle s'effacait. Un appel de
+// trois minutes ne laissait rien entre deux SMS, et un fil ou il ne s'est visiblement rien
+// passe se lit comme un fil ou il ne s'est rien passe.
+//
+// La trace est un message fabrique et non stocke -- rien ne l'ecrit dans le magasin, donc rien
+// ne la relit dans un prompt ni ne la compte comme un tour. Elle porte le canal du FIL et non
+// celui de l'appel : c'est une ligne de ce fil-ci, et le filtre d'affichage la garde.
+func AiNpcHistoryForThread(messages: array<ref<AiNpcMessage>>) -> array<ref<AiNpcMessage>> {
+    let shown: array<ref<AiNpcMessage>>;
+    let run: array<ref<AiNpcMessage>>;
+
+    let i = 0;
+    let count = ArraySize(messages);
+    while i < count {
+        if AiNpcChannelOf(messages[i].channel).ShowsInThread() {
+            let trace = AiNpcHistoryCallTrace(run);
+            if NotEquals(StrLen(trace), 0) {
+                ArrayPush(shown, AiNpcHistoryTraceMessage(run, trace));
+                ArrayClear(run);
+            }
+            ArrayPush(shown, messages[i]);
+        } else {
+            ArrayPush(run, messages[i]);
+        }
+        i += 1;
+    }
+
+    let tail = AiNpcHistoryCallTrace(run);
+    if NotEquals(StrLen(tail), 0) {
+        ArrayPush(shown, AiNpcHistoryTraceMessage(run, tail));
+    }
+    return shown;
+}
+
+func AiNpcHistoryTraceMessage(run: array<ref<AiNpcMessage>>, text: String) -> ref<AiNpcMessage> {
+    let last = ArraySize(run) - 1;
+    let trace = new AiNpcMessage();
+    trace.text = text;
+    trace.fromPlayer = false;
+    trace.channel = AiNpcChannelId.Text;
+    trace.gameTimeSeconds = run[last].gameTimeSeconds;
+    return trace;
+}
+
+// Les lignes d'un seul canal.
+//
+// DEUX CONVERSATIONS, UNE MEMOIRE. Un fil de SMS ne montre que ce qui s'est ecrit, un appel ne
+// porte que ce qui s'y dit -- et le personnage se souvient des deux, parce que la memoire est
+// batie sur le magasin entier et ne passe pas par ici.
+//
+// Les lignes classees avant que le canal existe valent Text, qui est la valeur zero de l'enum
+// et ce qu'elles etaient : une sauvegarde d'avant se relit juste.
+func AiNpcHistoryOnChannel(messages: array<ref<AiNpcMessage>>, channel: AiNpcChannelId)
+        -> array<ref<AiNpcMessage>> {
+    let kept: array<ref<AiNpcMessage>>;
+    let i = 0;
+    let count = ArraySize(messages);
+    while i < count {
+        if Equals(messages[i].channel, channel) {
+            ArrayPush(kept, messages[i]);
+        }
+        i += 1;
+    }
+    return kept;
+}
+
+// Ce qui s'est dit sur ce canal depuis cet instant.
+//
+// C'est ainsi qu'un appel ne porte QUE l'echange en cours : l'appel d'avant n'est pas dans le
+// prompt du suivant, il n'est plus que dans la memoire. La borne est un instant de jeu et non
+// un rang -- la compaction retire des lignes du magasin, et un rang aurait glisse sous elle.
+func AiNpcHistorySince(messages: array<ref<AiNpcMessage>>, channel: AiNpcChannelId,
+                       sinceSeconds: Int32) -> array<ref<AiNpcMessage>> {
+    let kept: array<ref<AiNpcMessage>>;
+    let i = 0;
+    let count = ArraySize(messages);
+    while i < count {
+        if Equals(messages[i].channel, channel) && messages[i].gameTimeSeconds >= sinceSeconds {
+            ArrayPush(kept, messages[i]);
+        }
+        i += 1;
+    }
+    return kept;
+}
+
+// L'historique sans l'appel qui est en train d'avoir lieu.
+//
+// UNE TRACE EST UN BILAN, ET UN APPEL EN COURS N'EN A PAS. Sans ce retrait, decrocher faisait
+// apparaitre dans le fil ecrit une bulle "(a voice call, 5 minutes)" qui grandissait a chaque
+// replique, pendant la conversation -- mesure en jeu le 2026-09-02. Ce qui s'y dit devient une
+// trace quand on raccroche, et pas avant.
+//
+// `liveSince` vaut zero hors appel, et rien n'est retire : c'est l'etat normal de toute
+// conversation qu'aucun appel n'accompagne.
+func AiNpcHistoryWithoutLiveCall(messages: array<ref<AiNpcMessage>>, liveSince: Int32)
+        -> array<ref<AiNpcMessage>> {
+    if liveSince <= 0 {
+        return messages;
+    }
+
+    let kept: array<ref<AiNpcMessage>>;
+    let i = 0;
+    let count = ArraySize(messages);
+    while i < count {
+        let live = Equals(messages[i].channel, AiNpcChannelId.Call)
+            && messages[i].gameTimeSeconds >= liveSince;
+        if !live {
+            ArrayPush(kept, messages[i]);
+        }
+        i += 1;
+    }
+    return kept;
+}
+
+// Ce qu'un appel laisse derriere lui sur les autres canaux : sa trace, jamais son contenu.
+//
+// SANS ELLE LA SEPARATION MENT. Filtrer seul fait disparaitre l'appel : V raccroche, ecrit, et
+// le personnage repond comme si les trois minutes precedentes n'avaient pas eu lieu. La ligne
+// dit qu'il y a eu un appel et combien de temps il a dure ; ce qui s'y est dit reste dans la
+// memoire, qui est le seul endroit ou il traverse.
+//
+// Meme forme que le marqueur d'ecart, et pour la meme raison : une parenthese n'est ni V ni le
+// personnage, donc rien ne l'attribue a quelqu'un.
+func AiNpcHistoryCallTrace(run: array<ref<AiNpcMessage>>) -> String {
+    let count = ArraySize(run);
+    if count <= 0 {
+        return "";
+    }
+
+    let first = run[0].gameTimeSeconds;
+    let last = run[count - 1].gameTimeSeconds;
+    if AiNpcMessageHasTime(run[0]) && AiNpcMessageHasTime(run[count - 1]) && last > first {
+        return s"(a voice call, \(AiNpcFormatDuration(last - first)))";
+    }
+    return "(a voice call)";
 }
 
 func AiNpcHistoryCopy(messages: array<ref<AiNpcMessage>>) -> array<ref<AiNpcMessage>> {

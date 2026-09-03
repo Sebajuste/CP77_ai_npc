@@ -8,6 +8,13 @@ module AiNpc
 func AiNpcSheetSongbird() -> ref<AiNpcCharacterDef> {
     let c = new AiNpcCharacterDef();
     c.contactId = "songbird";
+
+    // Qui la dit, par palier. Le clone garde son nom par defaut -- `songbird.wav`, ce que
+    // la recette d'extraction produit -- et le repli est la voix de catalogue retenue a
+    // l'oreille : c'est un fait sur ce personnage, pas un reglage.
+    c.voice = new AiNpcVoiceDef();
+    c.voice.fallback = "vera";
+
     c.displayName = "Songbird";
 
     // Who she is, then how she reacts.

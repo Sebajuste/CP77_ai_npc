@@ -85,6 +85,17 @@ func AiNpcExtractApiError(root: ref<JsonObject>) -> String {
     if IsDefined(errorObject) {
         let nested = AiNpcJsonString(errorObject, "message");
         if NotEquals(StrLen(nested), 0) {
+            // "Provider returned error" ne dit rien : OpenRouter enveloppe la reponse du
+            // fournisseur, et ce que celui-ci reproche est dans metadata.raw. Sans cette
+            // ligne, un refus pour cause de plafond de jetons et une panne de reseau se lisent
+            // pareil dans le journal -- ce qui a coute une soiree le 2026-09-02.
+            let metadata = AiNpcJsonObjectAt(errorObject, "metadata");
+            if IsDefined(metadata) {
+                let raw = AiNpcJsonString(metadata, "raw");
+                if NotEquals(StrLen(raw), 0) {
+                    return nested + " -- " + raw;
+                }
+            }
             return nested;
         }
     }

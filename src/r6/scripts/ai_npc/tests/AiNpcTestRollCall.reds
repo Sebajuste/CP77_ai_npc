@@ -46,6 +46,7 @@ func AiNpcRunAllTests() -> ref<AiNpcTestRunner> {
     AiNpcTestSlotAliases(t);
     AiNpcTestSlotOverlay(t);
     AiNpcTestPassSources(t);
+    AiNpcTestCompletionCap(t);
     AiNpcTestPassTable(t);
     AiNpcTestPassBuilders(t);
     AiNpcTestModelPresets(t);

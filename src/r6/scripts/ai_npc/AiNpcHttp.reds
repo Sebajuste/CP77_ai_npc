@@ -199,6 +199,11 @@ public class AiNpcHttpSystem extends ScriptableSystem {
   // One send for every chat-shaped backend: url, headers and body shape are AiNpcLlm's, the
   // same answers the thinking lane gets. What is left here belongs to this lane -- capturing
   // the contact, reporting the failure to the player, and the generating state.
+  // Si la recette du tour en cours offre des commandes. Lue a la construction de la passe et
+  // relue a l'arrivee de la reponse, qui est plusieurs secondes plus tard et n'a plus la
+  // recette sous la main.
+  private let m_offersCommands: Bool = true;
+
   private func ChatPostRequest() {
     // Before the url, the credentials and the prompt, because everything below costs
     // something. Here rather than in TriggerPostRequest so a contact that answers for itself
@@ -224,11 +229,23 @@ public class AiNpcHttpSystem extends ScriptableSystem {
 
     // Consumed here, not inside the builder: building a prompt must have no side effect, and
     // spending a mod's seeded context is an act.
-    let builder = AiNpcPassConversation.Of(this.m_generation.Contact(),
+    // Le canal choisit la passe, et c'est le seul endroit ou ce choix a lieu. Construire la
+    // passe ecrite directement laissait un appel partir sur `slot=dialogue recipe=default` :
+    // le prompt vocal, ses regles de lecture a voix haute et sa fenetre d'echange n'etaient
+    // jamais montes, sans qu'aucune erreur ne le dise. Mesure en jeu le 2026-09-02, sur le
+    // journal des requetes.
+    let builder = AiNpcPassBuilderFor(this.m_generation.Channel(),
+      this.m_generation.Contact(),
       AiNpcTakePendingContext(this.m_generation.Contact()),
       this.m_generation.Intent(),
       this.m_generation.Ask(),
       this.m_generation.SpeaksFirst());
+
+    // Retenu ici parce que c'est ici que la recette du tour existe. Une replique parlee n'en
+    // porte pas : la recette `spoken` laisse tomber le bloc, donc le modele n'a jamais entendu
+    // parler d'une commande, et la passe de reparation qui en cherche une derriere chaque
+    // reponse n'a rien a y chercher.
+    this.m_offersCommands = AiNpcRecipeHas(builder.Recipe(), "commands");
 
     // One send for both transports, and this lane is not told which one runs. Naming the CLI
     // type in one file limits the blast radius of a plugin that failed to load.
@@ -482,7 +499,7 @@ public class AiNpcHttpSystem extends ScriptableSystem {
     // pass builds quotes the reply itself, and a thread that already held it would show the
     // model the same line twice. The player is not waiting on any of it -- the message is on
     // screen, and what is at stake is whether a command fires behind it.
-    if !carrier && !authored {
+    if !carrier && !authored && this.m_offersCommands {
       let actions = AiNpcActionService.Get();
       if IsDefined(actions) {
         actions.Examine(contactId, processedText);

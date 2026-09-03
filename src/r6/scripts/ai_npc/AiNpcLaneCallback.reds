@@ -60,6 +60,17 @@ abstract class AiNpcCallLaneCallback extends DelayCallback {
     protected func Run(call: ref<AiNpcCallSystem>) -> Void {}
 }
 
+abstract class AiNpcSubtitleLaneCallback extends DelayCallback {
+    public func Call() {
+        let subtitles = AiNpcCallSubtitles.Get();
+        if IsDefined(subtitles) {
+            this.Run(subtitles);
+        }
+    }
+
+    protected func Run(subtitles: ref<AiNpcCallSubtitles>) -> Void {}
+}
+
 public abstract class AiNpcSetupCallback extends DelayCallback {
     public func Call() {
         let setup = GameInstance.GetScriptableSystemsContainer(GetGameInstance()).Get(NameOf<AiNpcSetupSystem>()) as AiNpcSetupSystem;

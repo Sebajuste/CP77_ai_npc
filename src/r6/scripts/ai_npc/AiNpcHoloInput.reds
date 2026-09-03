@@ -20,19 +20,41 @@ func AiNpcHoloInputPlaceholder() -> String {
     return "Say something...";
 }
 
-func AiNpcHoloInputWidth() -> Float {
-    return 900.0;
+// The HUD's own coordinates, whatever the screen really is: 3840 x 2160 virtual units, which
+// the engine scales. Every mod that hangs a widget on this layer states the same pair.
+func AiNpcHoloInputScreenWidth() -> Float {
+    return 3840.0;
 }
 
-// Placed under the call widgets rather than beside them: the game's own margins for
-// `incomming_call_slot` put the call around 300 from the top, and a field over it would cover
-// the face the player is talking to.
+func AiNpcHoloInputScreenHeight() -> Float {
+    return 2160.0;
+}
+
+func AiNpcHoloInputWidth() -> Float {
+    return 2200.0;
+}
+
+// Enough for a spoken sentence without the line becoming a message box: past three lines the
+// player is writing prose, and a call is not a chat.
+func AiNpcHoloInputLines() -> Int32 {
+    return 3;
+}
+
+// How far the bottom of the line sits above the bottom of the screen.
+func AiNpcHoloInputBottomGap() -> Float {
+    return 260.0;
+}
+
+// Along the bottom edge, centred. Beside the call widgets it was drawn BEHIND the holo panel:
+// the panel is larger than the `incomming_call_slot` margins suggest, and the only part of the
+// screen it leaves free is the strip the game keeps for subtitles.
 func AiNpcHoloInputTop() -> Float {
-    return 620.0;
+    return AiNpcHoloInputScreenHeight() - AiNpcHoloInputBottomGap()
+           - AiNpcTerminalStyle.FieldHeightFor(AiNpcHoloInputLines());
 }
 
 func AiNpcHoloInputLeft() -> Float {
-    return 80.0;
+    return (AiNpcHoloInputScreenWidth() - AiNpcHoloInputWidth()) * 0.5;
 }
 
 // The one walk of the phone HUD's tree. Nothing else in this file reaches for a widget.
@@ -49,6 +71,13 @@ func AiNpcHoloInputHost() -> ref<inkCompoundWidget> {
 class AiNpcHoloInput extends IScriptable {
 
     private let m_field: ref<AiNpcTerminalField>;
+
+    // Escape reaches this line twice: once as a key, which the field answers by giving the
+    // keyboard back, and once as the pause action, which the game answers by opening its menu.
+    // Only the first is what the player meant. It is noted here because by the time the action
+    // arrives the line no longer holds the keyboard, so asking whether it does would let the
+    // menu through -- which is exactly what happened.
+    private let m_escaped: Bool;
 
     public final func IsUp() -> Bool {
         return IsDefined(this.m_field);
@@ -69,9 +98,12 @@ class AiNpcHoloInput extends IScriptable {
         }
 
         this.m_field = new AiNpcTerminalField();
-        this.m_field.Setup(AiNpcHoloInputPlaceholder());
+        this.m_field.Setup(AiNpcHoloInputPlaceholder(), AiNpcHoloInputLines());
+        // La couleur du texte en cours de frappe, la meme sur les trois surfaces. L'accent
+        // corail est reserve a ce qui demande une lecture -- une ligne dans laquelle on tape
+        // n'est pas une alerte.
         this.m_field.Build(host, AiNpcHoloInputLeft(), AiNpcHoloInputTop(), AiNpcHoloInputWidth(),
-            AiNpcStyle.Accent());
+            AiNpcStyle.Typed());
 
         let box = this.m_field.GetRootWidget();
         if IsDefined(box) {
@@ -101,11 +133,12 @@ class AiNpcHoloInput extends IScriptable {
             host.RemoveChildByName(n"ainpc_field");
         }
         this.m_field = null;
+        this.m_escaped = false;
     }
 
-    // Enter, and nothing else. THE FIELD APPLIES THE KEY ITSELF, from its own OnInputKey
-    // handler and through AiNpcKeyRepeat -- applying it a second time here typed every
-    // character twice or more, which reads as "SSSallluutttt" and not as a repeat bug.
+    // Enter and Escape, and nothing else. THE FIELD APPLIES THE KEY ITSELF, from its own
+    // OnInputKey handler and through AiNpcKeyRepeat -- applying it a second time here typed
+    // every character twice or more, which reads as "SSSallluutttt" and not as a repeat bug.
     //
     // Same shape as the terminal's handler next door, for the same reason: this decides what
     // Enter meant, the field decides what a key is.
@@ -116,18 +149,37 @@ class AiNpcHoloInput extends IScriptable {
         if !IsDefined(this.m_field) {
             return false;
         }
+
+        if Equals(evt.GetKey(), EInputKey.IK_Escape) {
+            this.m_escaped = true;
+            return true;
+        }
+
         if !this.m_field.TakeSubmitted() {
             return true;
         }
 
+        // EVERY validation ends the typing, empty line included. What is typed here is one
+        // spoken sentence, not a thread: the player says it and goes back to walking, and a
+        // line that kept the keyboard after Enter left them unable to move. What to do with an
+        // empty line is the call's, and it says nothing.
         let text = this.m_field.GetText();
         this.m_field.Clear();
+        this.m_field.ReleaseKeyboard();
 
         let call = AiNpcCallSystem.Get();
         if IsDefined(call) {
             call.ReportSpoken(text);
         }
         return true;
+    }
+
+    // Read and cleared: the note exists to answer one pause action, the one that follows the
+    // key that set it.
+    public final func TakeEscaped() -> Bool {
+        let was: Bool = this.m_escaped;
+        this.m_escaped = false;
+        return was;
     }
 
     // Whether the line still holds the keyboard. Asked by the call before it decides to eat the

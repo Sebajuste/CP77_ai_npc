@@ -29,6 +29,30 @@ public class AiNpcCharacterVariant {
     public let intent: String;
 }
 
+// Quelle voix dit les repliques de ce personnage, par palier.
+//
+// Deux entrees parce qu'il y a deux paliers et qu'ils ne se remplacent pas : le clone est la
+// voix du jeu, le catalogue est une voix libre qui ne lui ressemble pas. Un joueur qui a le
+// pack de clonage entend le premier ; tous les autres entendent le second ; personne n'entend
+// le synthetiseur de Windows sauf quand ni l'un ni l'autre n'est disponible.
+//
+// C'est une donnee de personnage et pas un reglage : « la voix de Judy » ne se choisit pas dans
+// un menu, elle est un fait sur elle. Elle vit donc dans la fiche, avec le reste.
+public class AiNpcVoiceDef {
+    // Le fichier de reference, dans r6\storages\AiNpcoices\. Vide, c'est `<contactId>.wav`,
+    // qui est ce que la recette d'extraction produit -- le nommer sert a partager une reference
+    // entre deux contacts, ou a en designer une que le joueur a deposee lui-meme.
+    public let clone: String;
+
+    // La voix du catalogue de PocketTTS, par son nom. Vide, ce personnage n'a pas de repli et
+    // tombe sur la voix du systeme.
+    //
+    // Vingt-six voix existent, dont trois inutilisables ; l'attribution est celle qui a ete
+    // corrigee a l'oreille dans tools	ts-laballback-voices.json, et c'est cette table qui
+    // se deverse ici, fiche par fiche.
+    public let fallback: String;
+}
+
 public class AiNpcCharacterDef {
     public let contactId: String;
     public let displayName: String;
@@ -44,12 +68,28 @@ public class AiNpcCharacterDef {
     public let romance: String;
     public let liveContext: String;
     public let speechStyle: String;
+
+    // Comment ce personnage parle A VOIX HAUTE, quand la même conversation passe par un appel.
+    //
+    // Vide, le registre écrit sert : sur les neuf fiches livrées, six décrivent une personne et
+    // se lisent tels quels -- « blunt and quick, no hedging » ne dépend d'aucune surface. Ce
+    // champ existe pour les trois qui décrivent une FRAPPE : minuscules, apostrophes manquantes,
+    // émoticônes. Prescrire cela à une bouche est la seule chose que le repli ferait de faux.
+    //
+    // Ce n'est pas une règle de rendu. Qu'une voix ne prononce pas d'émoticône est un fait sur
+    // la surface, et il est dans <channel> ; que Judy en tape est un fait sur elle.
+    public let spokenStyle: String;
+
     // Whether V could be with this character at all -- not the same question as `romanced`, and
     // the one that decides whether an unromanced contact is told to refuse advances. For a
     // contact the base game knows, `romanceFact` answers it; this is for one it has never
     // heard of, which has no record to read.
     public let romanceable: Bool = false;
     public let romanced: Bool = false;
+
+    // Null quand la fiche ne dit rien : le clone garde son defaut -- `<contactId>.wav` -- et il
+    // n'y a pas de repli de catalogue. Ce qui est le comportement d'aujourd'hui, exactement.
+    public let voice: ref<AiNpcVoiceDef>;
 
     // Default on, and off is characterisation: an automated number does not accumulate a
     // relationship.

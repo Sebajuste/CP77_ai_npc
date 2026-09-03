@@ -51,7 +51,7 @@ KEYS = (
     "romanceFailed", "randyDead",
     "evelynDead", "evelynRescued", "cloudsSettled", "leftNightCity",
     "johnnyRevealed", "johnnyDateDone", "confidedInV",
-    "player", "quest", "now", "messages", "ask", "speaksFirst", "reason", "intent",
+    "player", "quest", "now", "messages", "ask", "speaksFirst", "reason", "intent", "pass",
     "memory", "memoryEnabled", "commandsDedicated", "pendingContext", "weather",
     "extensionContext",
     "extensionRules", "extensionInteractions", "extensionIntent",
@@ -177,6 +177,10 @@ def load(path):
         "extensionIntent": list(raw.get("extensionIntent", [])),
         "overrides": _with_rules(raw.get("overrides", {})),
         "speaksFirst": bool(raw.get("speaksFirst", False)),
+        # La passe qui demande. Absente, une fixture decrit une conversation ecrite -- ce que
+        # toutes celles ecrites avant les canaux decrivaient, et ce qu'elles doivent continuer
+        # de rendre a l octet pres.
+        "pass": raw.get("pass", "speaking"),
         "reason": raw.get("reason", ""),
         # The second half of CharacterWantsToSay, and not the same thing as the reason:
         # the reason is what she writes about, in the slot V's line occupied, and this is

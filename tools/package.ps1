@@ -161,13 +161,14 @@ if (Test-Path $archiveDir) {
     Copy-Item $archiveDir $stage -Recurse -Force
 }
 
-# --- RED4ext plugin (the CLI lanes; OpenRouter works without it) ---
+# --- RED4ext plugin (the CLI lanes and the streamed OpenRouter lane) ---
 #
 # One file: the plugin runs the CLI and returns its output, so there is no bridge, no port and
 # no launch argument. See docs\ARCHITECTURE.md.
 #
-# -SkipPlugin still produces a usable archive: a player on OpenRouter never calls into the
-# DLL. What they cannot do is select a CLI lane, and the mod says so when they try.
+# -SkipPlugin still produces a usable archive: a player on plain OpenRouter never calls into the
+# DLL. What they cannot do is select a CLI lane or the streamed one, and the mod says so when
+# they try.
 $dll = Join-Path $root "plugin\build\ai_npc.dll"
 if (-not $SkipPlugin) {
     if (-not (Test-Path $dll)) {
@@ -177,6 +178,35 @@ if (-not $SkipPlugin) {
     $pluginDir = Join-Path $stage "red4ext\plugins\ai_npc"
     New-Item -ItemType Directory -Path $pluginDir -Force | Out-Null
     Copy-Item $dll $pluginDir -Force
+
+    # ONNX Runtime, sans quoi RIEN ne demarre.
+    #
+    # ai_npc.dll importe onnxruntime.dll depuis que le moteur de parole vit dedans. Une import
+    # manquante fait echouer le chargement de la DLL, donc les classes natives ne s'enregistrent
+    # pas, donc RED4ext refuse le blob de scripts qui les declare -- et le JEU ne se lance pas.
+    # C'est le pire mode de defaillance de ce depot, et il ne ressemble pas a sa cause.
+    #
+    # Le modele, lui, ne voyage pas ici : c'est un pack a part, de plusieurs centaines de
+    # megaoctets, construit par tools\package-voice.ps1. Son absence est benigne -- la voix
+    # retombe sur celle de Windows.
+    $ort = Join-Path $root "vendor\pocket-deps\onnxruntime-win-x64-1.23.2\lib\onnxruntime.dll"
+    if (-not (Test-Path $ort)) {
+        throw "onnxruntime.dll not found at $ort. ai_npc.dll imports it, and without it beside the DLL the plugin fails to load, the native classes never register, and the game does not start. Run: powershell -File tools\pocket-engine\build.ps1 -Fetch"
+    }
+    Copy-Item $ort $pluginDir -Force
+
+    # La recette des voix : par personnage et par langue, les hachages des repliques a prendre
+    # dans les archives du joueur. 25 Ko, et c'est tout ce qui remplace les 135 Mo de
+    # dictionnaire que WolvenKit demandait -- une archive ne connait que des hachages, donc
+    # designer le RESULTAT du choix suffit. Voir docs\PLAN_VOICE_LANE.md § 5.
+    #
+    # Elle voyage avec le mod et non avec le pack de voix, parce qu'elle depend de la version du
+    # JEU -- un correctif qui reencode le doublage l'invalide -- et pas du modele.
+    $recipe = Join-Path $root "tools\voice-extract\voices-recipe.json"
+    if (-not (Test-Path $recipe)) {
+        throw "$recipe not found. Without it the plugin detects the cloning pack, finds no lines to cut, and every character falls back to the system voice."
+    }
+    Copy-Item $recipe $pluginDir -Force
 }
 
 # --- FOMOD installer + the provider presets it chooses between ---
@@ -359,6 +389,17 @@ try {
 }
 if ($names -notcontains "archive/pc/mod/ai_npc.archive") {
     throw "The zip is missing archive/pc/mod/ai_npc.archive - the AGENT LINK icon would not ship."
+}
+
+# Les deux DLL vont ensemble ou pas du tout. Verifie DANS le zip, parce que c'est la que la
+# faute vit : un fichier peut etre au bon chemin dans le depot et absent de ce qui part.
+if (-not $SkipPlugin) {
+    foreach ($required in @("red4ext/plugins/ai_npc/ai_npc.dll", "red4ext/plugins/ai_npc/onnxruntime.dll",
+                            "red4ext/plugins/ai_npc/voices-recipe.json")) {
+        if ($names -notcontains $required) {
+            throw "The zip is missing $required - ai_npc.dll cannot load without onnxruntime.dll beside it, and a plugin that does not load takes the whole game down with it."
+        }
+    }
 }
 
 # The installer, and every folder it names.

@@ -10,11 +10,18 @@
 // asks for is declared below, every droppable block is asked about by somebody, and the shipped
 // template names them all.
 //
-// Two blocks are required, and the schema is where that is stated rather than in a branch of
+// Three blocks are required, and the schema is where that is stated rather than in a branch of
 // the parser:
 //
 //   <system>        carries the <fiction> sentence and the locked FORM / TIME / LENGTH rubrics
 //   <explicitness>  states what the PLAYER consented to in Mod Settings
+//   <channel>       states which surface the reply lands on, and what that surface accepts
+//
+// The third is the newest and the least obvious. A recipe that dropped <channel> would leave a
+// character believing it is texting during a call -- and the rules it carries are not editorial
+// either: a numeral glued to its unit derails the speech engine, measured, and no prompt above
+// it says so. It is dropped for the same reason <system> is: what it carries is not a
+// character's to trim.
 //
 // The second is the one worth spelling out. It already refuses every contribution lane -- no
 // contact override, no prompts.json level, no extension -- because it answers a question that
@@ -68,6 +75,7 @@ func AiNpcRecipeSchema() -> array<ref<AiNpcRecipeBlockSchema>> {
     ArrayPush(schema, AiNpcRecipeBlockSchemaOf("intent", ["own", "extensions"]));
     ArrayPush(schema, AiNpcRecipeBlockSchemaOf("quest", ["name", "context", "objective"]));
     ArrayPush(schema, AiNpcRecipeBlockSchemaOf("now", ["clock", "weather", "pending", "live"]));
+    ArrayPush(schema, AiNpcRecipeRequired("channel"));
 
     // Last, and outside the order above, because they render nothing: a request is two
     // messages, and these two say which builder writes each half. The eleven blocks above are
@@ -155,6 +163,41 @@ func AiNpcRecipeFull() -> ref<AiNpcRecipe> {
         i += 1;
     }
     return recipe;
+}
+
+// La recette d'une replique dite a voix haute, sans fichier.
+//
+// Elle ne retire qu'une chose a la recette integrale : les commandes. Une reponse parlee ne
+// porte pas de tag entre crochets -- personne ne prononce ca -- et laisser le bloc ferait aussi
+// tourner la passe de reparation qui va le chercher derriere chaque replique.
+//
+// INTEGREE PLUTOT QUE DANS L'EXEMPLE. `recipes.example.json` la decrit depuis le debut, mais un
+// exemple n'est pas charge : sans `recipes.json`, le livre est vide et chaque passe retombait
+// sur la recette integrale. Une recette livree, correcte, et jamais montee -- mesure en jeu le
+// 2026-09-02. Ce que le fichier apporte reste le reglage ; ce qui est ici est le defaut.
+func AiNpcRecipeSpoken() -> ref<AiNpcRecipe> {
+    let recipe = new AiNpcRecipe();
+    recipe.name = "spoken";
+
+    let schema = AiNpcRecipeSchema();
+    let i = 0;
+    let count = ArraySize(schema);
+    while i < count {
+        if NotEquals(schema[i].key, "commands") {
+            ArrayPush(recipe.blocks, AiNpcRecipeBlockOf(schema[i].key, schema[i].parts));
+        }
+        i += 1;
+    }
+    return recipe;
+}
+
+// Les recettes que le mod porte lui-meme, par nom. Null pour tout le reste : un nom inconnu ici
+// est un nom que seul un fichier peut fournir.
+func AiNpcRecipeBuiltInNamed(name: String) -> ref<AiNpcRecipe> {
+    if Equals(name, "spoken") {
+        return AiNpcRecipeSpoken();
+    }
+    return null;
 }
 
 // The names a file may use, for the parser's "unknown key" line. The list is the schema's, so

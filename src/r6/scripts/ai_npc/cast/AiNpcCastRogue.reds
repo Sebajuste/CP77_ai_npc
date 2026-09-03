@@ -8,6 +8,13 @@ module AiNpc
 func AiNpcSheetRogue() -> ref<AiNpcCharacterDef> {
     let c = new AiNpcCharacterDef();
     c.contactId = "rogue";
+
+    // Qui la dit, par palier. Le clone garde son nom par defaut -- `rogue.wav`, ce que
+    // la recette d'extraction produit -- et le repli est la voix de catalogue retenue a
+    // l'oreille : c'est un fait sur ce personnage, pas un reglage.
+    c.voice = new AiNpcVoiceDef();
+    c.voice.fallback = "eponine";
+
     c.displayName = "Rogue Amendiares";
 
     // Facts only, above the line; action criteria below it. Nothing here says what she does,
@@ -38,6 +45,11 @@ func AiNpcSheetRogue() -> ref<AiNpcCharacterDef> {
     // to a median of four words spoken and six written, and she swears more in writing than out
     // loud: 1.81 profanities per 100 words in the SMS thread against 1.09 in speech.
     c.speechStyle = "{register} Four-word sentences, and a good half carry no subject at all -- \"Gotta lose 'em.\" You contract everything, and you swear more in writing than you do out loud. Barely any street slang; you were working this city before most of it existed. You use V's name. You type in full sentences, capitals and punctuation in place, and you state rather than ask -- a job ends with \"Contract closed.\"";
+
+    // Sa fiche écrite affirmait déjà la différence -- « you swear more in writing than you do out
+    // loud » -- et c'est elle qui a montré que ce champ manquait. À voix haute elle jure donc
+    // moins, et « you type in full sentences » n'a plus d'objet.
+    c.spokenStyle = "{register} Four-word sentences, and a good half carry no subject at all -- \"Gotta lose 'em.\" You contract everything, and you swear less out loud than people expect of you. Barely any street slang; you were working this city before most of it existed. You use V's name. You state rather than ask -- a job ends with \"Contract closed.\"";
 
     // No seed fact about the engram, and it is not an omission: seed facts are the one part of
     // a sheet a variant cannot reach (AiNpcVariantFields), so one stated here would tell her

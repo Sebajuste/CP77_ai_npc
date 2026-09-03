@@ -68,6 +68,13 @@ public class AiNpcDefContactProvider extends AiNpcContactProvider {
         return this.m_def.speechStyle;
     }
 
+    // Sans variante : une variante décrit un moment de l'arc, pas une surface, et les deux
+    // questions se croiseraient en quatre textes par personnage. Le jour où une variante devra
+    // parler autrement à voix haute, elle le dira -- ici, additivement.
+    public func GetSpokenStyle() -> String {
+        return this.m_def.spokenStyle;
+    }
+
     // What this character wants of V when the journal says nothing. The quest half is
     // GetQuestIntent below, and the two are composed by the caller -- see AiNpcIntentFor,
     // which owns the cascade for a script provider exactly as it does for a sheet.

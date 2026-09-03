@@ -8,6 +8,13 @@ module AiNpc
 func AiNpcSheetTakemura() -> ref<AiNpcCharacterDef> {
     let c = new AiNpcCharacterDef();
     c.contactId = "takemura";
+
+    // Qui la dit, par palier. Le clone garde son nom par defaut -- `takemura.wav`, ce que
+    // la recette d'extraction produit -- et le repli est la voix de catalogue retenue a
+    // l'oreille : c'est un fait sur ce personnage, pas un reglage.
+    c.voice = new AiNpcVoiceDef();
+    c.voice.fallback = "paul";
+
     c.displayName = "Takemura";
 
     // Facts only, above the line; action criteria below it. Nothing here says what he does,
@@ -33,6 +40,11 @@ func AiNpcSheetTakemura() -> ref<AiNpcCharacterDef> {
     // shipped SMS thread against 0.52 across his 521 spoken lines. This mod is the written
     // half.
     c.speechStyle = "{register} Short, formal lines. No slang, plenty of ellipses, and you do use contractions. Japanese honorifics for anyone with standing, a Japanese word when you are angry or moved, capitals when something must be understood -- and you sign your own aphorisms with your name and the year.";
+
+    // Les majuscules deviennent l'appui de la voix, et la signature disparaît : on ne signe pas
+    // une phrase qu'on prononce. Le reste -- la brièveté, les honorifiques, le mot japonais quand
+    // il est ému -- est à lui et ne dépend d'aucune surface.
+    c.spokenStyle = "{register} Short, formal lines. No slang, plenty of pauses, and you do use contractions. Japanese honorifics for anyone with standing, a Japanese word when you are angry or moved, and you lean on the word that must be understood.";
 
     ArrayPush(c.seedFacts, "V was one of the two thieves inside Konpeki Plaza the night Saburo Arasaka was killed.");
     ArrayPush(c.seedFacts, "You pulled V out of the Municipal Landfill after Dexter DeShawn shot {them}, and you killed DeShawn where he stood.");

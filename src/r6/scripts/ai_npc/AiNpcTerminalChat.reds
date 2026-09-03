@@ -576,7 +576,9 @@ public class AiNpcTerminalChat extends AiNpcChatRenderer {
 
     // The last thing said in a conversation, or the "nothing yet" line.
     private func LastLine(contactId: String) -> String {
-        let messages = AiNpcStoredMessages(contactId);
+        let stored = AiNpcHistoryWithoutLiveCall(AiNpcStoredMessages(contactId),
+            AiNpcLiveCallSince(contactId));
+        let messages = AiNpcHistoryForThread(stored);
         let count = ArraySize(messages);
         if count <= 0 {
             return AiNpcTerminalEmptyThreadLabel();
@@ -623,7 +625,7 @@ public class AiNpcTerminalChat extends AiNpcChatRenderer {
                                    left + 900.0, bandY - 44.0);
 
         this.m_field.Build(root, left, bandY + 12.0, fieldWidth,
-                           AiNpcTerminalStyle.ColPlayer());
+                           AiNpcTerminalStyle.ColTyped());
         // After the field's own handler, on the same widget, so the field has recorded the
         // Enter by the time this reads its text. Two listeners on one widget.
         let box = this.m_field.GetRootWidget();

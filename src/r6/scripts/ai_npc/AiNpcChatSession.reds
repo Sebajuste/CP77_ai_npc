@@ -142,11 +142,20 @@ public class AiNpcChatSession extends IScriptable {
         let renderer = this.m_renderer;
         renderer.Clear();
 
-        let count: Int32 = ArraySize(messages);
+        // Un fil ecrit garde la trace des appels ; une surface parlee n'a rien a resumer,
+        // puisqu'elle ne montre que l'echange qu'on est en train d'avoir.
+        let shown = messages;
+        if AiNpcChannelOf(renderer.Channel()).ShowsInThread() {
+            let settled = AiNpcHistoryWithoutLiveCall(messages,
+                AiNpcLiveCallSince(this.GetShownContactId()));
+            shown = AiNpcHistoryForThread(settled);
+        }
+
+        let count: Int32 = ArraySize(shown);
         let i: Int32 = AiNpcHistoryWindowStart(count, renderer.HistoryLimit());
         while i < count {
-            if AiNpcIsDisplayableMessage(messages[i], renderer.Channel()) {
-                this.Paint(messages[i].text, messages[i].fromPlayer, false);
+            if AiNpcIsDisplayableMessage(shown[i], renderer.Channel()) {
+                this.Paint(shown[i].text, shown[i].fromPlayer, false);
             }
             i += 1;
         }

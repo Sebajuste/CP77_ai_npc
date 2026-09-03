@@ -100,6 +100,18 @@ public class AiNpcContactProvider extends IScriptable {
         return "";
     }
 
+    // The same, for a reply that is SAID rather than written. Empty keeps GetSpeechStyle, which
+    // is right for a register that describes a person -- "blunt and quick, no hedging" holds on
+    // any surface. Answer this one when yours describes TYPING: lowercase openings, missing
+    // apostrophes, emoticons. Prescribing those to a mouth is the only thing the fallback gets
+    // wrong.
+    //
+    // Not a rendering rule. That a voice speaks no emoticon is a fact about the surface and the
+    // mod states it itself; that your character types them is a fact about them.
+    public func GetSpokenStyle() -> String {
+        return "";
+    }
+
     // Whole sections replaced, for what GetSpeechStyle cannot bend. Null keeps every section
     // resolving from prompts.json or the built-in text.
     public func GetPromptOverrides() -> ref<AiNpcPromptOverrides> {

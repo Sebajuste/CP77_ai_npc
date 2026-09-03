@@ -84,7 +84,7 @@ func AiNpcPhoneBeginInput(wrapper: wref<inkHorizontalPanel>) -> Void {
         // Cosmetic: not finding the caret costs a yellow that is not there, and nothing else.
         let field = AiNpcPhoneInputField(widget);
         if IsDefined(field) {
-            field.SetTintColor(AiNpcStyle.Caret());
+            field.SetTintColor(AiNpcStyle.Typed());
         }
     }
 
@@ -148,7 +148,7 @@ func AiNpcPhoneBuildInputRow(parent: ref<inkCompoundWidget>) -> ref<AiNpcPhoneIn
     // AiNpcPhoneTypedInput depends on.
     let label = AiNpcInkText(wrapper, n"reply_label",
                              AiNpcSendMessageLabel(AiNpcResolveLanguage()),
-                             AiNpcPhoneStyle.FsInput(), AiNpcStyle.Caret());
+                             AiNpcPhoneStyle.FsInput(), AiNpcStyle.Typed());
     label.SetLetterCase(AiNpcStyle.BodyCase());
     label.SetOverflowPolicy(textOverflowPolicy.DotsEnd);
     label.SetWrappingAtPosition(1000);

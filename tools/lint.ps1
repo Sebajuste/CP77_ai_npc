@@ -700,6 +700,50 @@ if ($registrarHits -eq 0) {
     Report-Pass "ai_npc contributes through its own client ($registrarHits owned registration(s))"
 }
 
+# --- 8j. The scripts and the plugin say the same provider names ----------------------------
+# AiNpcSendChat hands the plugin a NAME, and the plugin's registry matches it against the name
+# each backend advertises. The two halves agree by saying the same word, and nothing else makes
+# them agree: a mismatch compiles on both sides, links, loads, and shows up in game as a request
+# refused with a typed error that reads exactly like the API answering 400.
+#
+# Measured 2026-09-01: the script enum was collapsed to "OpenRouter" while OpenRouterStream.cpp
+# still advertised "OpenRouterStream". Every offline check passed. Only the CLI lanes worked.
+#
+# Read from AiNpcProviderName's body alone, not from the whole file: other switches in there
+# return URLs and model ids, and a rule that swept those would compare names against addresses.
+$providerNames = @()
+$llm = Read-Code (Join-Path $modSrc "AiNpcLlm.reds")
+$nameFunc = [regex]::Match($llm, 'func AiNpcProviderName\([^)]*\)[^{]*\{(.*?)
+\}', 'Singleline')
+if ($nameFunc.Success) {
+    foreach ($m in [regex]::Matches($nameFunc.Groups[1].Value, 'case AiNpcProvider\.\w+:\s*return "([^"]+)";')) {
+        $providerNames += $m.Groups[1].Value
+    }
+}
+
+# Two shapes on the plugin side: a free ProviderName() for the streaming lane, and a
+# Class::Name() const for each CLI backend.
+$advertised = @()
+Get-ChildItem -Path (Join-Path $root "plugin") -Filter *.cpp -File | ForEach-Object {
+    $body = [System.IO.File]::ReadAllText($_.FullName)
+    foreach ($m in [regex]::Matches($body, '(?:ProviderName|\w+::Name)\(\)[^{]*\{\s*return "([^"]+)";')) {
+        $advertised += $m.Groups[1].Value
+    }
+}
+
+if ($providerNames.Count -eq 0 -or $advertised.Count -eq 0) {
+    Report-Fail "the scripts and the plugin say the same provider names" `
+        "found $($providerNames.Count) name(s) in AiNpcProviderName and $($advertised.Count) in plugin\ - this rule reads both and must find both"
+} else {
+    $unmatched = @($advertised | Where-Object { $providerNames -notcontains $_ })
+    if ($unmatched.Count -gt 0) {
+        Report-Fail "the scripts and the plugin say the same provider names" `
+            ("the plugin advertises " + ($unmatched -join ", ") + ", which AiNpcProviderName never returns.`nA request for it is refused by the registry, and the player sees a 400.")
+    } else {
+        Report-Pass "the scripts and the plugin say the same provider names ($($advertised.Count) backend(s))"
+    }
+}
+
 # --- 8i. The speaking lane answers only for the generation -------------------------------
 # The sibling of N+4, one system further in. AiNpcHttpSystem holds the request in flight, and
 # it also used to hold the context mods had seeded -- which is a fact about the contacts, not
@@ -1795,6 +1839,7 @@ if ($presetProblems) {
 # Two agreements:
 #
 #   * the four steps of the column are called from AiNpcPassSend.reds and nowhere else;
+#   * a conversation pass is CONSTRUCTED in one place, the chooser that reads the channel;
 #   * the recipe has ONE door. AiNpcPassRecipe is called by AiNpcPassBuilder.Recipe(), which
 #     asks for its own pass, so a builder cannot render against another pass's recipe. Anything
 #     else reaching for a recipe by name can.
@@ -1805,7 +1850,19 @@ if ($presetProblems) {
 # open is a rule that reads as enforced and is not.
 $pipelineProblems = @()
 
+# Le choix de la passe est un pas de la colonne, et il manquait.
+#
+# `AiNpcPassBuilderFor` a existe une semaine sans appelant : `ChatPostRequest` construisait la
+# passe ecrite en dur, donc tout appel partait sur slot=dialogue recipe=default -- sans regles
+# de lecture a voix haute et sans fenetre d'echange. Rien ne l'a dit. Le compilateur ne signale
+# pas une fonction libre que personne n'appelle, et la regle ci-dessous comptait bien six
+# constructeurs de passe : elle demandait que chaque passe AIT un constructeur, jamais que
+# quelqu'un le construise.
+#
+# Tenir le constructeur ecrit a un seul site rend l'oubli impossible : le seul chemin vers une
+# passe de conversation passe par le canal.
 $spine = @{
+    "AiNpcPassConversation.Of(" = @("AiNpcPassSpoken.reds")
     "AiNpcLlmChatBody("        = @("AiNpcPassSend.reds", "AiNpcLlm.reds")
     "AiNpcSendChat("           = @("AiNpcPassSend.reds", "AiNpcTransport.reds")
     "AiNpcRequestRecord.Sent(" = @("AiNpcPassSend.reds", "AiNpcRequestLog.reds")

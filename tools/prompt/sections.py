@@ -330,6 +330,18 @@ class Sections(object):
             return configured
         return self.default_speech_style()
 
+    def spoken_style(self):
+        """AiNpcGetSpokenStyle: le registre a voix haute, l'ecrit a defaut."""
+        spoken = self.character.field("spokenStyle")
+        if spoken:
+            return self.expand(spoken)
+        return self.speech_style()
+
+    def channel_prompt(self, channel):
+        """AiNpcChannelPromptFor: un texte par canal, extrait des sources comme le reste."""
+        texts = self.texts["channelPrompt"]
+        return texts.get(channel) or texts["default"]
+
     def default_speech_style(self):
         """The language's own form of address, for {register}. Mirrors AiNpcDefaultSpeechStyle."""
         return self.by_language(self.texts["defaultSpeechStyle"])

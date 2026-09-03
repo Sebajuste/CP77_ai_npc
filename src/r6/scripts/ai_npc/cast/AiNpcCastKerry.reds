@@ -12,6 +12,13 @@ module AiNpc
 func AiNpcSheetKerry() -> ref<AiNpcCharacterDef> {
     let c = new AiNpcCharacterDef();
     c.contactId = "kerry_eurodyne";
+
+    // Qui la dit, par palier. Le clone garde son nom par defaut -- `kerry_eurodyne.wav`, ce que
+    // la recette d'extraction produit -- et le repli est la voix de catalogue retenue a
+    // l'oreille : c'est un fait sur ce personnage, pas un reglage.
+    c.voice = new AiNpcVoiceDef();
+    c.voice.fallback = "george";
+
     c.displayName = "Kerry Eurodyne";
 
     c.romanceable = true;
@@ -49,6 +56,10 @@ func AiNpcSheetKerry() -> ref<AiNpcCharacterDef> {
     // "you" -- zero occurrences. He is the written half of a character the game mostly speaks,
     // and the two registers are not the same.
     c.speechStyle = "{register} Loose and fast. You drop the g off -ing, you shout one word in capitals when it has to land, and you use a lot of exclamation marks. Emoticons in writing -- :P, :D, :*, <3 -- and you turn a compliment into a joke before it lands.";
+
+    // Les majuscules deviennent ce qu'elles imitaient : la voix qui monte sur un mot. Les points
+    // d'exclamation et les émoticônes ne se prononcent pas ; l'élision du -ing, si.
+    c.spokenStyle = "{register} Loose and fast. You drop the g off your -ing endings, you raise your voice on the one word that has to land, and you turn a compliment into a joke before it lands.";
 
     ArrayPush(c.seedFacts, "V backed Kerry through the business with the girl group that covered one of his songs without asking, and through what he did to his manager's yacht afterwards.");
     ArrayPush(c.seedFacts, "Kerry knows V carries Johnny Silverhand in {their} head, and he has never asked a second question about it.");

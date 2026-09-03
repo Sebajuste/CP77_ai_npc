@@ -26,10 +26,61 @@ public native class AiNpcAudio {
     // and only the device can tell them apart.
     public static native func Beep() -> String;
 
-    // Says a line out loud, through the system's own speech synthesiser, and plays it on the
-    // same path as everything else this class makes: memory to speakers, no file.
+    // Says a line out loud, and plays it on the same path as everything else this class makes:
+    // memory to speakers, no file.
+    //
+    // `voiceFile` is the reference the character's sheet names -- AiNpcVoiceFileFor() answers
+    // it, and `judy.wav` is what it answers when the sheet says nothing.
+    //
+    // `catalogueVoice` is what speaks when no clone is possible -- AiNpcVoiceFallbackFor()
+    // answers it. It is the only tier the free model pack can offer, and the difference between
+    // eleven distinct characters and eleven identical Windows voices.
+    //
+    // `contactId` is who speaks, and it is what the extraction recipe is keyed by. The DLL answers it per line
+    // and per character: the model pack plus a reference for that contact gives the character's
+    // own voice, anything less gives the system synthesiser. A player will have Judy and not
+    // Rogue, so the question is asked for each of them rather than once for all.
+    //
+    // An empty contact is not an error -- it is a line that belongs to no character, and the
+    // fallback voice is the right one for it.
     //
     // Returns at once, so the answer describes the PREVIOUS line -- the one just handed over
     // has not been spoken yet, and the delay it reports is what the voice lane is judged on.
-    public static native func Speak(text: String) -> String;
+    // It names the engine that spoke, because three seconds of the character's voice and three
+    // seconds of Windows' do not mean the same thing.
+    // `voiceOverLocale` is what the game answers for its SPOKEN language, not its written one --
+    // the two are installed separately, and it is the spoken archives a reference is cut from.
+    // Pass AiNpcVoiceOverLocale(); an empty string means the fallback voice, which is honest.
+    public static native func Speak(text: String, contactId: String, voiceFile: String,
+                                   catalogueVoice: String, voiceOverLocale: String) -> String;
+
+    // Coupe le son tout de suite : ce qui joue s'arrete, ce qui attendait est jete, et la
+    // replique en cours de synthese est abandonnee.
+    //
+    // Appelee quand le joueur raccroche. Sans elle, un personnage finit sa phrase dans un appel
+    // termine -- et le premier mot du prochain appel attend la fin de la precedente, parce que
+    // la voie parlee dit une replique a la fois.
+    //
+    // Ne refroidit aucune voix : leur preparation a coute sept secondes et ne depend d'aucun
+    // appel en particulier.
+    public static native func Silence() -> Void;
+
+    // Prepares a character's voice without saying anything. Returns at once.
+    //
+    // A first line costs about seven seconds nobody sees coming: loading the model, cutting the
+    // reference out of the player's own archives, and cloning it. None of that depends on what
+    // is going to be said, so none of it has to wait for it -- and a call rings for twenty
+    // seconds during which nothing is happening.
+    //
+    // Harmless when everything is already warm, and does nothing at all without the model pack.
+    public static native func Warm(contactId: String, voiceFile: String, catalogueVoice: String,
+                                  voiceOverLocale: String) -> String;
+
+    // Where that preparation has got to, in one word: "ready", "pending", "unavailable", or
+    // "unknown" for a voice nobody asked for.
+    //
+    // Four answers rather than a Bool, because a caller does three different things with them:
+    // wait, answer, and answer AT ONCE. Collapsing the last two would leave an installation
+    // with no model pack ringing into the void for the whole timeout.
+    public static native func VoiceState(contactId: String) -> String;
 }

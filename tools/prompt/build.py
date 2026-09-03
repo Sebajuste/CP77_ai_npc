@@ -116,7 +116,11 @@ class Builder(object):
             "AiNpcSection": self._section,
             "AiNpcGetSystemRules": lambda _c: self.sections.system_rules(),
             "AiNpcGetConversationTypePrompt": lambda _c: self.sections.tone_prompt(),
-            "AiNpcRenderCharacter": lambda _c, _r: self._character(),
+            "AiNpcRenderCharacter": lambda _c, _r, spoken: self._character(spoken),
+            # Le canal se deduit de la passe, comme dans les sources : une seule correspondance.
+            "AiNpcChannelOfPass": lambda p: "Call" if p == "holo" else "Text",
+            "AiNpcChannelPromptFor": self.sections.channel_prompt,
+            "Equals": lambda left, right: left == right,
             "AiNpcRenderTarget": lambda _c, _r: self._target(),
             "AiNpcGetRelationship": lambda _c: self.sections.relationship(),
             "AiNpcGetWorldInteractions": lambda _c: self.sections.world_interactions(),
@@ -146,7 +150,7 @@ class Builder(object):
     # doing so. A player's own recipes.json is not a fixture and is not reconstructed --
     # what this tool checks is the prompt the mod builds out of the box.
 
-    def _character(self):
+    def _character(self, spoken=False):
         """AiNpcRenderCharacter: the bio, what another mod appended, then the register."""
         if not self.recipe.has("character"):
             return ""
@@ -156,7 +160,7 @@ class Builder(object):
         if self.recipe.wants("character", "additions"):
             body = background_with(body, self.sections.character_additions())
         if self.recipe.wants("character", "speech"):
-            style = self.sections.speech_style()
+            style = self.sections.spoken_style() if spoken else self.sections.speech_style()
             if style:
                 body = background_with(body, "%s: %s" % (self.texts["speechKey"], style))
         return self._section("character", body)
@@ -246,6 +250,16 @@ class Builder(object):
         # which is why it shows up here at all.
         if name == "live":
             return self.sections.live_context()
+        # La passe, dont le canal se deduit. Une fixture decrit une conversation ecrite sauf
+        # quand elle dit le contraire : c'est ce que le mod fait, et ce qu'un fixture ancien doit
+        # continuer de rendre.
+        if name == "pass":
+            return self.fixture.get("pass", "speaking")
+        # L'enum du canal, reduit a ce que le prompt en lit. Les deux membres portent leur propre
+        # nom : rien ici n'a besoin d'un entier, et une chaine se compare et se lit dans une
+        # trace.
+        if name == "AiNpcChannelId":
+            return {"Call": "Call", "Text": "Text"}
         if name in ("contactId", "ctx", "provider", "recipe"):
             return self.fixture["contact"]
         raise BuildError(

@@ -245,11 +245,49 @@ transcript would each have to merge two sources in order, and one of them eventu
 
 | what | what it reads |
 |---|---|
-| the memory, the summary, the compaction, the prompt transcript | **everything**, unfiltered |
-| the phone and the terminal | the `Text` lines |
-| the holo | the `Call` lines |
+| the memory, the summary, the compaction | **everything**, unfiltered |
+| the phone and the terminal | the `Text` lines, plus one trace line per call |
+| the written prompt transcript | the `Text` lines, plus one trace line per call |
+| the holo, and the spoken prompt transcript | the `Call` lines **of the current call** |
 
-The sharing is the **absence** of a split. Nothing is plumbed for it.
+The sharing is the **absence** of a split in the memory. Everything a character knows that is
+older than the exchange in front of them arrives through `<memory>`, which reads the store
+whole and never passes through the reading filter.
+
+### Revised 2026-09-02: the prompt transcript is filtered too
+
+The table's first row used to include the prompt transcript, and it was wrong in a way only a
+conversation shows. A character answering an SMS would read three minutes of speech as if V had
+typed it, and a call would open with the whole written thread quoted back.
+
+Two things changed, and one was left undone.
+
+**The window is per channel.** `AiNpcPromptWindow(contactId, channel)` answers the written
+history for `Text`, and for `Call` answers `AiNpcHistorySince(history, Call, connectedAt)` --
+the lines spoken since this call was picked up. `AiNpcCallSystem` holds that boundary in
+`m_connectedAt`, in game seconds, set when the state reaches Connected. Nothing is persistent
+there, which is right: a save reloaded outside a call has no exchange in progress.
+
+**A call leaves a trace.** Filtering alone makes an entire call vanish -- V hangs up, writes,
+and the character answers as if the last three minutes had not happened. `AiNpcHistoryCallTrace`
+renders a run of spoken lines as `(a voice call, 6 minutes)`, in the same parenthesised form as
+the gap markers, so nothing attributes it to a speaker. The written transcript and the written
+thread both carry it; the content stays in the memory, which is the only place it crosses.
+
+The trace is derived from a **run**, which is why the walker receives the whole history rather
+than a pre-filtered array: filtering first would merge two calls separated by an SMS into one.
+
+**Absorbing an ended call into the memory at once was NOT done.** It was the obvious answer to
+the ten-second hole -- hang up, call back, and the character has neither the transcript (a new
+call) nor a memory (compaction has not run). It does not fit: the compaction is prefix-only.
+`ApplyMemory` identifies its batch as *the first N messages* and keeps the tail, so evicting a
+call taken from the middle of a history would either resurrect or delete lines. Absorbing a
+prefix instead would swallow the recent SMS with it, and those are still painted on screen.
+
+So the hole stands, bounded: between two exchanges on different channels, a character carries
+the fact of the call and not its content until the ordinary compaction reaches it. Closing it
+means either a non-prefix compaction, or a continuity rule inside the spoken channel -- a call
+picked up shortly after the last one hung up continues it. Neither is written.
 
 ### The record
 

@@ -47,6 +47,17 @@ func AiNpcLaneActions() -> String {
     return "actions";
 }
 
+// Une replique DITE, sur un appel holo. Sa propre voie parce que c'est son propre cout et
+// surtout sa propre contrainte : ce qui est dit a voix haute ne s'ecrit pas, ne se relit pas et
+// ne supporte pas la longueur qu'un fil de messages supporte. Un joueur qui compare son rapport
+// du jour entre une soiree d'appels et une soiree de textos a besoin des deux totaux separes.
+//
+// Elle rend les MEMES messages que la voie ecrite : meme constructeur, meme recette par defaut.
+// C'est la reliure de `passes` qui permet de les separer, pas ce nom.
+func AiNpcLaneHolo() -> String {
+    return "holo";
+}
+
 // The connection test, a lane rather than a silent request: it is a real send on the real key,
 // and a day it spends is a day the player does not get back.
 //

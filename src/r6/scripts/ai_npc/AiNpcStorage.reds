@@ -83,10 +83,11 @@ public class AiNpcStorageService extends ScriptableService {
             // an existing settings.json is ignored, and startup says so once.
             // memoryChronicleExact stays because the menu has no way to ask it.
             "\"memoryChronicleExact\": true," +
-            // Both off by default and both sent only when set -- see AiNpcGetMaxTokens.
-            // maxTokens bounds a runaway completion; 0 sends no limit at all, which is what
-            // every provider measured so far behaves correctly without.
-            // reasoningEffort is "low" | "medium" | "high" on the backends that take it.
+            // maxTokens bounds a runaway completion, and 0 asks for the mod's own ceiling --
+            // it is always sent, because a request with no cap at all is refused by some
+            // providers. See AiNpcGetMaxTokens.
+            // reasoningEffort is off by default and sent only when set: "low" | "medium" |
+            // "high" on the backends that take it.
             "\"maxTokens\": 0," +
             "\"reasoningEffort\": \"\"," +
             // What V looks like, in the player's own words. APPENDED to the life path and the

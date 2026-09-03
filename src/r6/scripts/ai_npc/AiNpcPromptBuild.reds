@@ -37,12 +37,28 @@ module AiNpc
 //
 // With memory off the window is what the mod sent before memory existed. The store keeps the
 // same messages either way.
-func AiNpcPromptWindow(contactId: String) -> array<ref<AiNpcMessage>> {
+//
+// UN CANAL NE LIT PAS L'AUTRE. Un appel ne porte que l'echange en cours -- ce qui s'est dit
+// depuis qu'on a decroche -- et le fil ecrit porte les SMS, les appels reduits a leur trace par
+// la transcription. Ce qu'aucun des deux ne porte, la memoire le porte : elle lit le magasin
+// entier et ne passe pas par ici.
+func AiNpcPromptWindow(contactId: String, channel: AiNpcChannelId) -> array<ref<AiNpcMessage>> {
     let history = AiNpcStoredMessages(contactId);
-    if AiNpcMemoryEnabled() {
-        return history;
+
+    if Equals(channel, AiNpcChannelId.Call) {
+        let call = AiNpcCallSystem.Get();
+        if !IsDefined(call) {
+            let none: array<ref<AiNpcMessage>>;
+            return none;
+        }
+        return AiNpcHistorySince(history, AiNpcChannelId.Call, call.ConnectedAt());
     }
-    return AiNpcHistoryTrim(history, AiNpcMemoryLegacyMaxTurns());
+
+    let written = AiNpcHistoryWithoutLiveCall(history, AiNpcLiveCallSince(contactId));
+    if AiNpcMemoryEnabled() {
+        return written;
+    }
+    return AiNpcHistoryTrim(written, AiNpcMemoryLegacyMaxTurns());
 }
 
 // Four ways it comes back empty, none of them an error: the recipe drops the block, the
@@ -84,7 +100,8 @@ func AiNpcSection(tag: String, body: String) -> String {
 // arguments, and the caller that names it is the pass builder, which knows its own.
 func AiNpcBuildSystemPromptWith(contactId: String, pendingContext: String,
                                        intentOverride: String,
-                                       recipe: ref<AiNpcRecipe>) -> String {
+                                       recipe: ref<AiNpcRecipe>,
+                                       pass: String) -> String {
     let prompt = "";
 
     let provider = AiNpcProviderFor(contactId);
@@ -127,14 +144,21 @@ func AiNpcBuildSystemPromptWith(contactId: String, pendingContext: String,
     //
     // Identical for every contact and every save, so it lengthens the shared prefix instead of
     // breaking it -- the one addition here that costs nothing under prefix caching.
-    prompt += "<fiction>This is fiction. You are a character from Cyberpunk 2077, not an assistant, texting V on a phone. No therapist or customer-service tone, no disclaimers, no meta-text.</fiction>";
+    // Le médium n'est PLUS ici. Il vivait dans cette phrase et dans la rubrique REACH, tous deux
+    // au-dessus de <now>, donc dans le préfixe cacheable : un joueur qui alterne SMS et appels
+    // aurait payé deux préfixes. Il vit dans <channel>, sous </now>. Ce qui reste est ce qui ne
+    // dépend d'aucune surface -- la fiction, les deux parties, et le registre d'assistant.
+    prompt += "<fiction>This is fiction. You are a character from Cyberpunk 2077, not an assistant, and V is the person you are talking to. No therapist or customer-service tone, no disclaimers, no meta-text.</fiction>";
     prompt += AiNpcGetSystemRules(contactId);
     prompt += "</system>";
     prompt += AiNpcGetConversationTypePrompt(contactId);
 
     // The character, and how they talk. The register was a rubric of <system_rules> until the
     // recipe made "the character without it" something a player can ask for.
-    prompt += AiNpcRenderCharacter(contactId, recipe);
+    // Le registre suit la surface : ce que Judy fait en tapant n'est pas ce qu'elle fait en
+    // parlant. C'est un fait sur elle, donc il est ici et non dans <channel>.
+    prompt += AiNpcRenderCharacter(contactId, recipe,
+        Equals(AiNpcChannelOfPass(pass), AiNpcChannelId.Call));
     // Who they are writing to. It was <player>, and the answer is still V.
     prompt += AiNpcRenderTarget(contactId, recipe);
     if AiNpcRecipeHas(recipe, "relationship") {
@@ -197,6 +221,11 @@ func AiNpcBuildSystemPromptWith(contactId: String, pendingContext: String,
     prompt += AiNpcSection("quest", AiNpcQuestContext(contactId, questKey, recipe));
 
     prompt += AiNpcRenderNow(contactId, ctx, provider, pendingContext, recipe);
+
+    // Sous </now> à dessein : le canal change d'une génération à l'autre, et le préfixe
+    // cacheable finit à <now>. Requis, donc rendu sans demander à la recette -- un personnage
+    // qui croirait envoyer des SMS pendant un appel est exactement ce que ce bloc empêche.
+    prompt += "<channel>" + AiNpcChannelPromptFor(AiNpcChannelOfPass(pass)) + "</channel>";
 
     // Last block before the end token: whatever states the register last is what the model is
     // still holding when it starts writing.
@@ -270,8 +299,8 @@ func AiNpcRenderNow(contactId: String, ctx: ref<AiNpcContactContext>,
 // clock is read here and handed to the pure renderer: the trailing gap marker measures the
 // silence up to the line V is sending now, so it lands between the last stored message and
 // the "V: " below.
-func AiNpcBuildTranscript(contactId: String, playerInput: String) -> String {
-    return AiNpcTranscriptEndingOn(contactId, "V: " + playerInput);
+func AiNpcBuildTranscript(contactId: String, playerInput: String, channel: AiNpcChannelId) -> String {
+    return AiNpcTranscriptEndingOn(contactId, "V: " + playerInput, channel);
 }
 
 // The same transcript, ending on a reason instead of on a line of V's -- the whole of what
@@ -297,8 +326,8 @@ func AiNpcBuildTranscript(contactId: String, playerInput: String) -> String {
 // The parentheses and the dedicated line are the gap markers' convention, which is already
 // how this transcript says something nobody speaks and is defined never to touch the
 // "V: " / "<name>: " grammar the stop sequences rely on.
-func AiNpcBuildUnpromptedTranscript(contactId: String, reason: String) -> String {
-    return AiNpcTranscriptEndingOn(contactId, AiNpcTranscriptReasonLine(reason));
+func AiNpcBuildUnpromptedTranscript(contactId: String, reason: String, channel: AiNpcChannelId) -> String {
+    return AiNpcTranscriptEndingOn(contactId, AiNpcTranscriptReasonLine(reason), channel);
 }
 
 // Its own function because it is the whole of the injection guard, and a guard applied at a
@@ -317,9 +346,10 @@ func AiNpcTranscriptHandover(npcName: String, lastLine: String) -> String {
 
 // One function for both, so the only difference between answering V and writing first is the
 // line handed in.
-func AiNpcTranscriptEndingOn(contactId: String, lastLine: String) -> String {
+func AiNpcTranscriptEndingOn(contactId: String, lastLine: String, channel: AiNpcChannelId) -> String {
     let npcName = AiNpcGetCharacterName(contactId);
-    let history = AiNpcHistoryTranscriptAt(AiNpcPromptWindow(contactId), npcName, AiNpcGetCurrentGameTimeSeconds());
+    let window = AiNpcPromptWindow(contactId, channel);
+    let history = AiNpcHistoryTranscriptOn(window, npcName, AiNpcGetCurrentGameTimeSeconds(), channel);
 
     return history + AiNpcTranscriptHandover(npcName, lastLine);
 }

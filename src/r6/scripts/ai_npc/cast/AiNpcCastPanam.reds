@@ -8,6 +8,13 @@ module AiNpc
 func AiNpcSheetPanam() -> ref<AiNpcCharacterDef> {
     let c = new AiNpcCharacterDef();
     c.contactId = "panam";
+
+    // Qui la dit, par palier. Le clone garde son nom par defaut -- `panam.wav`, ce que
+    // la recette d'extraction produit -- et le repli est la voix de catalogue retenue a
+    // l'oreille : c'est un fait sur ce personnage, pas un reglage.
+    c.voice = new AiNpcVoiceDef();
+    c.voice.fallback = "mary";
+
     c.displayName = "Panam Palmer";
 
     c.romanceable = true;

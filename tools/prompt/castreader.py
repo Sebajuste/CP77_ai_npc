@@ -31,6 +31,12 @@ DEF_FIELDS = {
     "romance": "",
     "liveContext": "",
     "speechStyle": "",
+    # Le registre a voix haute. Vide, le rendu retombe sur `speechStyle` -- six des neuf fiches
+    # decrivent une personne et se lisent telles quelles.
+    "spokenStyle": "",
+    # La voix qui dit ce personnage, par palier : {clone, fallback}. Rien du prompt n'en depend,
+    # mais le lecteur refuse un champ qu'il ne connait pas, et c'est ce qui le tient a jour.
+    "voice": None,
     "romanceable": False,
     "romanced": False,
     "allowsMemory": True,
@@ -140,6 +146,15 @@ class CastReader(object):
             self._set_rule(reader, env, name, field)
             return
 
+        # `c.voice.fallback = "eve"` : une affectation dans un objet que la fiche vient de poser
+        # dans un champ. Un seul niveau -- au-dela, la fiche decrirait une structure plutot qu'un
+        # personnage, et ce lecteur doit le refuser plutot que de le suivre.
+        nested = None
+        if reader.peek().kind == "punct" and reader.peek().value == ".":
+            reader.expect_punct(".")
+            nested = field
+            field = reader.expect_ident()
+
         reader.expect_punct("=")
         value = self._value(reader.expression(), env, reader)
         reader.expect_punct(";")
@@ -147,6 +162,12 @@ class CastReader(object):
         target = env.get(name)
         if not isinstance(target, dict):
             reader.fail("assignment to unknown object %r" % (name,))
+        if nested is not None:
+            inner = target.get(nested)
+            if not isinstance(inner, dict):
+                reader.fail("%r is not an object this sheet has created" % (nested,))
+            self._set_field(inner, field, value, reader)
+            return
         self._set_field(target, field, value, reader)
 
     def _set_field(self, target, field, value, reader):
@@ -156,6 +177,10 @@ class CastReader(object):
             "AiNpcPromptOverrides": set(OVERRIDE_FIELDS),
             "AiNpcCharacterVariant": set(VARIANT_FIELDS),
             "AiNpcArcBeat": {"fact", "atLeast", "text", "unlessFact"},
+            # Quelle voix dit ce personnage, par palier. Rien du prompt n'en depend ; le lecteur
+            # la connait parce qu'il refuse ce qu'il ne connait pas, et c'est ce qui le tient a
+            # jour avec AiNpcConfigModel.reds.
+            "AiNpcVoiceDef": {"clone", "fallback"},
         }.get(kind)
         if known is None:
             reader.fail("assignment on an object of unknown type %r" % (kind,))

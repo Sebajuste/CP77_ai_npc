@@ -27,9 +27,11 @@
 5 AiNpcChatSession.reds
 13 AiNpcClientRegistry.reds
 1 AiNpcAudioNative.reds
+1 AiNpcCallSubtitle.reds
 1 AiNpcCallSystem.reds
 1 AiNpcCliNative.reds
 9 AiNpcCliRequest.reds
+1 AiNpcStreamDeliver.reds
 2 AiNpcClock.reds
 1 AiNpcConfig.reds
 16 AiNpcConfigModel.reds

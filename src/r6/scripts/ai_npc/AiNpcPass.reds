@@ -26,7 +26,7 @@ import RedData.Json.*
 // the one pass a setting can switch off entirely (Mod Settings > Command Handling).
 func AiNpcPassNames() -> array<String> {
     return [AiNpcLaneSpeaking(), AiNpcLaneThinking(), AiNpcLaneRepair(), AiNpcLaneTest(),
-        AiNpcLaneActions()];
+        AiNpcLaneActions(), AiNpcLaneHolo()];
 }
 
 // The builder of the first message, named after the lane that already writes it.
@@ -37,6 +37,12 @@ func AiNpcPassNames() -> array<String> {
 // the character writing first.
 func AiNpcPassInstructionSource(pass: String) -> String {
     if Equals(pass, AiNpcLaneSpeaking()) {
+        return "conversation";
+    }
+    // La meme source que la voie ecrite, et ce n'est pas une economie : les deux rendent une
+    // replique de personnage, donc le meme vocabulaire de blocs s'applique. Ce qui les separe
+    // est le slot et la recette qu'on leur relie, pas ce qu'elles savent rendre.
+    if Equals(pass, AiNpcLaneHolo()) {
         return "conversation";
     }
     if Equals(pass, AiNpcLaneThinking()) {
@@ -58,6 +64,9 @@ func AiNpcPassInstructionSource(pass: String) -> String {
 
 func AiNpcPassAskSource(pass: String) -> String {
     if Equals(pass, AiNpcLaneSpeaking()) {
+        return "conversation";
+    }
+    if Equals(pass, AiNpcLaneHolo()) {
         return "conversation";
     }
     if Equals(pass, AiNpcLaneThinking()) {
@@ -128,6 +137,9 @@ func AiNpcPassRecipeName(pass: String) -> String {
     if Equals(pass, AiNpcLaneActions()) {
         return "actions";
     }
+    if Equals(pass, AiNpcLaneHolo()) {
+        return "spoken";
+    }
     return "";
 }
 
@@ -157,7 +169,13 @@ func AiNpcPassSlotNameIn(bindings: array<ref<AiNpcPassBinding>>, pass: String) -
     if NotEquals(StrLen(named), 0) {
         return named;
     }
-    if Equals(pass, AiNpcLaneTest()) {
+    // Le test ET l'appel suivent la voie ecrite quand ils ne disent rien d'eux-memes.
+    //
+    // Pour le test c'est un imperatif de diagnostic : un controle lance sur un autre slot
+    // declare l'installation saine sur un modele que le joueur ne voit jamais. Pour l'appel
+    // c'est la continuite : une installation qui n'a rien configure doit parler exactement
+    // comme elle ecrit, et non basculer sur un modele que personne n'a choisi.
+    if Equals(pass, AiNpcLaneTest()) || Equals(pass, AiNpcLaneHolo()) {
         let speaking = AiNpcPassBindingNamed(bindings, AiNpcLaneSpeaking()).slotName;
         if NotEquals(StrLen(speaking), 0) {
             return speaking;

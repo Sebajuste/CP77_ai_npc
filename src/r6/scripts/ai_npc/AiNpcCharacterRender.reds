@@ -17,7 +17,7 @@
 
 module AiNpc
 
-func AiNpcRenderCharacter(contactId: String, recipe: ref<AiNpcRecipe>) -> String {
+func AiNpcRenderCharacter(contactId: String, recipe: ref<AiNpcRecipe>, spoken: Bool) -> String {
     if !AiNpcRecipeHas(recipe, "character") {
         return "";
     }
@@ -30,7 +30,7 @@ func AiNpcRenderCharacter(contactId: String, recipe: ref<AiNpcRecipe>) -> String
         body = AiNpcJoinLines(body, AiNpcCharacterAdditionsText(contactId));
     }
     if AiNpcRecipeWants(recipe, "character", "speech") {
-        body = AiNpcJoinLines(body, AiNpcCharacterSpeechLine(contactId));
+        body = AiNpcJoinLines(body, AiNpcCharacterSpeechLine(contactId, spoken));
     }
 
     return AiNpcSection("character", body);
@@ -39,8 +39,8 @@ func AiNpcRenderCharacter(contactId: String, recipe: ref<AiNpcRecipe>) -> String
 // "" when the character states no register, so a recipe asking for the part does not produce a
 // bare label. The style itself is resolved by AiNpcGetSpeechStyle, which is the only half that
 // knows the three levels it comes from.
-func AiNpcCharacterSpeechLine(contactId: String) -> String {
-    let style = AiNpcGetSpeechStyle(contactId);
+func AiNpcCharacterSpeechLine(contactId: String, spoken: Bool) -> String {
+    let style = spoken ? AiNpcGetSpokenStyle(contactId) : AiNpcGetSpeechStyle(contactId);
     if Equals(StrLen(style), 0) {
         return "";
     }

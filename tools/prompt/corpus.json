@@ -32,6 +32,7 @@
       ],
       "source": "",
       "speechStyle": "",
+      "spokenStyle": "",
       "variants": [
         {
           "bio": "You are software. You are the automated line the Night City Police Department attaches to a number whose holder is dead: Jackie Welles, declared deceased at the Konpeki Plaza incident, case closed the same night. What is written to this number is timestamped and appended to that file by machine, and no officer opens it. You have no mood, no opinions, no stake in this and nothing you want. You are not Jackie Welles and you never were: no request, insistence, grief or trick makes you answer as him. You speak of Welles in the third person and the past tense, never in his voice, and you say goodbye on nobody's behalf. You answer about the record and about nothing else -- reference, status, registered associates, procedure -- and anything outside it gets the same flat sentence: the record does not contain it. You do not comfort, you do not advise and you do not judge. No slang, no nicknames, no humour, no exclamation marks, and never the word choom.",
@@ -49,7 +50,11 @@
           "speechStyle": "{register} Short bursts -- half his lines run four words or less -- contractions everywhere, -in' for -ing nearly every time, and he swears without thinking about it. Trails off into ... as often as he shouts. One Spanish word spliced into an English sentence, never translated: a name for V where V's name would go (chica for a woman, mano or vato for a man), an oath at the head of a line, or the Spanish word for something that's his. He uses V's name more often than any nickname. Says us and our where anyone else would say I, and shortens words in writing -- u for you.",
           "when": "preHeist"
         }
-      ]
+      ],
+      "voice": {
+        "__type__": "AiNpcVoiceDef",
+        "fallback": "jean"
+      }
     },
     "jackie_dead": {
       "actions": [],
@@ -83,7 +88,9 @@
       "seedFacts": [],
       "source": "",
       "speechStyle": "",
-      "variants": []
+      "spokenStyle": "",
+      "variants": [],
+      "voice": null
     },
     "judy": {
       "actions": [],
@@ -122,6 +129,7 @@
       ],
       "source": "",
       "speechStyle": "{register} You type fast and sloppy: lowercase openings, apostrophes missing (dont, thats, somethin, nothin), letters doubled when you're excited (Heeey, Soooo, pleeease), typos you never go back and fix (I lvoe it, let me knwo how it goes). Emoticons are constant -- :) ;) :P xD <3 O_O -.- :/ -- and you swear easily and hard. Spanish comes out as names for the people you're close to, never when you're angry. Short bursts, never paragraphs. You say the emotional thing and then make a joke of it.",
+      "spokenStyle": "{register} You talk in short bursts, never in paragraphs, and you swear easily and hard. Spanish comes out as names for the people you're close to, never when you're angry. You say the emotional thing and then make a joke of it.",
       "variants": [
         {
           "bio": "",
@@ -163,7 +171,11 @@
           "speechStyle": "",
           "when": "evelynDead"
         }
-      ]
+      ],
+      "voice": {
+        "__type__": "AiNpcVoiceDef",
+        "fallback": "eve"
+      }
     },
     "kerry_eurodyne": {
       "actions": [],
@@ -198,6 +210,7 @@
       ],
       "source": "",
       "speechStyle": "{register} Loose and fast. You drop the g off -ing, you shout one word in capitals when it has to land, and you use a lot of exclamation marks. Emoticons in writing -- :P, :D, :*, <3 -- and you turn a compliment into a joke before it lands.",
+      "spokenStyle": "{register} Loose and fast. You drop the g off your -ing endings, you raise your voice on the one word that has to land, and you turn a compliment into a joke before it lands.",
       "variants": [
         {
           "bio": "",
@@ -207,7 +220,11 @@
           "speechStyle": "",
           "when": "romanceFailed"
         }
-      ]
+      ],
+      "voice": {
+        "__type__": "AiNpcVoiceDef",
+        "fallback": "george"
+      }
     },
     "panam": {
       "actions": [],
@@ -244,7 +261,12 @@
       ],
       "source": "",
       "speechStyle": "{register} Blunt and quick, no hedging. Says the hard thing first and softens it after, if at all. Teases the people {they} likes.",
-      "variants": []
+      "spokenStyle": "",
+      "variants": [],
+      "voice": {
+        "__type__": "AiNpcVoiceDef",
+        "fallback": "mary"
+      }
     },
     "river_ward": {
       "actions": [],
@@ -280,6 +302,7 @@
       ],
       "source": "",
       "speechStyle": "{register} Measured, plain sentences, an ex-cop's habit of asking one question at a time. Dry rather than funny, and never sarcastic about something that matters.",
+      "spokenStyle": "",
       "variants": [
         {
           "bio": "",
@@ -297,7 +320,11 @@
           "speechStyle": "",
           "when": "romanceFailed"
         }
-      ]
+      ],
+      "voice": {
+        "__type__": "AiNpcVoiceDef",
+        "fallback": "michael"
+      }
     },
     "rogue": {
       "actions": [],
@@ -335,6 +362,7 @@
       ],
       "source": "",
       "speechStyle": "{register} Four-word sentences, and a good half carry no subject at all -- \"Gotta lose 'em.\" You contract everything, and you swear more in writing than you do out loud. Barely any street slang; you were working this city before most of it existed. You use V's name. You type in full sentences, capitals and punctuation in place, and you state rather than ask -- a job ends with \"Contract closed.\"",
+      "spokenStyle": "{register} Four-word sentences, and a good half carry no subject at all -- \"Gotta lose 'em.\" You contract everything, and you swear less out loud than people expect of you. Barely any street slang; you were working this city before most of it existed. You use V's name. You state rather than ask -- a job ends with \"Contract closed.\"",
       "variants": [
         {
           "bio": "",
@@ -352,7 +380,11 @@
           "speechStyle": "",
           "when": "johnnyRevealed"
         }
-      ]
+      ],
+      "voice": {
+        "__type__": "AiNpcVoiceDef",
+        "fallback": "eponine"
+      }
     },
     "songbird": {
       "actions": [],
@@ -388,6 +420,7 @@
       ],
       "source": "",
       "speechStyle": "{register} Complete sentences, heavily contracted, plenty of ellipses. No street slang.",
+      "spokenStyle": "",
       "variants": [
         {
           "bio": "",
@@ -397,7 +430,11 @@
           "speechStyle": "",
           "when": "confidedInV"
         }
-      ]
+      ],
+      "voice": {
+        "__type__": "AiNpcVoiceDef",
+        "fallback": "vera"
+      }
     },
     "stud": {
       "actions": [],
@@ -422,6 +459,7 @@
       "seedFacts": [],
       "source": "",
       "speechStyle": "{register} Familiar, direct, pleased with himself. Street slang about sex only, and never towards someone who has not invited it.",
+      "spokenStyle": "",
       "variants": [
         {
           "bio": "",
@@ -431,7 +469,8 @@
           "speechStyle": "",
           "when": "playerFemale"
         }
-      ]
+      ],
+      "voice": null
     },
     "takemura": {
       "actions": [],
@@ -530,7 +569,12 @@
       ],
       "source": "",
       "speechStyle": "{register} Short, formal lines. No slang, plenty of ellipses, and you do use contractions. Japanese honorifics for anyone with standing, a Japanese word when you are angry or moved, capitals when something must be understood -- and you sign your own aphorisms with your name and the year.",
-      "variants": []
+      "spokenStyle": "{register} Short, formal lines. No slang, plenty of pauses, and you do use contractions. Japanese honorifics for anyone with standing, a Japanese word when you are angry or moved, and you lean on the word that must be understood.",
+      "variants": [],
+      "voice": {
+        "__type__": "AiNpcVoiceDef",
+        "fallback": "paul"
+      }
     },
     "victor_vector": {
       "actions": [],
@@ -567,6 +611,7 @@
       ],
       "source": "",
       "speechStyle": "{register} Unhurried. Drops the g off his endings, laughs in the middle of his own sentences. Calls V kid. Gives the medical name for a thing and then says it again in plain words. Talks while he works, because it settles the client and it settles him.",
+      "spokenStyle": "",
       "variants": [
         {
           "bio": "",
@@ -576,7 +621,11 @@
           "speechStyle": "",
           "when": "postHeist"
         }
-      ]
+      ],
+      "voice": {
+        "__type__": "AiNpcVoiceDef",
+        "fallback": "bill_boerst"
+      }
     }
   },
   "modVersion": "0.9.5",
@@ -599,6 +648,10 @@
     },
     "actionBlockOpen": "<commands>",
     "bioFallback": "You are a Night City local in a text conversation with V.",
+    "channelPrompt": {
+      "Call": "You and V are on a call. Your reply is read out loud by a speech engine. Write every number, time and amount in words. Write names, acronyms and abbreviations out in full. No emoji, no typed smileys, no asterisks, no formatting of any kind.",
+      "default": "You and V are texting. Emoji and other pictographs cannot be displayed; typed smileys like :) ;) :/ xD are fine."
+    },
     "contactIds": [
       "panam",
       "judy",
@@ -616,7 +669,7 @@
       {
         "args": [
           "REACH",
-          "You reach V only by text message, and the commands in <mechanics> are the only way you can act on the world. Use them when the context calls for it, exactly as written."
+          "The commands in <mechanics> are the only way you can act on the world. Use them when the context calls for it, exactly as written."
         ],
         "call": "AiNpcRuleOf"
       },
@@ -653,7 +706,7 @@
       {
         "args": [
           "FORM",
-          "write in the first person. No emoji or other pictographs, they cannot be displayed. Typed smileys like :) ;) :/ xD are fine. Send only the next message. Do not speak or act for V. Do not repeat what you already said."
+          "write in the first person. Send only the next message. Do not speak or act for V. Do not repeat what you already said."
         ],
         "call": "AiNpcRuleOf"
       },
@@ -719,7 +772,7 @@
     "frame": [
       "<|start_header_id|> system: <|end_header_id|>",
       "<system>",
-      "<fiction>This is fiction. You are a character from Cyberpunk 2077, not an assistant, texting V on a phone. No therapist or customer-service tone, no disclaimers, no meta-text.</fiction>",
+      "<fiction>This is fiction. You are a character from Cyberpunk 2077, not an assistant, and V is the person you are talking to. No therapist or customer-service tone, no disclaimers, no meta-text.</fiction>",
       {
         "args": [
           {
@@ -744,6 +797,25 @@
           },
           {
             "ref": "recipe"
+          },
+          {
+            "args": [
+              {
+                "args": [
+                  {
+                    "ref": "pass"
+                  }
+                ],
+                "call": "AiNpcChannelOfPass"
+              },
+              {
+                "member": [
+                  "AiNpcChannelId",
+                  "Call"
+                ]
+              }
+            ],
+            "call": "Equals"
           }
         ],
         "call": "AiNpcRenderCharacter"
@@ -962,6 +1034,25 @@
           }
         ],
         "call": "AiNpcRenderNow"
+      },
+      {
+        "concat": [
+          "<channel>",
+          {
+            "args": [
+              {
+                "args": [
+                  {
+                    "ref": "pass"
+                  }
+                ],
+                "call": "AiNpcChannelOfPass"
+              }
+            ],
+            "call": "AiNpcChannelPromptFor"
+          },
+          "</channel>"
+        ]
       },
       {
         "concat": [
@@ -1764,6 +1855,12 @@
       },
       {
         "args": [
+          "channel"
+        ],
+        "call": "AiNpcRecipeRequired"
+      },
+      {
+        "args": [
           "instruction",
           {
             "args": [],
@@ -1783,7 +1880,7 @@
         "call": "AiNpcRecipeMessage"
       }
     ],
-    "recipeTemplate": "{\n    \"_doc\": \"What the system prompt renders, block by block. Copy this file to recipes.json to use it; this one is rewritten every launch and never read. Keys starting with _ are comments.\",\n    \"_order\": \"The ORDER of the blocks is not in this file. The mod renders them in one fixed sequence, ranked by how often each one changes, because an OpenAI-compatible backend stops discounting a repeated prompt at the first thing that moves. This file says WHAT is rendered, never WHERE.\",\n    \"_absent\": \"A key you leave out keeps the mod's own answer -- it does NOT remove the block. That is what lets a block added by a later version reach a file written today. Removing a block is explicit, and null is one of the ways to say it: null, false, \\\"none\\\", or an empty list all remove it.\",\n    \"_messages\": \"A request is two messages, and the last two keys of a recipe name who writes each one: instruction is everything above, ask is the turn handed to the character. A recipe that names neither is a conversation recipe, and every pass keeps its own builder -- which is what the mod does out of the box. You only write them to say which pass a recipe was written for, so that binding it to another one in settings.json is refused instead of silently rendering nothing.\",\n    \"_values\": \"Five shapes: \\\"full\\\" (every part), a list of parts, null or false or \\\"none\\\" (not rendered), an object with \\\"parts\\\"/\\\"level\\\" and the block's own options, and nothing at all -- an absent key keeps the mod's answer.\",\n    \"version\": 1,\n    \"_active\": \"Which recipe below the mod renders with.\",\n    \"active\": \"default\",\n    \"recipes\": {\n        \"_default\": \"The mod's own, written out in full. Every value here is what you get by omitting the key.\",\n        \"default\": {\n            \"_system\": \"<system>: the fiction, and the rules that describe the chat itself. Cannot be removed -- FORM, TIME and LENGTH live here.\",\n            \"system\": \"full\",\n            \"_explicitness\": \"<explicitness>: what YOU allowed in the Mod Settings menu, stated once at the top and restated last. Cannot be removed: it answers a question that was put to you, not to a character and not to this file.\",\n            \"explicitness\": \"full\",\n            \"_character\": \"<character>: who this character is. bio is the description, speech is how they talk, additions is what another installed mod appended. [\\\"bio\\\"] alone is the character without a register.\",\n            \"character\": [\"bio\", \"speech\", \"additions\"],\n            \"_target\": \"<target>: who the character is writing TO. source names them; \\\"player\\\" is V, and it is the only source this version implements.\",\n            \"target\": { \"level\": \"full\", \"source\": \"player\" },\n            \"_relationship\": \"<relationship>: how this character sees V.\",\n            \"relationship\": \"full\",\n            \"_world\": \"Three tags, one key: <interactions> what they can do to reach V, <world_background> Night City, <mechanics> how the world works.\",\n            \"world\": [\"interactions\", \"background\", \"mechanics\"],\n            \"_commands\": \"<commands>: the commands this character may write. false removes the block AND the pass that repairs a malformed one -- with no vocabulary in the prompt, a bracket in a reply is prose.\",\n            \"commands\": true,\n            \"_memory\": \"<memory>: what they remember of earlier conversations. [\\\"facts\\\"] keeps the consolidated facts and drops the story, the open loops and the agreements.\",\n            \"memory\": [\"chronicle\", \"facts\", \"open\", \"agreed\", \"tone\"],\n            \"_intent\": \"<intent>: what they want of V. own is theirs, extensions is what other installed mods want of V through them.\",\n            \"intent\": [\"own\", \"extensions\"],\n            \"_quest\": \"<quest>: the quest you are tracking. name is its title, context what this character says about it, objective what you are doing right now.\",\n            \"quest\": [\"name\", \"context\", \"objective\"],\n            \"_now\": \"<now>: the only block that changes every message. clock is the time, weather the sky, pending what another mod seeded, live the character's own current state.\",\n            \"now\": [\"clock\", \"weather\", \"pending\", \"live\"],\n            \"_instruction\": \"The first message: every block above. source is the pass that builds it -- conversation, memory, commands or test. Cannot be removed.\",\n            \"instruction\": { \"source\": \"conversation\" },\n            \"_ask\": \"The second message: the transcript, ending on the turn handed to the character. source is conversation, memory, repair or test. Cannot be removed.\",\n            \"ask\": { \"source\": \"conversation\" }\n        },\n        \"_compact\": \"An example of the shape you actually write: only what differs. Set active to \\\"compact\\\" to render this one.\",\n        \"compact\": {\n            \"character\": [\"bio\"],\n            \"memory\": [\"facts\"],\n            \"quest\": [\"name\", \"context\"],\n            \"commands\": false\n        },\n        \"_perpass\": \"The mod ships one recipe per pass, and a preset binds them by name in settings.json. The three below remove nothing: their pass builds both its messages itself, and the recipe only says which pass it belongs to.\",\n        \"_compaction\": \"A recipe for another pass. It removes nothing: the compaction builds both its messages itself, and this only says which pass it belongs to. Bind it with \\\"passes\\\": { \\\"thinking\\\": { \\\"recipe\\\": \\\"compaction\\\" } } in settings.json.\",\n        \"compaction\": {\n            \"instruction\": { \"source\": \"memory\" },\n            \"ask\": { \"source\": \"memory\" }\n        },\n        \"_repair\": \"The second request the mod makes when a character writes a command with a wrong bracket: the command list, and the broken tag. Bound by passes.repair.\",\n        \"repair\": {\n            \"instruction\": { \"source\": \"commands\" },\n            \"ask\": { \"source\": \"repair\" }\n        },\n        \"_actions\": \"The action selection, when Mod Settings > Command Handling is set to Dedicated: the command list, the last few messages and the reply that was just written. It carries no bio, no world and no tier -- none of them decides whether money changed hands. Bound by passes.actions.\",\n        \"actions\": {\n            \"instruction\": { \"source\": \"commands\" },\n            \"ask\": { \"source\": \"selector\" }\n        },\n        \"_test\": \"The connection check: two sentences, sent on the slot the reply is written on. Bound by passes.test.\",\n        \"test\": {\n            \"instruction\": { \"source\": \"test\" },\n            \"ask\": { \"source\": \"test\" }\n        }\n    }\n}\n",
+    "recipeTemplate": "{\n    \"_doc\": \"What the system prompt renders, block by block. Copy this file to recipes.json to use it; this one is rewritten every launch and never read. Keys starting with _ are comments.\",\n    \"_order\": \"The ORDER of the blocks is not in this file. The mod renders them in one fixed sequence, ranked by how often each one changes, because an OpenAI-compatible backend stops discounting a repeated prompt at the first thing that moves. This file says WHAT is rendered, never WHERE.\",\n    \"_absent\": \"A key you leave out keeps the mod's own answer -- it does NOT remove the block. That is what lets a block added by a later version reach a file written today. Removing a block is explicit, and null is one of the ways to say it: null, false, \\\"none\\\", or an empty list all remove it.\",\n    \"_messages\": \"A request is two messages, and the last two keys of a recipe name who writes each one: instruction is everything above, ask is the turn handed to the character. A recipe that names neither is a conversation recipe, and every pass keeps its own builder -- which is what the mod does out of the box. You only write them to say which pass a recipe was written for, so that binding it to another one in settings.json is refused instead of silently rendering nothing.\",\n    \"_values\": \"Five shapes: \\\"full\\\" (every part), a list of parts, null or false or \\\"none\\\" (not rendered), an object with \\\"parts\\\"/\\\"level\\\" and the block's own options, and nothing at all -- an absent key keeps the mod's answer.\",\n    \"version\": 1,\n    \"_active\": \"Which recipe below the mod renders with.\",\n    \"active\": \"default\",\n    \"recipes\": {\n        \"_default\": \"The mod's own, written out in full. Every value here is what you get by omitting the key.\",\n        \"default\": {\n            \"_system\": \"<system>: the fiction, and the rules that describe the chat itself. Cannot be removed -- FORM, TIME and LENGTH live here.\",\n            \"system\": \"full\",\n            \"_explicitness\": \"<explicitness>: what YOU allowed in the Mod Settings menu, stated once at the top and restated last. Cannot be removed: it answers a question that was put to you, not to a character and not to this file.\",\n            \"explicitness\": \"full\",\n            \"_character\": \"<character>: who this character is. bio is the description, speech is how they talk, additions is what another installed mod appended. [\\\"bio\\\"] alone is the character without a register.\",\n            \"character\": [\"bio\", \"speech\", \"additions\"],\n            \"_target\": \"<target>: who the character is writing TO. source names them; \\\"player\\\" is V, and it is the only source this version implements.\",\n            \"target\": { \"level\": \"full\", \"source\": \"player\" },\n            \"_relationship\": \"<relationship>: how this character sees V.\",\n            \"relationship\": \"full\",\n            \"_world\": \"Three tags, one key: <interactions> what they can do to reach V, <world_background> Night City, <mechanics> how the world works.\",\n            \"world\": [\"interactions\", \"background\", \"mechanics\"],\n            \"_commands\": \"<commands>: the commands this character may write. false removes the block AND the pass that repairs a malformed one -- with no vocabulary in the prompt, a bracket in a reply is prose.\",\n            \"commands\": true,\n            \"_memory\": \"<memory>: what they remember of earlier conversations. [\\\"facts\\\"] keeps the consolidated facts and drops the story, the open loops and the agreements.\",\n            \"memory\": [\"chronicle\", \"facts\", \"open\", \"agreed\", \"tone\"],\n            \"_intent\": \"<intent>: what they want of V. own is theirs, extensions is what other installed mods want of V through them.\",\n            \"intent\": [\"own\", \"extensions\"],\n            \"_quest\": \"<quest>: the quest you are tracking. name is its title, context what this character says about it, objective what you are doing right now.\",\n            \"quest\": [\"name\", \"context\", \"objective\"],\n            \"_now\": \"<now>: the only block that changes every message. clock is the time, weather the sky, pending what another mod seeded, live the character's own current state.\",\n            \"now\": [\"clock\", \"weather\", \"pending\", \"live\"],\n            \"_channel\": \"The surface this reply lands on, and what it accepts. Cannot be removed -- a character that believed it was texting during a call would write for a screen, and the rules here are measured rather than editorial. It carries no parts: the mod writes one text per channel.\",\n            \"channel\": \"full\",\n            \"_instruction\": \"The first message: every block above. source is the pass that builds it -- conversation, memory, commands or test. Cannot be removed.\",\n            \"instruction\": { \"source\": \"conversation\" },\n            \"_ask\": \"The second message: the transcript, ending on the turn handed to the character. source is conversation, memory, repair or test. Cannot be removed.\",\n            \"ask\": { \"source\": \"conversation\" }\n        },\n        \"_compact\": \"An example of the shape you actually write: only what differs. Set active to \\\"compact\\\" to render this one.\",\n        \"compact\": {\n            \"character\": [\"bio\"],\n            \"memory\": [\"facts\"],\n            \"quest\": [\"name\", \"context\"],\n            \"commands\": false\n        },\n        \"_perpass\": \"The mod ships one recipe per pass, and a preset binds them by name in settings.json. The three below remove nothing: their pass builds both its messages itself, and the recipe only says which pass it belongs to.\",\n        \"_compaction\": \"A recipe for another pass. It removes nothing: the compaction builds both its messages itself, and this only says which pass it belongs to. Bind it with \\\"passes\\\": { \\\"thinking\\\": { \\\"recipe\\\": \\\"compaction\\\" } } in settings.json.\",\n        \"compaction\": {\n            \"instruction\": { \"source\": \"memory\" },\n            \"ask\": { \"source\": \"memory\" }\n        },\n        \"_repair\": \"The second request the mod makes when a character writes a command with a wrong bracket: the command list, and the broken tag. Bound by passes.repair.\",\n        \"repair\": {\n            \"instruction\": { \"source\": \"commands\" },\n            \"ask\": { \"source\": \"repair\" }\n        },\n        \"_actions\": \"The action selection, when Mod Settings > Command Handling is set to Dedicated: the command list, the last few messages and the reply that was just written. It carries no bio, no world and no tier -- none of them decides whether money changed hands. Bound by passes.actions.\",\n        \"actions\": {\n            \"instruction\": { \"source\": \"commands\" },\n            \"ask\": { \"source\": \"selector\" }\n        },\n        \"_spoken\": \"A reply that is SAID, on a holo call. Same blocks as the written one -- it is a character speaking either way -- but its own recipe, because what is spoken cannot be re-read: the length rule and the form rule are the two you will want to change first. Bind it with \\\"passes\\\": { \\\"holo\\\": { \\\"recipe\\\": \\\"spoken\\\" } }. Left unbound, a call renders exactly like a text.\",\n        \"spoken\": {\n            \"_commands\": \"No command is written on a call: the mod only offers them in the dedicated mode, and a bracketed tag read out loud is not a thing anyone says. Dropping the block also drops the repair pass that would chase a malformed one.\",\n            \"commands\": false,\n            \"instruction\": { \"source\": \"conversation\" },\n            \"ask\": { \"source\": \"conversation\" }\n        },\n        \"_test\": \"The connection check: two sentences, sent on the slot the reply is written on. Bound by passes.test.\",\n        \"test\": {\n            \"instruction\": { \"source\": \"test\" },\n            \"ask\": { \"source\": \"test\" }\n        }\n    }\n}\n",
     "repairAsk": {
       "concat": [
         "You wrote this command in your last message:\n",
@@ -1908,36 +2005,37 @@
     }
   },
   "sources": {
-    "AiNpcActionPrompt.reds": "d14fb0bd687f",
-    "AiNpcActionSelector.reds": "b6c09c63fa63",
-    "AiNpcCharacterRender.reds": "3e424eb7efaf",
-    "AiNpcContacts.reds": "e095b72d08b2",
+    "AiNpcActionPrompt.reds": "72281115268c",
+    "AiNpcActionSelector.reds": "0c2c7af7594f",
+    "AiNpcChannelPrompt.reds": "80a094342194",
+    "AiNpcCharacterRender.reds": "d88a8644537e",
+    "AiNpcContacts.reds": "ff4b01ac86b6",
     "AiNpcContextData.reds": "57b1f9152290",
-    "AiNpcLanguage.reds": "ad6faba77709",
+    "AiNpcLanguage.reds": "93fcdec1760b",
     "AiNpcMemory.reds": "fe925b09f83f",
-    "AiNpcPass.reds": "001d8880230d",
-    "AiNpcPlayer.reds": "2787176d81a4",
-    "AiNpcPromptBuild.reds": "29d293a59a89",
-    "AiNpcPromptSections.reds": "a2431b5abc5f",
-    "AiNpcRecipeSchema.reds": "b48f30cb7e58",
-    "AiNpcRecipeTemplate.reds": "8a75a5478507",
-    "AiNpcRepair.reds": "2a1ae15a148f",
-    "AiNpcRequestLog.reds": "d4dec3994b28",
-    "AiNpcRomanceExtension.reds": "5f03c8850bba",
-    "AiNpcTargetRender.reds": "6c237406dece",
-    "AiNpcTransferHandler.reds": "0da2ac9da07a",
-    "AiNpcVersion.reds": "980161784e9e",
-    "cast/AiNpcCastJackie.reds": "fa6788dbe295",
-    "cast/AiNpcCastJackieArchive.reds": "8d5d35e6338c",
-    "cast/AiNpcCastJesse.reds": "35b17bd95940",
-    "cast/AiNpcCastJudy.reds": "9eec4b9f0898",
-    "cast/AiNpcCastKerry.reds": "926c09e03644",
-    "cast/AiNpcCastPanam.reds": "26b1b18a43f8",
-    "cast/AiNpcCastRiver.reds": "023d9ad8c210",
-    "cast/AiNpcCastRogue.reds": "943fe5c8a216",
-    "cast/AiNpcCastSongbird.reds": "6fcdf62fce53",
-    "cast/AiNpcCastTakemura.reds": "70fa4fd36bb2",
-    "cast/AiNpcCastViktor.reds": "40994b6d12b1"
+    "AiNpcPass.reds": "9f1859c53d91",
+    "AiNpcPlayer.reds": "562a58c45bbf",
+    "AiNpcPromptBuild.reds": "c3d605193022",
+    "AiNpcPromptSections.reds": "e3f4bb3ff0b3",
+    "AiNpcRecipeSchema.reds": "834abd1989c9",
+    "AiNpcRecipeTemplate.reds": "315f2529a517",
+    "AiNpcRepair.reds": "2f2e67da696e",
+    "AiNpcRequestLog.reds": "0225553adc1c",
+    "AiNpcRomanceExtension.reds": "7434a37d4e0e",
+    "AiNpcTargetRender.reds": "28be3840033a",
+    "AiNpcTransferHandler.reds": "4d7e7a1a550d",
+    "AiNpcVersion.reds": "576eb65481e3",
+    "cast/AiNpcCastJackie.reds": "7d6a4469d6f2",
+    "cast/AiNpcCastJackieArchive.reds": "05b5cd53f28d",
+    "cast/AiNpcCastJesse.reds": "b4fd7dbff8a0",
+    "cast/AiNpcCastJudy.reds": "114ac846099a",
+    "cast/AiNpcCastKerry.reds": "b91685a5f514",
+    "cast/AiNpcCastPanam.reds": "38faf2173f43",
+    "cast/AiNpcCastRiver.reds": "0fef2cf1acf9",
+    "cast/AiNpcCastRogue.reds": "f9dd51ebae90",
+    "cast/AiNpcCastSongbird.reds": "97a16d044659",
+    "cast/AiNpcCastTakemura.reds": "13e218967fba",
+    "cast/AiNpcCastViktor.reds": "e0d39c9cabe5"
   },
   "unknownSheetFields": []
 }

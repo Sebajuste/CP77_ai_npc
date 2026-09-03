@@ -52,7 +52,20 @@ abstract class AiNpcChannel extends IScriptable {
         if !session.AcceptTyped(text) {
             return;
         }
+        this.SendFrom(contactId, text);
+    }
 
+    // Le même échange, pour une surface qui n'a pas de session de chat.
+    //
+    // UN APPEL N'EN A PAS : la session appartient au fil écrit, elle porte le contact affiché et
+    // l'écho dans la bulle. Un appel connaît son contact tout seul et n'a rien à peindre. Ce qui
+    // reste -- appeler la voie, classer la ligne de V -- est la même séquence, et elle est ici
+    // pour qu'il n'y en ait qu'une : deux copies dériveraient, et la première dérive serait un
+    // tour envoyé au modèle sans être classé.
+    public func SendFrom(contactId: String, text: String) -> Void {
+        if Equals(StrLen(contactId), 0) || Equals(StrLen(text), 0) {
+            return;
+        }
         let lane = GetAiNpcHttpSystem();
         if !IsDefined(lane) {
             return;

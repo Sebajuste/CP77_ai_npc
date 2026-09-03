@@ -24,8 +24,45 @@ func AiNpcCallDialSeconds() -> Float {
 // Long enough for a person to answer. The first value tried was 8 seconds, and a hand driving
 // four buttons in a debug window missed it on the first attempt -- which is roughly what a
 // player reaching for a ringing phone does.
+//
+// It is the BACKSTOP now, not the schedule: a call is answered when the voice is ready, and
+// this is what happens when it never is.
 func AiNpcCallRingSeconds() -> Float {
     return 20.0;
+}
+
+// Combien de fois par seconde on demande a la voix ou elle en est.
+//
+// Assez souvent pour que le decroche suive la fin du chargement plutot que de l'arrondir, assez
+// rarement pour qu'une sonnerie de vingt secondes coute quarante questions et non deux mille.
+// La reponse est un mot lu sous un verrou deja pris ; elle ne coute rien.
+func AiNpcCallPickUpPollSeconds() -> Float {
+    return 0.5;
+}
+
+// A quelle cadence on verifie que nos deux invites sont toujours a l'ecran.
+//
+// Le jeu reconstruit le hub d'interaction a chaque changement de contexte du joueur, et emporte
+// ce qu'il n'a pas mis. Une demi-seconde est la plus longue absence qu'on accepte de laisser
+// voir ; la verification est une lecture de tableau noir et ne coute rien.
+func AiNpcCallChoicesPollSeconds() -> Float {
+    return 0.5;
+}
+
+// Depuis quand ce contact est en ligne, zero s'il ne l'est pas.
+//
+// Pose ici plutot que sur la classe parce que les lecteurs sont des surfaces : un fil ecrit
+// demande cela du contact qu'il affiche, et la reponse doit etre zero pour tous les autres --
+// un appel avec Judy ne suspend pas la trace d'un appel termine avec Panam.
+func AiNpcLiveCallSince(contactId: String) -> Int32 {
+    let call = AiNpcCallSystem.Get();
+    if !IsDefined(call) || NotEquals(call.State(), AiNpcCallState.Connected) {
+        return 0;
+    }
+    if NotEquals(call.ContactId(), contactId) {
+        return 0;
+    }
+    return call.ConnectedAt();
 }
 
 // What the two prompts say. Here rather than in the choice file, because the words belong to
@@ -48,6 +85,14 @@ public class AiNpcCallSystem extends ScriptableSystem {
     // does nothing. A DelaySystem timer cannot be cancelled, so hanging up and calling again
     // inside the ring window would otherwise let the FIRST call's timeout end the second one.
     private let m_serial: Int32 = 0;
+
+    // L'instant ou l'on a decroche, en secondes de jeu absolues.
+    //
+    // LA BORNE DE L'ECHANGE EN COURS. Le prompt d'un appel ne porte que ce qui s'est dit depuis
+    // ici : l'appel d'avant appartient a la memoire, pas a celui-ci. Rien n'est persistant dans
+    // cette classe, donc une sauvegarde reprise hors appel n'a pas de borne a relire -- et n'en
+    // a pas besoin, puisqu'il n'y a pas d'appel en cours.
+    private let m_connectedAt: Int32 = 0;
 
     // The one line V speaks into. Built on demand and dropped with the call: it holds widgets,
     // so it cannot outlive the HUD that hosts them.
@@ -142,15 +187,43 @@ public class AiNpcCallSystem extends ScriptableSystem {
         // again: the vanilla call is already up, and answering only stops the ring and offers
         // the two choices. Nothing is drawn here.
         if Equals(to, AiNpcCallState.Ringing) {
+            // LA SONNERIE EST LE CHARGEMENT, et c'est tout l'interet de la placer ici.
+            //
+            // Preparer une voix coute environ sept secondes -- charger le modele, tailler la
+            // reference dans les archives du joueur, la cloner -- et rien de cela ne depend de
+            // ce qui sera dit. Faire sonner pendant est la seule facon de ne pas faire attendre
+            // apres : le joueur entend un telephone, pas une barre de progression.
+            AiNpcAudio.Warm(contactId, AiNpcVoiceFileFor(contactId),
+                AiNpcVoiceFallbackFor(contactId), AiNpcVoiceOverLocale());
             AiNpcVanillaCallStart(contactId);
             AiNpcArmTimeout(AiNpcCallRingCallback.Create(this.m_serial), AiNpcVanillaRingDelay());
+            AiNpcArmTimeout(AiNpcCallPickUpCallback.Create(this.m_serial),
+                AiNpcCallPickUpPollSeconds());
             AiNpcArmTimeout(AiNpcCallTickCallback.Create(this.m_serial, AiNpcCallState.Missed),
                 AiNpcCallRingSeconds());
         }
 
         if Equals(to, AiNpcCallState.Connected) {
+            this.m_connectedAt = AiNpcGetCurrentGameTimeSeconds();
             AiNpcVanillaRingStop();
+            // Le declic que le jeu joue quand un appel est accepte. Sans lui la tonalite
+            // s'arrete et rien ne dit que quelqu'un a decroche -- ce que le joueur lit comme un
+            // appel qui a rate, pas comme un appel qui commence.
+            AiNpcVanillaCallAnswered();
             AiNpcCallShowChoices(AiNpcCallWriteLabel(), AiNpcCallHangUpLabel());
+            AiNpcArmTimeout(AiNpcCallChoicesCallback.Create(this.m_serial),
+                AiNpcCallChoicesPollSeconds());
+        }
+
+        // Un appel termine ne parle plus. Ici plutot que sur le seul raccroche du joueur : un
+        // appel manque, une coupure et un raccroche laissent la meme voix en train de dire une
+        // phrase a une ligne fermee.
+        if AiNpcCallIsOver(to) {
+            AiNpcAudio.Silence();
+            let subtitles = AiNpcCallSubtitles.Get();
+            if IsDefined(subtitles) {
+                subtitles.Clear();
+            }
         }
 
         // Every ending closes the game's call, including the ones nobody answered -- a portrait
@@ -197,17 +270,6 @@ public class AiNpcCallSystem extends ScriptableSystem {
     // Scoped to a live call in every branch: these keys mean something else at every other
     // moment, and a call that answered them from Idle would eat a dialogue choice in a quest.
     public func ReportAction(name: CName, kind: gameinputActionType) -> Bool {
-        // Escape, while the line has the keyboard. It is the way out of every other text field
-        // in the game, and on the HUD it also opens the pause menu -- so the whole action is
-        // eaten, press and release together. Half an action consumed is a menu that opens on
-        // the key going up.
-        if Equals(name, n"OpenPauseMenu_Button") && IsDefined(this.m_input) && this.m_input.HasKeyboard() {
-            if Equals(kind, gameinputActionType.BUTTON_PRESSED) {
-                this.m_input.DropFocus();
-            }
-            return true;
-        }
-
         if NotEquals(kind, gameinputActionType.BUTTON_RELEASED)
                 || NotEquals(this.m_state, AiNpcCallState.Connected) {
             return false;
@@ -220,6 +282,39 @@ public class AiNpcCallSystem extends ScriptableSystem {
 
         if Equals(name, AiNpcCallWriteAction()) {
             this.ShowInput();
+            return true;
+        }
+
+        return false;
+    }
+
+    // Escape, offered by the pause menu's own controller. True means the call took it and the
+    // menu must not open.
+    //
+    // NOT ASKED OF THE PLAYER, and that is the whole of the defect this replaces: the player
+    // object is an input listener for six gameplay actions, and OpenPauseMenu is not one of
+    // them, so a branch reading it from PlayerPuppet.OnAction never ran once. The name it
+    // compared -- OpenPauseMenu_Button -- is the key mapping's, not the action's, so it could
+    // not have matched either.
+    //
+    // The release is the only half that matters: gameuiInGameMenuGameController spawns the menu
+    // on BUTTON_RELEASED.
+    public func ReportPauseAction(name: CName, kind: gameinputActionType) -> Bool {
+        if !Equals(name, n"OpenPauseMenu")
+                || NotEquals(kind, gameinputActionType.BUTTON_RELEASED)
+                || !IsDefined(this.m_input) {
+            return false;
+        }
+
+        // The line has already let go, because the key reached it as a key first.
+        if this.m_input.TakeEscaped() {
+            return true;
+        }
+
+        // It did not, so the field never saw the key -- it is still holding the keyboard, and
+        // this is where it gives it back.
+        if this.m_input.HasKeyboard() {
+            this.m_input.DropFocus();
             return true;
         }
 
@@ -243,17 +338,37 @@ public class AiNpcCallSystem extends ScriptableSystem {
         }
     }
 
-    // What V said, from the line.
+    // Depuis quand l'echange en cours dure. Zero hors appel, ce qui ne laisse rien passer :
+    // aucun prompt d'appel n'est construit sans appel.
+    public func ConnectedAt() -> Int32 {
+        return this.m_connectedAt;
+    }
+
+    // Ce que V a dit, depuis la ligne.
     //
-    // Nobody answers it yet -- generating a reply is the speaking lane's, and the channel that
-    // keeps a spoken turn out of the written thread is not built. What happens instead is the
-    // rest of the lane, end to end: the words are synthesised and played, so the path from a
-    // typed line to a sound in the room is measured before anything is asked of a model.
+    // ELLE PART AU MODELE, et c'est ce qui manquait : jusqu'ici cette fonction ne faisait que
+    // synthetiser la ligne de V et la jouer -- ce qui eprouvait la voie parlee et n'ouvrait
+    // aucune conversation. Un joueur voyait donc son propre texte relu, sans reponse et sans
+    // rien de classe.
+    //
+    // La sequence appartient au canal, qui l'ecrit une fois pour toutes les surfaces : appeler
+    // la voie, classer la ligne. Un appel n'a pas de session de chat -- elle porte le contact
+    // affiche et l'echo dans la bulle, dont un appel n'a ni l'un ni l'autre -- donc il passe par
+    // SendFrom, qui est la meme sequence sans la moitie qui peint.
+    //
+    // LA LIGNE DE V N'EST PLUS DITE. Elle l'etait pour eprouver le moteur avant qu'un modele
+    // reponde, avec la voix de son interlocuteur faute de v.wav. Maintenant qu'une reponse
+    // arrive, la dire serait nuisible et pas seulement etrange : la voie audio ne tient qu'une
+    // voix a la fois, donc la premiere phrase de la reponse couperait la ligne de V au milieu.
     public func ReportSpoken(text: String) -> Void {
         if Equals(StrLen(text), 0) {
             return;
         }
-        AiNpcLog(s"Call: V said '\(text)' to '\(this.m_contactId)'. \(AiNpcAudio.Speak(text))");
+        if NotEquals(this.m_state, AiNpcCallState.Connected) {
+            return;
+        }
+        AiNpcLog(s"Call: V said '\(text)' to '\(this.m_contactId)'.");
+        AiNpcChannelOf(AiNpcChannelId.Call).SendFrom(this.m_contactId, text);
     }
 
     // One sentence of a reply that is still being written, from AiNpcStreamDeliver.
@@ -272,7 +387,59 @@ public class AiNpcCallSystem extends ScriptableSystem {
         if Equals(StrLen(spoken), 0) {
             return;
         }
-        AiNpcLog(s"Call: '\(this.m_contactId)' says '\(spoken)'. \(AiNpcAudio.Speak(spoken))");
+        // Lu autant qu'entendu : le sous-titre du jeu porte la meme phrase, sous le nom du
+        // personnage. Un joueur qui coupe le son suit la conversation, et une voix synthetique
+        // mal articulee cesse d'etre une devinette.
+        let subtitles = AiNpcCallSubtitles.Get();
+        if IsDefined(subtitles) {
+            subtitles.Show(AiNpcGetCharacterName(this.m_contactId), spoken);
+        }
+        AiNpcLog(s"Call: '\(this.m_contactId)' says '\(spoken)'. \(AiNpcAudio.Speak(spoken, this.m_contactId, AiNpcVoiceFileFor(this.m_contactId),
+                 AiNpcVoiceFallbackFor(this.m_contactId), AiNpcVoiceOverLocale()))");
+    }
+
+    // Le personnage decroche quand sa voix est prete, et pas avant.
+    //
+    // C'est ce qui remplace un delai fixe, et ce n'est pas cosmetique : un delai trop court fait
+    // decrocher un personnage qui parlera ensuite avec la voix de Windows, un delai trop long
+    // fait sonner dans le vide une machine qui etait prete depuis longtemps. L'evenement est le
+    // bon signal parce que c'est exactement la chose qu'on attend.
+    //
+    // Trois reponses, trois conduites :
+    //
+    //   ready        on decroche
+    //   unavailable  on decroche AUSSI, tout de suite -- il n'y a rien a attendre, et une
+    //                installation sans pack ne doit pas sonner vingt secondes pour rien
+    //   pending      on redemande
+    //
+    // "unknown" est traite comme "unavailable" : personne n'a demande cette voix, donc personne
+    // ne la prepare, donc attendre serait attendre une chose qui n'arrivera pas.
+    public func OnPickUpTick(serial: Int32) -> Void {
+        if NotEquals(serial, this.m_serial) || NotEquals(this.m_state, AiNpcCallState.Ringing) {
+            return;
+        }
+        if Equals(AiNpcAudio.VoiceState(this.m_contactId), "pending") {
+            AiNpcArmTimeout(AiNpcCallPickUpCallback.Create(this.m_serial),
+                AiNpcCallPickUpPollSeconds());
+            return;
+        }
+        this.Move(AiNpcCallState.Connected);
+    }
+
+    // Nos invites, remises si le jeu les a emportees.
+    //
+    // La verification precede la reecriture : reecrire a chaque demi-seconde marcherait aussi,
+    // et ecraserait a chaque fois l'interaction que le joueur vient d'obtenir en s'approchant
+    // de quelque chose. On ne reprend la parole que quand on l'a perdue.
+    public func OnChoicesTick(serial: Int32) -> Void {
+        if NotEquals(serial, this.m_serial) || NotEquals(this.m_state, AiNpcCallState.Connected) {
+            return;
+        }
+        if !AiNpcCallChoicesShown() {
+            AiNpcCallShowChoices(AiNpcCallWriteLabel(), AiNpcCallHangUpLabel());
+        }
+        AiNpcArmTimeout(AiNpcCallChoicesCallback.Create(this.m_serial),
+            AiNpcCallChoicesPollSeconds());
     }
 
     // The ring, armed late on purpose -- see the head of AiNpcCallVanilla.reds.
@@ -304,6 +471,34 @@ class AiNpcCallRingCallback extends AiNpcCallLaneCallback {
 
     public static func Create(serial: Int32) -> ref<AiNpcCallRingCallback> {
         let self = new AiNpcCallRingCallback();
+        self.serial = serial;
+        return self;
+    }
+}
+
+class AiNpcCallPickUpCallback extends AiNpcCallLaneCallback {
+    public let serial: Int32;
+
+    protected func Run(call: ref<AiNpcCallSystem>) -> Void {
+        call.OnPickUpTick(this.serial);
+    }
+
+    public static func Create(serial: Int32) -> ref<AiNpcCallPickUpCallback> {
+        let self = new AiNpcCallPickUpCallback();
+        self.serial = serial;
+        return self;
+    }
+}
+
+class AiNpcCallChoicesCallback extends AiNpcCallLaneCallback {
+    public let serial: Int32;
+
+    protected func Run(call: ref<AiNpcCallSystem>) -> Void {
+        call.OnChoicesTick(this.serial);
+    }
+
+    public static func Create(serial: Int32) -> ref<AiNpcCallChoicesCallback> {
+        let self = new AiNpcCallChoicesCallback();
         self.serial = serial;
         return self;
     }

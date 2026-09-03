@@ -174,6 +174,7 @@ public class AiNpcSystem extends ScriptableService {
         let handler = this.callbackSystem.RegisterCallback(n"Input/Key", this, n"OnKeyInput", true);
         if !allKeys {
             handler.AddTarget(InputTarget.Key(EInputKey.IK_T));
+            handler.AddTarget(InputTarget.Key(EInputKey.IK_G));
         }
     }
 
@@ -258,17 +259,50 @@ public class AiNpcSystem extends ScriptableService {
         }
     }
 
-    // T opens the row the dialer is reporting, with no fallback: "the last contact" would open
-    // a conversation the player was not pointing at. The contact-list check lives here rather
-    // than in OpenChat because it is a fact about this key -- rows only exist on that screen.
-    // Every other way in names its contact outright.
+    // T ecrit, G appelle -- deux verbes sur la meme ligne, et la ligne est celle que le
+    // composeur designe. Aucun repli sur « le dernier contact » : cela ouvrirait une
+    // conversation que le joueur ne montrait pas.
+    //
+    // Le controle « on est bien sur la liste » vit ici plutot que dans les deux verbes, parce
+    // que c'est un fait sur CES TOUCHES -- une ligne n'existe que sur cet ecran. Toutes les
+    // autres entrees nomment leur contact explicitement.
+    //
+    // R et F appartiennent au jeu sur cet ecran, et G est ce qui reste a portee de la main
+    // gauche. Le choix est celui du joueur, pas une mesure : ce fichier ne sait pas ce que le
+    // jeu lie, il sait seulement ce que le mod prend.
     private func OnContactListKey(key: String) -> Void {
-        if Equals(key, "IK_T") {
-            if !this.PhoneState().IsOnContacts() {
-                return;
-            }
-            this.OpenChat(this.PhoneState().GetReportedRow(), "T");
+        if !Equals(key, "IK_T") && !Equals(key, "IK_G") {
+            return;
         }
+        if !this.PhoneState().IsOnContacts() {
+            return;
+        }
+
+        let row = this.PhoneState().GetReportedRow();
+        if Equals(key, "IK_T") {
+            this.OpenChat(row, "T");
+            return;
+        }
+        this.PlaceCall(row);
+    }
+
+    // G appelle la ligne designee.
+    //
+    // Le systeme d'appel decide et repond par une phrase, qui va au journal telle quelle : un
+    // refus a trois causes -- deja en ligne, contact inconnu, pas de session -- et les trois se
+    // corrigent differemment. Rien n'est ferme ici : la sonnerie est celle du jeu, et le
+    // telephone se comporte comme pour n'importe quel appel entrant.
+    private func PlaceCall(contactId: String) -> Void {
+        if Equals(StrLen(contactId), 0) {
+            return;
+        }
+        let calls = AiNpcCallSystem.Get();
+        if !IsDefined(calls) {
+            AiNpcLog("G: no call system in this session.");
+            return;
+        }
+        this.PlaySound(n"ui_menu_onpress");
+        AiNpcLog(s"G on '\(contactId)': \(calls.Dial(contactId))");
     }
 
     // Handle scrolling messages

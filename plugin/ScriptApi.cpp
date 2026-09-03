@@ -624,10 +624,19 @@ void BeepImpl(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, RED4ext::CStr
 void SpeakImpl(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, RED4ext::CString* aOut, int64_t)
 {
     RED4ext::CString text;
+    RED4ext::CString contactId;
+    RED4ext::CString voiceFile;
+    RED4ext::CString catalogueVoice;
+    RED4ext::CString voiceOverLocale;
     RED4ext::GetParameter(aFrame, &text);
+    RED4ext::GetParameter(aFrame, &contactId);
+    RED4ext::GetParameter(aFrame, &voiceFile);
+    RED4ext::GetParameter(aFrame, &catalogueVoice);
+    RED4ext::GetParameter(aFrame, &voiceOverLocale);
     ++aFrame->code; // skip ParamEnd
 
-    const bool queued = speech::Speak(text.c_str());
+    const bool queued = speech::Speak(text.c_str(), contactId.c_str(), voiceFile.c_str(),
+                                      catalogueVoice.c_str(), voiceOverLocale.c_str());
     const std::string answer = queued ? ("queued; previous: " + speech::LastResult())
                                       : std::string("nothing to say");
 
@@ -638,6 +647,56 @@ void SpeakImpl(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, RED4ext::CSt
     if (aOut)
     {
         *aOut = RED4ext::CString(message);
+    }
+}
+
+// Prepares a character's voice without saying anything, and returns at once.
+//
+// Called when a call starts ringing. What it buys is the seven seconds a first line would
+// otherwise cost -- loading the model, cutting the reference out of the player's archives, and
+// cloning it -- spent inside a ring nobody is waiting through.
+void WarmImpl(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, RED4ext::CString* aOut, int64_t)
+{
+    RED4ext::CString contactId;
+    RED4ext::CString voiceFile;
+    RED4ext::CString catalogueVoice;
+    RED4ext::CString voiceOverLocale;
+    RED4ext::GetParameter(aFrame, &contactId);
+    RED4ext::GetParameter(aFrame, &voiceFile);
+    RED4ext::GetParameter(aFrame, &catalogueVoice);
+    RED4ext::GetParameter(aFrame, &voiceOverLocale);
+    ++aFrame->code; // skip ParamEnd
+
+    speech::Warm(contactId.c_str(), voiceFile.c_str(), catalogueVoice.c_str(),
+                 voiceOverLocale.c_str());
+
+    char message[200];
+    std::snprintf(message, sizeof(message), "warming the voice of '%s'", contactId.c_str());
+    Log(message);
+
+    if (aOut)
+    {
+        *aOut = RED4ext::CString(message);
+    }
+}
+
+// Where a character's voice has got to, in one word. Read by the ring: a call is answered when
+// the voice is ready, so the wait the player hears IS the loading.
+void SilenceImpl(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, RED4ext::CString*, int64_t)
+{
+    ++aFrame->code; // skip ParamEnd
+    speech::Silence();
+}
+
+void VoiceStateImpl(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, RED4ext::CString* aOut, int64_t)
+{
+    RED4ext::CString contactId;
+    RED4ext::GetParameter(aFrame, &contactId);
+    ++aFrame->code; // skip ParamEnd
+
+    if (aOut)
+    {
+        *aOut = RED4ext::CString(speech::VoiceState(contactId.c_str()).c_str());
     }
 }
 
@@ -729,9 +788,40 @@ void PostRegisterTypes()
     beep->SetReturnType("String");
     audioClass->RegisterFunction(beep);
 
+    auto* warm = RED4ext::CClassStaticFunction::Create(audioClass, "Warm", "Warm", &WarmImpl);
+    warm->flags = {.isNative = true, .isStatic = true, .isPublic = true};
+    warm->AddParam("String", "contactId");
+    warm->AddParam("String", "voiceFile");
+    warm->AddParam("String", "catalogueVoice");
+    warm->AddParam("String", "voiceOverLocale");
+    warm->SetReturnType("String");
+    audioClass->RegisterFunction(warm);
+
+    auto* state = RED4ext::CClassStaticFunction::Create(audioClass, "VoiceState", "VoiceState",
+                                                       &VoiceStateImpl);
+    state->flags = {.isNative = true, .isStatic = true, .isPublic = true};
+    state->AddParam("String", "contactId");
+    state->SetReturnType("String");
+    audioClass->RegisterFunction(state);
+
+    auto* silence = RED4ext::CClassStaticFunction::Create(audioClass, "Silence", "Silence",
+                                                         &SilenceImpl);
+    silence->flags = {.isNative = true, .isStatic = true, .isPublic = true};
+    audioClass->RegisterFunction(silence);
+
     auto* speak = RED4ext::CClassStaticFunction::Create(audioClass, "Speak", "Speak", &SpeakImpl);
     speak->flags = {.isNative = true, .isStatic = true, .isPublic = true};
     speak->AddParam("String", "text");
+    // Qui parle. Une replique sans contact est dite par la voix de secours, ce qui est le bon
+    // comportement pour une ligne qui n'appartient a aucun personnage.
+    speak->AddParam("String", "contactId");
+    // Le fichier de reference que la fiche du personnage nomme.
+    speak->AddParam("String", "voiceFile");
+    // La voix de catalogue, qui parle quand aucun clone n'est possible.
+    speak->AddParam("String", "catalogueVoice");
+    // La langue du DOUBLAGE, pas celle des sous-titres : c'est dans ces archives qu'une
+    // reference se fabrique. Le jeu repond aux deux separement.
+    speak->AddParam("String", "voiceOverLocale");
     speak->SetReturnType("String");
     audioClass->RegisterFunction(speak);
 
@@ -745,6 +835,9 @@ void Start(RED4ext::v1::PluginHandle aHandle, const RED4ext::v1::Sdk* aSdk, cons
     g_handle = aHandle;
     g_sdk = aSdk;
     g_pluginDirectory = aPluginDirectory;
+    // D'ou la voie parlee deduit le pack de modeles et le dossier des voix. Pose ici parce que
+    // c'est le seul endroit qui connaisse ce chemin, et une fois parce qu'il ne bouge pas.
+    speech::SetPluginDirectory(aPluginDirectory);
     g_job = aJob;
 
     auto* rtti = RED4ext::CRTTISystem::Get();

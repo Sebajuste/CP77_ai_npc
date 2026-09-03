@@ -339,6 +339,29 @@ public func AiNpcClientOpenConversation(modId: String, contactId: String) -> Int
     return AiNpcOpenChatOn(contactId);
 }
 
+// Places a holo call. The state machine decides; this only translates its refusals into the
+// vocabulary the contract publishes, because a caller cannot branch on a sentence.
+public func AiNpcClientCallContact(modId: String, contactId: String) -> Int32 {
+    if Equals(StrLen(contactId), 0) {
+        return AiNpcCallEmpty();
+    }
+
+    let calls = AiNpcCallSystem.Get();
+    if !IsDefined(calls) {
+        return AiNpcCallNoSession();
+    }
+    if !AiNpcIsContactSupported(contactId) {
+        return AiNpcCallNotDriven();
+    }
+    if !AiNpcCallIsOver(calls.State()) && NotEquals(calls.State(), AiNpcCallState.Idle) {
+        return AiNpcCallBusy();
+    }
+
+    AiNpcLog(s"'\(modId)' placed a holo call to '\(contactId)'.");
+    calls.Dial(contactId);
+    return AiNpcCallOk();
+}
+
 // Refused unless this mod declared the contact. Not securable, since a mod id is
 // self-declared, but it prevents a mod wiping a vanilla character's history or another mod's
 // contact, where the loss is unrecoverable. Every call is logged with its author, refused or

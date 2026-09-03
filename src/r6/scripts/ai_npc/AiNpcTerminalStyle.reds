@@ -138,6 +138,10 @@ public abstract class AiNpcTerminalStyle {
         return AiNpcStyle.Accent();
     }
 
+    public static func ColTyped() -> Color {
+        return AiNpcStyle.Typed();
+    }
+
     public static func RowHeight() -> Float {
         return 130.0;
     }
@@ -278,6 +282,19 @@ public abstract class AiNpcTerminalStyle {
         return 104.0;
     }
 
+    public static func FieldLineHeight() -> Float {
+        return Cast<Float>(AiNpcTerminalStyle.FsBody()) * 1.35;
+    }
+
+    // The first line carries the box's padding; every line after it adds only its own height.
+    public static func FieldHeightFor(lines: Int32) -> Float {
+        if lines <= 1 {
+            return AiNpcTerminalStyle.FieldHeight();
+        }
+        return AiNpcTerminalStyle.FieldHeight()
+               + Cast<Float>(lines - 1) * AiNpcTerminalStyle.FieldLineHeight();
+    }
+
     public static func FieldTextInset() -> Float {
         return 24.0;
     }
@@ -290,12 +307,25 @@ public abstract class AiNpcTerminalStyle {
         return 0.22;
     }
 
-    // Beyond this the field shows only the tail of what was typed.
-    public static func FieldVisibleChars() -> Int32 {
-        return 74;
+    // The width one character of the body font takes. Calibrated on the terminal field: 74
+    // characters across its 2272 units of usable width.
+    public static func FieldCharWidth() -> Float {
+        return 30.7;
     }
 
-    // The phone caps nothing, but a terminal field shows one line, and a player who cannot
+    // What one line of a field that wide can show. Derived rather than typed: a width and a
+    // character count that have to agree eventually will not, and the failure is a line of
+    // text drawn past the edge of its plate -- which is what a 900-unit field showing 74
+    // characters did.
+    public static func FieldCharsAcross(width: Float) -> Int32 {
+        let usable: Float = width - AiNpcTerminalStyle.FieldTextInset() * 2.0;
+        if usable < AiNpcTerminalStyle.FieldCharWidth() {
+            return 1;
+        }
+        return Cast<Int32>(usable / AiNpcTerminalStyle.FieldCharWidth());
+    }
+
+    // The phone caps nothing, but a field shows a few lines at most, and a player who cannot
     // see what they typed cannot correct it.
     public static func FieldMaxLength() -> Int32 {
         return 320;

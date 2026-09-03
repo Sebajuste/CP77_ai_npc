@@ -140,6 +140,39 @@ public func AiNpcOpenFloorHeld() -> Int32 {
     return 14;
 }
 
+/// Placing a holo call ///
+
+// A call is not a thread opened out loud, and the codes say so: it can be refused for reasons a
+// thread has no equivalent of -- somebody is already on the line, and V is somewhere a call
+// cannot reach.
+//
+// Separate from the Open* codes on purpose. Reusing them would make "already there" mean two
+// things, and a caller branching on it would treat a call in progress as a success.
+public func AiNpcCallOk() -> Int32 {
+    return 30;
+}
+
+// A call is already up, with this contact or another. Who is on it: AiNpcCharacterOnCall.
+public func AiNpcCallBusy() -> Int32 {
+    return 31;
+}
+
+// This mod does not drive that contact, or nothing does. A configuration mistake, not a state
+// to wait out.
+public func AiNpcCallNotDriven() -> Int32 {
+    return 32;
+}
+
+// No save loaded, or ai_npc not up yet. Transient, like its Write equivalent.
+public func AiNpcCallNoSession() -> Int32 {
+    return 33;
+}
+
+// Empty contact id -- a call site to correct.
+public func AiNpcCallEmpty() -> Int32 {
+    return 34;
+}
+
 /// Writing into a thread ///
 
 // One vocabulary for CharacterWrote and PlayerWrote: the same contract with the other speaker,
@@ -352,6 +385,22 @@ public class AiNpcClient extends IScriptable {
     // someone else's screen cannot see the chat is already open, so the guard lives here.
     public func OpenConversation(contactId: String) -> Int32 {
         return AiNpcClientOpenConversation(this.m_modId, contactId);
+    }
+
+    /// Orders: the call ///
+
+    // Rings this character's holo, as the game's own call would. Answering is the player's:
+    // this places the call, it does not connect it.
+    //
+    // A separate order from OpenConversation, and the distinction is the whole of
+    // docs\PLAN_HOLO_CHANNEL.md -- what is said on a call must not appear as a written message,
+    // while the memory stays shared. A caller that wants the thread wants the other function.
+    //
+    // The voice is prepared while it rings, which is the reason a call is placed rather than
+    // connected straight away: cutting the reference out of the player's archives and cloning
+    // it costs about seven seconds, and the ring is the only moment nobody is waiting.
+    public func CallContact(contactId: String) -> Int32 {
+        return AiNpcClientCallContact(this.m_modId, contactId);
     }
 
     // Erases a thread, entirely and irreversibly. Refused for a contact this mod did not

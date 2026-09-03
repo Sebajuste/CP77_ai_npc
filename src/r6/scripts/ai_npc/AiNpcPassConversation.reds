@@ -1,4 +1,7 @@
-// The speaking pass: the system prompt, and the turn handed to the character.
+// The written speaking pass: the system prompt, and the turn handed to the character.
+//
+// Its spoken twin is AiNpcPassSpoken, which renders exactly the same two messages and differs
+// only in the pass it declares. See that file for why the difference is worth a class.
 //
 // Both halves are keyed by the contact captured at send time, never by the selection: the
 // player may be looking at somebody else by the time this renders.
@@ -31,16 +34,17 @@ class AiNpcPassConversation extends AiNpcPassBuilder {
 
     func Instruction() -> String {
         return AiNpcBuildSystemPromptWith(this.contactId, this.pendingContext, this.intent,
-            this.Recipe());
+            this.Recipe(), this.Pass());
     }
 
     // The one place the choice is made. Measured 2026-08-23: a reason placed in <now> is an
     // afterthought in half the replies and dropped in the other half; in V's slot it is the
     // subject every time.
     func Ask() -> String {
+        let channel = AiNpcChannelOfPass(this.Pass());
         if this.speaksFirst {
-            return AiNpcBuildUnpromptedTranscript(this.contactId, this.ask);
+            return AiNpcBuildUnpromptedTranscript(this.contactId, this.ask, channel);
         }
-        return AiNpcBuildTranscript(this.contactId, this.ask);
+        return AiNpcBuildTranscript(this.contactId, this.ask, channel);
     }
 }

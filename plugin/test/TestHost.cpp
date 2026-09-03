@@ -1027,6 +1027,53 @@ void TestAudio(bool aAudible)
     Check("Stop() silences it", !ainpc::audio::IsPlaying());
     ainpc::audio::Stop();
     Check("Stop() on silence is harmless", !ainpc::audio::IsPlaying());
+
+    // UNE PRISE DE PAROLE EN MORCEAUX, et c'est le defaut que ces lignes reproduisent.
+    //
+    // Le moteur de parole rend son premier morceau en 123 ms et la voie n'en jouait aucun avant
+    // le dernier : Play() remplacait ce qui jouait, donc livrer les morceaux un par un n'aurait
+    // fait entendre que la fin.
+    //
+    // CE QUI DISTINGUE UNE FILE D'UN EMPLACEMENT N'EST PAS LA DUREE D'HORLOGE. Mesure du
+    // 2026-09-02 : huit Play() successifs prennent 696 ms, PLUS que la file, parce qu'ils
+    // ouvrent et ferment le peripherique huit fois -- tout en ne faisant entendre qu'un seul
+    // morceau. Ce qui les separe est ce qui RESTE a jouer : cent cinquante millisecondes apres
+    // avoir remis 400 ms de son, une file joue encore et un emplacement s'est tu. Verifie dans
+    // les deux sens sur un banc minimal avant d'etre ecrit ici.
+    constexpr int kChunks = 8;
+    const double chunkSeconds = aAudible ? 0.1 : 0.05;
+    const std::vector<uint8_t> piece =
+        ainpc::audio::Tone(chunkSeconds, 440.0, aAudible ? 0.40 : 0.0).samples;
+
+    if (aAudible)
+    {
+        std::printf("        playing 8 chunks of 100 ms as ONE continuous tone...\n");
+    }
+    Check("a stream opens", ainpc::audio::Open(format) == Status::Ok);
+
+    bool pushedAll = true;
+    for (int i = 0; i < kChunks; ++i)
+    {
+        pushedAll = pushedAll && ainpc::audio::Push(piece.data(), piece.size()) == Status::Ok;
+    }
+    Check("every chunk is taken", pushedAll);
+    ainpc::audio::Close();
+
+    // Un seul morceau serait fini depuis longtemps.
+    const int settle = static_cast<int>(chunkSeconds * 3000.0);
+    std::this_thread::sleep_for(std::chrono::milliseconds(settle));
+    Check("the whole queue is still playing, not just one chunk", ainpc::audio::IsPlaying());
+
+    Check("the queue drains and the device closes", WaitUntilSilent(8000) < 8000);
+    Check("a chunk after Close is refused",
+          ainpc::audio::Push(piece.data(), piece.size()) == Status::NoDevice);
+    Check("a chunk with no stream is refused",
+          ainpc::audio::Push(piece.data(), piece.size()) == Status::NoDevice);
+
+    ainpc::audio::Open(format);
+    ainpc::audio::Push(piece.data(), piece.size());
+    ainpc::audio::Stop();
+    Check("Stop() cuts a stream mid-flight", !ainpc::audio::IsPlaying());
 }
 
 /// The streaming lane ///

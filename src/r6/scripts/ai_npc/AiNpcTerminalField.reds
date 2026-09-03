@@ -43,12 +43,23 @@ public class AiNpcTerminalField extends AiNpcKeyboardClaimant {
     private let m_focused: Bool;
     private let m_disabled: Bool;
 
+    // How many lines the box is tall, and how wide it was built. Together they say how much
+    // text can be shown: the width decides how many characters fit across, the line count how
+    // many times over. A field of one line does not wrap -- the terminal's does not have the
+    // room -- and the holo's, which is a sentence spoken out loud, does.
+    private let m_lines: Int32;
+    private let m_width: Float;
+
     // Set on Enter, read and cleared by the owner: the field cannot know what submitting
     // means, so it only records that it happened.
     private let m_submitted: Bool;
 
-    public final func Setup(placeholder: String) -> Void {
+    public final func Setup(placeholder: String, opt lines: Int32) -> Void {
         this.m_placeholder = placeholder;
+        this.m_lines = lines;
+        if this.m_lines < 1 {
+            this.m_lines = 1;
+        }
         this.m_repeat = new AiNpcKeyRepeat();
         this.m_repeat.Bind(this);
     }
@@ -98,12 +109,15 @@ public class AiNpcTerminalField extends AiNpcKeyboardClaimant {
     // state; in absolute layout the caller passes x / y / w and we place ourselves.
     public final func Build(parent: ref<inkCompoundWidget>, x: Float, y: Float, w: Float,
                             colour: Color) -> Void {
+        this.m_width = w;
+        let height: Float = AiNpcTerminalStyle.FieldHeightFor(this.m_lines);
+
         let box = new inkCanvas();
         box.SetName(n"ainpc_field");
         box.SetHAlign(inkEHorizontalAlign.Left);
         box.SetVAlign(inkEVerticalAlign.Top);
         box.SetAnchorPoint(new Vector2(0.0, 0.0));
-        box.SetSize(new Vector2(w, AiNpcTerminalStyle.FieldHeight()));
+        box.SetSize(new Vector2(w, height));
         box.SetMargin(new inkMargin(x, y, 0.0, 0.0));
         // Both are required: interactive gets the mouse, focus support gets the keyboard.
         box.SetInteractive(true);
@@ -114,7 +128,7 @@ public class AiNpcTerminalField extends AiNpcKeyboardClaimant {
         fill.SetName(n"fill");
         fill.SetTintColor(colour);
         fill.SetAnchor(inkEAnchor.Fill);
-        fill.SetSize(new Vector2(w, AiNpcTerminalStyle.FieldHeight()));
+        fill.SetSize(new Vector2(w, height));
         fill.Reparent(box);
         this.m_fill = fill;
 
@@ -132,6 +146,9 @@ public class AiNpcTerminalField extends AiNpcKeyboardClaimant {
                                       AiNpcTerminalStyle.FieldTextInset() * 0.6, 0.0, 0.0));
         label.SetFitToContent(true);
         label.SetInteractive(false);
+        // Wrapping is Codeware's setter over the widget's own wrappingInfo; there is no
+        // vanilla way to turn it on, only to move where it breaks.
+        label.SetWrapping(this.m_lines > 1, w - AiNpcTerminalStyle.FieldTextInset() * 2.0);
         label.Reparent(box);
         this.m_label = label;
 
@@ -222,7 +239,7 @@ public class AiNpcTerminalField extends AiNpcKeyboardClaimant {
     // the player is typing at the end, and watching the beginning while the caret is off screen
     // is worse than truncating.
     private func Visible() -> String {
-        let budget: Int32 = AiNpcTerminalStyle.FieldVisibleChars();
+        let budget: Int32 = AiNpcTerminalStyle.FieldCharsAcross(this.m_width) * this.m_lines;
         if AiNpcUtf8Len(this.m_text) <= budget {
             return this.m_text;
         }

@@ -30,3 +30,9 @@
 127.0.0 src/r6/scripts/ai_npc/tests/AiNpcTestTransport.reds -- not a version at all. The
       first three octets of 127.0.0.1, the loopback address a transport failure is asserted
       against.
+
+1.23.2 plugin/build.ps1 -- ONNX Runtime, the prebuilt library the embedded speech engine
+      links against. Pinned rather than floated: the model files are exported for an opset
+      this version reads, and a runtime that has moved on reads them differently or not at
+      all. Not a version of anything in this repo.
+1.23.2 plugin/test/run.ps1 -- the same library, named again where the offline suite links it.

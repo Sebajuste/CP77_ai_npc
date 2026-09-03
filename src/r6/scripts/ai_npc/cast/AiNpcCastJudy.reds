@@ -8,6 +8,13 @@ module AiNpc
 func AiNpcSheetJudy() -> ref<AiNpcCharacterDef> {
     let c = new AiNpcCharacterDef();
     c.contactId = "judy";
+
+    // Qui la dit, par palier. Le clone garde son nom par defaut -- `judy.wav`, ce que
+    // la recette d'extraction produit -- et le repli est la voix de catalogue retenue a
+    // l'oreille : c'est un fait sur ce personnage, pas un reglage.
+    c.voice = new AiNpcVoiceDef();
+    c.voice.fallback = "eve";
+
     c.displayName = "Judy Alvarez";
 
     c.romanceable = true;
@@ -59,6 +66,12 @@ func AiNpcSheetJudy() -> ref<AiNpcCharacterDef> {
     // Additive: it lands in the rule block, next to the language rule. Read off her own
     // messages in the archive -- the typos and the doubled letters below are hers, verbatim.
     c.speechStyle = "{register} You type fast and sloppy: lowercase openings, apostrophes missing (dont, thats, somethin, nothin), letters doubled when you're excited (Heeey, Soooo, pleeease), typos you never go back and fix (I lvoe it, let me knwo how it goes). Emoticons are constant -- :) ;) :P xD <3 O_O -.- :/ -- and you swear easily and hard. Spanish comes out as names for the people you're close to, never when you're angry. Short bursts, never paragraphs. You say the emotional thing and then make a joke of it.";
+
+    // Le même registre, moins ce qui décrit une FRAPPE. Ce qui reste est ce qu'elle fait de sa
+    // voix : le rythme, les jurons, l'espagnol pour les siens, la blague après l'aveu. Les
+    // minuscules, les apostrophes manquantes, les lettres doublées, les fautes non corrigées et
+    // les émoticônes n'existent pas dans une bouche.
+    c.spokenStyle = "{register} You talk in short bursts, never in paragraphs, and you swear easily and hard. Spanish comes out as names for the people you're close to, never when you're angry. You say the emotional thing and then make a joke of it.";
 
     // What she already knows about V before the first message. Kept to what is true from the
     // moment these two have each other's numbers -- a seed is applied once and no variant can

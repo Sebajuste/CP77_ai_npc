@@ -60,14 +60,26 @@ func AiNpcSpeakingModel() -> String {
     return AiNpcLlmSlotModel(AiNpcProviderSetting(), AiNpcGetSlotForPass(AiNpcLaneSpeaking()));
 }
 
-// The two per-request knobs, both read as text and both meaning "say nothing" when unset.
+// Le plafond de reponse, et il est toujours envoye.
 //
-// UNSET BY DEFAULT, from measurement: across 31 runs on two providers every reply came back
-// with finish_reason "stop", completions from 282 to 1976 tokens. The only way to truncate a
-// reply today is a cap of the mod's own, and a cap set too low cuts the last thing in a
-// message -- exactly where an [ACTION:...] command sits.
+// LE LAISSER MUET FAIT REFUSER LA REQUETE CHEZ CERTAINS FOURNISSEURS. Sans plafond, ils
+// reservent tout le contexte du modele pour la reponse et repondent : "Requested token count
+// exceeds the model's maximum context length of 131072 tokens. You requested a total of 135244
+// tokens: 4172 from the input messages and 131072 for the completion." Le meme corps passe chez
+// DeepInfra et echoue chez GMICloud, et OpenRouter choisit l'un ou l'autre a chaque requete --
+// d'ou un premier message qui passe et le suivant qui echoue sans que rien n'ait change.
+// Mesure le 2026-09-02, en rejouant deux corps captures en jeu.
+//
+// Zero, la valeur qu'ecrivent tous les settings.json existants, vaut donc le plafond du mod et
+// non plus le silence : la correction atteint les installations deja posees. Ce plafond est
+// celui du slot de dialogue, mesure sur 31 executions -- deux fois la plus longue reponse
+// observee, jetons de brouillon compris.
 func AiNpcGetMaxTokens() -> Int32 {
-    return StringToInt(AiNpcGetSetting("maxTokens", "0"));
+    let asked = StringToInt(AiNpcGetSetting("maxTokens", "0"));
+    if asked > 0 {
+        return asked;
+    }
+    return AiNpcSlotDialogueMaxTokens();
 }
 
 // "low" | "medium" | "high" on the backends that take it. Empty sends nothing.

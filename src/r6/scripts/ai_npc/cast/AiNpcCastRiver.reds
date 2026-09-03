@@ -8,6 +8,13 @@ module AiNpc
 func AiNpcSheetRiver() -> ref<AiNpcCharacterDef> {
     let c = new AiNpcCharacterDef();
     c.contactId = "river_ward";
+
+    // Qui la dit, par palier. Le clone garde son nom par defaut -- `river_ward.wav`, ce que
+    // la recette d'extraction produit -- et le repli est la voix de catalogue retenue a
+    // l'oreille : c'est un fait sur ce personnage, pas un reglage.
+    c.voice = new AiNpcVoiceDef();
+    c.voice.fallback = "michael";
+
     c.displayName = "River Ward";
 
     c.romanceable = true;

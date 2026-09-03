@@ -65,9 +65,10 @@ public abstract class AiNpcStyle {
         return new Color(Cast(255u), Cast(97u), Cast(89u), Cast(255u));
     }
 
-    // The text caret, which has to be visible against both plates and belongs to neither
-    // voice.
-    public static func Caret() -> Color {
+    // What the player is typing, on whichever surface they are typing it: the phone's row, the
+    // terminal's field, the line over a call. Not yet said, so it belongs to neither voice --
+    // and it has to stay visible against every plate the three surfaces draw it on.
+    public static func Typed() -> Color {
         return new Color(Cast(255u), Cast(255u), Cast(78u), Cast(255u));
     }
 

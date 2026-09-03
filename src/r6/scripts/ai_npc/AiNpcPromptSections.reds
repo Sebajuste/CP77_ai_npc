@@ -108,7 +108,9 @@ func AiNpcCoreInteractionRules() -> array<ref<AiNpcRule>> {
 
     // Named rather than enumerated: <mechanics> is where the command vocabulary is written,
     // so pointing at it stays true when a provider or an extension adds one.
-    ArrayPush(rules, AiNpcRuleOf("REACH", "You reach V only by text message, and the commands in <mechanics> are the only way you can act on the world. Use them when the context calls for it, exactly as written."));
+    // Sa première moitié -- « You reach V only by text message » -- est partie dans <channel> :
+    // elle affirmait le médium, et elle avait tort pendant un appel. Ce qui reste vaut partout.
+    ArrayPush(rules, AiNpcRuleOf("REACH", "The commands in <mechanics> are the only way you can act on the world. Use them when the context calls for it, exactly as written."));
     // The test is "did it happen?", never "is it an act?". A blanket ban on acts forbids
     // exactly what the commands do -- a transfer moves real eddies -- from a section read
     // before the commands are announced, which a model resolves by committing to nothing.
@@ -366,6 +368,23 @@ func AiNpcGetToneReminder(contactId: String) -> String {
 //
 // The contact level has two sources and the method wins: a provider implements
 // GetSpeechStyle, a built-in contact says the same through the speechStyle override field.
+// Le registre à voix haute, ou l'écrit à défaut.
+//
+// LE REPLI EST L'ÉCRIT, et le relevé des neuf fiches livrées est ce qui l'a décidé : six
+// décrivent une personne -- « blunt and quick, no hedging », « measured, plain sentences » -- et
+// se lisent tels quels. Ne rien rendre aurait fait perdre son registre à six personnages pour en
+// protéger trois. Le canal, lui, tient les contraintes de rendu quoi qu'il arrive.
+func AiNpcGetSpokenStyle(contactId: String) -> String {
+    let provider = AiNpcProviderFor(contactId);
+    if IsDefined(provider) {
+        let spoken = AiNpcSafeSectionText(provider.GetSpokenStyle(), contactId);
+        if NotEquals(StrLen(spoken), 0) {
+            return spoken;
+        }
+    }
+    return AiNpcGetSpeechStyle(contactId);
+}
+
 func AiNpcGetSpeechStyle(contactId: String) -> String {
     let provider = AiNpcProviderFor(contactId);
     let contactStyle = "";
@@ -449,9 +468,10 @@ func AiNpcCoreRules(contactId: String) -> array<ref<AiNpcRule>> {
     // No friction rule: instructing every character to disagree and snap would legislate a
     // personality over the one each contact describes, from the position that wins ties.
     ArrayPush(rules, AiNpcRuleOf("NEVER", "reflex validation (\"that sounds tough\", \"you are right\"), praise you do not mean, apologies you do not owe."));
-    // Locked. The emoji rule is a display constraint: the game's font has no pictographs, so
-    // one arrives on the phone as a blank box. Typed smileys are ASCII and render.
-    ArrayPush(rules, AiNpcRuleOf("FORM", "write in the first person. No emoji or other pictographs, they cannot be displayed. Typed smileys like :) ;) :/ xD are fine. Send only the next message. Do not speak or act for V. Do not repeat what you already said."));
+    // Locked, et ce qui reste ici vaut sur TOUTES les surfaces. Les emoji et les smileys tapés
+    // sont partis dans <channel> : ce sont des contraintes de rendu, et un écran et une bouche
+    // ne les refusent pas pour la même raison.
+    ArrayPush(rules, AiNpcRuleOf("FORM", "write in the first person. Send only the next message. Do not speak or act for V. Do not repeat what you already said."));
     ArrayPush(rules, AiNpcRuleOf("SETTING", "use Cyberpunk 2077 locations, characters and events."));
     // Locked, and NO EXAMPLE OF THE MARKER. The rule used to show one, and the models copied
     // the string: 22% of replies carried a time marker, 7 of 24 reproducing the illustration

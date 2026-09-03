@@ -226,6 +226,7 @@ SOURCES = {
         "AiNpcGenderStatementFor", "AiNpcPlayerDescriptionFor",
         "AiNpcGetGenderedWord",
     ),
+    "AiNpcChannelPrompt.reds": ("AiNpcChannelPromptFor",),
     "AiNpcContacts.reds": ("AiNpcGetAllContactIds", "AiNpcGetCharacterBio"),
     "AiNpcRomanceExtension.reds": ("AiNpcRomanceRefusalLine",),
     "AiNpcContextData.reds": ("AiNpcSituationClause", "AiNpcQuestHeading",
@@ -301,6 +302,9 @@ def read_all(script_dir):
 
         "languagePrompt": _with_default(harvested["AiNpcBuiltinLanguageRule"]),
         "defaultSpeechStyle": _with_default(harvested["AiNpcDefaultSpeechStyle"]),
+        # <channel> : un texte par medium, la branche `Call` et le retour par defaut qui porte
+        # l'ecrit.
+        "channelPrompt": _with_default(harvested["AiNpcChannelPromptFor"]),
         "genderStatement": cases("AiNpcGenderStatementFor"),
         "genderedWords": cases("AiNpcGetGenderedWord"),
 

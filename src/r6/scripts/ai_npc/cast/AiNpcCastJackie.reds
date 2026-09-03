@@ -8,6 +8,13 @@ module AiNpc
 func AiNpcSheetJackie() -> ref<AiNpcCharacterDef> {
     let c = new AiNpcCharacterDef();
     c.contactId = "jackie";
+
+    // Qui la dit, par palier. Le clone garde son nom par defaut -- `jackie.wav`, ce que
+    // la recette d'extraction produit -- et le repli est la voix de catalogue retenue a
+    // l'oreille : c'est un fait sur ce personnage, pas un reglage.
+    c.voice = new AiNpcVoiceDef();
+    c.voice.fallback = "jean";
+
     c.displayName = "Jackie Welles";
 
     // Facts only, above the line; action criteria below it. Nothing here says what he does,

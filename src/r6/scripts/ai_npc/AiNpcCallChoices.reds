@@ -9,9 +9,19 @@
 // build an InteractionChoiceHubData, push it and its VisualizersInfo into the UIInteractions
 // blackboard, and listen for the input action of the choice that was pressed.
 //
-// THE HUB IS SHARED. Every source of interactions writes into the same value, so a call must
-// clear what it added when it ends -- an option left behind is a prompt on screen with nothing
-// to answer it.
+// THE HUB IS SHARED, ET LE JEU LE REECRIT. Chaque source d'interaction ecrit dans la meme
+// valeur, et le systeme d'interaction du jeu la reconstruit des que le contexte du joueur
+// change : s'approcher d'une porte, s'en eloigner, un vehicule, un combat. Deux consequences,
+// et les deux ont mordu.
+//
+// ON FUSIONNE, ON N'ECRASE PAS. Un hub remplace efface l'interaction que le joueur avait sous
+// les yeux ; on ajoute nos deux lignes a ce qui est la et on ne retire que les notres.
+//
+// ON REAFFIRME. Ecrire une fois au decrochage ne tient pas : la premiere reconstruction du jeu
+// emporte nos deux boutons, et le joueur se retrouve en appel sans rien pour repondre ni
+// raccrocher -- observe en jeu le 2026-09-03. C'est la nature du support, pas un accident : le
+// meme mecanisme fait tourner NightlyNow, qui reajoute ses interactions a intervalle regulier.
+// Le controle est dans AiNpcCallSystem, qui a deja l'horloge et le numero de serie.
 
 module AiNpc
 
@@ -41,15 +51,62 @@ func AiNpcCallChoice(action: CName, label: String) -> InteractionChoiceData {
     return choice;
 }
 
-// Replaces whatever the hub was showing. A call takes the screen, so it takes the prompts with
-// it; restoring what was there is the game's business when the hub is next rebuilt.
+// Ce que le hub montre pour nous, s'il le montre encore. Le reste appartient a qui l'a mis.
+func AiNpcCallChoicesShown() -> Bool {
+    let board = AiNpcCallInteractionBlackboard();
+    if !IsDefined(board) {
+        return false;
+    }
+    let hub: InteractionChoiceHubData = FromVariant(
+        board.GetVariant(GetAllBlackboardDefs().UIInteractions.InteractionChoiceHub));
+    if !hub.active {
+        return false;
+    }
+
+    let i = 0;
+    let count = ArraySize(hub.choices);
+    while i < count {
+        if AiNpcCallOwnsChoice(hub.choices[i]) {
+            return true;
+        }
+        i += 1;
+    }
+    return false;
+}
+
+func AiNpcCallOwnsChoice(choice: InteractionChoiceData) -> Bool {
+    return Equals(choice.inputAction, AiNpcCallWriteAction())
+        || Equals(choice.inputAction, AiNpcCallHangUpAction());
+}
+
+// Ce qui reste du hub une fois nos lignes retirees. Rendu plutot que modifie sur place :
+// l'affichage et l'effacement en ont tous les deux besoin, et pour la meme raison.
+func AiNpcCallWithoutOurs(choices: array<InteractionChoiceData>) -> array<InteractionChoiceData> {
+    let kept: array<InteractionChoiceData>;
+    let i = 0;
+    let count = ArraySize(choices);
+    while i < count {
+        if !AiNpcCallOwnsChoice(choices[i]) {
+            ArrayPush(kept, choices[i]);
+        }
+        i += 1;
+    }
+    return kept;
+}
+
+// Pose nos deux lignes dans le hub, en gardant celles des autres. Idempotent : appelee a
+// chaque reaffirmation, elle remplace les notres au lieu de les empiler.
 func AiNpcCallShowChoices(writeLabel: String, hangUpLabel: String) -> Void {
     let board = AiNpcCallInteractionBlackboard();
     if !IsDefined(board) {
         return;
     }
 
-    let hub: InteractionChoiceHubData;
+    let hub: InteractionChoiceHubData = FromVariant(
+        board.GetVariant(GetAllBlackboardDefs().UIInteractions.InteractionChoiceHub));
+    let others = AiNpcCallWithoutOurs(hub.choices);
+
+    hub.choices = others;
     hub.active = true;
     ArrayPush(hub.choices, AiNpcCallChoice(AiNpcCallWriteAction(), writeLabel));
     ArrayPush(hub.choices, AiNpcCallChoice(AiNpcCallHangUpAction(), hangUpLabel));
@@ -62,18 +119,30 @@ func AiNpcCallShowChoices(writeLabel: String, hangUpLabel: String) -> Void {
     board.SetVariant(GetAllBlackboardDefs().UIInteractions.VisualizersInfo, ToVariant(visuals), true);
 }
 
-// An empty, inactive hub: the prompts go away. Called from every ending, including the ones
-// nobody chose.
+// Retire nos deux lignes et laisse le reste. Appelee depuis chaque fin d'appel, y compris
+// celles que personne n'a choisies.
+//
+// Le hub ne se desactive que s'il ne restait que nous : le desactiver alors qu'une porte est
+// sous les yeux du joueur ferait disparaitre SON invite, et le jeu ne la redessinerait qu'au
+// prochain changement de contexte.
 func AiNpcCallHideChoices() -> Void {
     let board = AiNpcCallInteractionBlackboard();
     if !IsDefined(board) {
         return;
     }
 
-    let hub: InteractionChoiceHubData;
-    hub.active = false;
+    let hub: InteractionChoiceHubData = FromVariant(
+        board.GetVariant(GetAllBlackboardDefs().UIInteractions.InteractionChoiceHub));
+    let others = AiNpcCallWithoutOurs(hub.choices);
+
+    hub.choices = others;
+    hub.active = ArraySize(others) > 0;
 
     let visuals: VisualizersInfo;
+    if hub.active {
+        visuals.activeVisId = hub.id;
+        visuals.visIds = [hub.id];
+    }
 
     board.SetVariant(GetAllBlackboardDefs().UIInteractions.InteractionChoiceHub, ToVariant(hub), true);
     board.SetVariant(GetAllBlackboardDefs().UIInteractions.VisualizersInfo, ToVariant(visuals), true);

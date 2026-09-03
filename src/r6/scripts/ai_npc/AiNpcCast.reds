@@ -73,6 +73,7 @@ func AiNpcCopySheet(source: ref<AiNpcCharacterDef>) -> ref<AiNpcCharacterDef> {
     copy.romance = source.romance;
     copy.liveContext = source.liveContext;
     copy.speechStyle = source.speechStyle;
+    copy.spokenStyle = source.spokenStyle;
     copy.romanceable = source.romanceable;
     copy.romanced = source.romanced;
     copy.romanceFact = source.romanceFact;
@@ -80,6 +81,9 @@ func AiNpcCopySheet(source: ref<AiNpcCharacterDef>) -> ref<AiNpcCharacterDef> {
     copy.enabled = source.enabled;
     copy.source = source.source;
     copy.prompts = source.prompts;
+    // Partage plutot que copie, comme `prompts` juste au-dessus : personne ne mute une
+    // definition de voix apres coup, et le lecteur JSON en construit une neuve.
+    copy.voice = source.voice;
     copy.intent = source.intent;
 
     let i = 0;

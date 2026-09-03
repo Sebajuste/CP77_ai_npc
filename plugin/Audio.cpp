@@ -6,6 +6,7 @@
 
 #include <cmath>
 #include <cstring>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -15,18 +16,52 @@ namespace ainpc::audio
 {
 namespace
 {
-// One voice, and the state that outlives the call that started it. waveOut needs the sample
-// memory and the WAVEHDR to stay put until the device reports it is done with them, which is
-// long after Play() has returned to the game thread.
+// Un morceau de la prise de parole. waveOut veut que les echantillons ET l'en-tete restent en
+// place jusqu'a ce qu'il rende le morceau -- longtemps apres que l'appelant est reparti -- donc
+// chacun possede sa memoire et ne bouge plus. `unique_ptr` parce que la file grandit pendant
+// que le pilote tient des pointeurs dedans : un vecteur qui se reallouerait les invaliderait.
+struct Chunk
+{
+    std::vector<uint8_t> samples;
+    WAVEHDR header{};
+    bool prepared = false;
+};
+
+// One voice, and the state that outlives the call that started it.
 struct Voice
 {
     std::mutex mutex;
     HWAVEOUT device = nullptr;
-    WAVEHDR header{};
-    std::vector<uint8_t> samples;
+    std::vector<std::unique_ptr<Chunk>> chunks;
     std::thread drain;
+    // Le format de la prise en cours. Une phrase qui arrive au meme format continue la prise
+    // ouverte ; un format different est une autre voix, et celle-la remplace.
+    Format format{};
     bool playing = false;
+    // Plus aucun morceau ne viendra. C'est ce qui autorise le fil de vidange a fermer : sans
+    // cette marque il fermerait entre deux morceaux d'une meme phrase.
+    bool closed = false;
     std::string device_name;
+
+    // A LA FIN DU PROCESSUS, et c'est le fil de vidange qui l'exige.
+    //
+    // Il se termine tout seul quand la prise est finie, mais l'objet std::thread reste
+    // JOIGNABLE tant que personne ne l'a joint -- et detruire un std::thread joignable appelle
+    // std::terminate. Le mod ne le voyait pas parce que speech::Shutdown() appelle Stop(), qui
+    // joint ; un banc qui sort sans Stop plantait a l'exit, apres avoir tout joue correctement.
+    // Mesure du 2026-09-02, code de sortie 0xC0000409.
+    ~Voice()
+    {
+        if (device != nullptr)
+        {
+            waveOutReset(device);
+        }
+        closed = true;
+        if (drain.joinable())
+        {
+            drain.join();
+        }
+    }
 };
 
 Voice& TheVoice()
@@ -35,7 +70,7 @@ Voice& TheVoice()
     return voice;
 }
 
-// Closes the device and releases the buffer, on the drain thread or on Stop's caller.
+// Closes the device and releases every buffer, on the drain thread or on Stop's caller.
 // waveOutReset must have run first, or unpreparing a header still queued fails.
 void Release(Voice& aVoice)
 {
@@ -43,12 +78,31 @@ void Release(Voice& aVoice)
     {
         return;
     }
-    waveOutUnprepareHeader(aVoice.device, &aVoice.header, sizeof(WAVEHDR));
+    for (auto& chunk : aVoice.chunks)
+    {
+        if (chunk->prepared)
+        {
+            waveOutUnprepareHeader(aVoice.device, &chunk->header, sizeof(WAVEHDR));
+        }
+    }
     waveOutClose(aVoice.device);
     aVoice.device = nullptr;
-    aVoice.header = WAVEHDR{};
-    aVoice.samples.clear();
+    aVoice.chunks.clear();
     aVoice.playing = false;
+    aVoice.closed = false;
+}
+
+// Tout ce qui a ete ecrit a-t-il ete rendu ? Sous le verrou de l'appelant.
+bool AllDone(const Voice& aVoice)
+{
+    for (const auto& chunk : aVoice.chunks)
+    {
+        if ((chunk->header.dwFlags & WHDR_DONE) == 0)
+        {
+            return false;
+        }
+    }
+    return true;
 }
 
 // Joins the previous voice before starting a new one. Called with the lock NOT held: the
@@ -63,6 +117,11 @@ void StopAndJoin()
         {
             waveOutReset(voice.device);
         }
+        // FERMEE, et pas seulement reinitialisee. Le fil de vidange ne sort que sur « close et
+        // tout rendu » : sans cette ligne, un Stop() au milieu d'une prise le laisserait tourner
+        // pour toujours et le join ci-dessous ne reviendrait jamais. Un reset veut dire qu'il ne
+        // viendra plus rien, ce qui est exactement ce que `closed` affirme.
+        voice.closed = true;
         previous = std::move(voice.drain);
     }
     if (previous.joinable())
@@ -175,21 +234,37 @@ Sound Tone(double aSeconds, double aHertz, double aAmplitude)
     return sound;
 }
 
-Status Play(const void* aSamples, size_t aBytes, const Format& aFormat)
+Status Open(const Format& aFormat)
 {
-    if (aSamples == nullptr || aBytes == 0)
-    {
-        return Status::EmptyBuffer;
-    }
     if (aFormat.channels == 0 || aFormat.sampleRate == 0 ||
         (aFormat.bitsPerSample != 8 && aFormat.bitsPerSample != 16))
     {
         return Status::UnsupportedFormat;
     }
 
+    Voice& voice = TheVoice();
+    {
+        // UNE REPLIQUE N'EST PAS UNE SUITE DE REPLIQUES. Le moteur rend phrase par phrase et la
+        // file les recoit une par une ; chaque phrase ouvrait sa propre prise, et l'ouverture
+        // commence par arreter ce qui joue. La deuxieme phrase coupait donc la premiere au
+        // milieu d'un mot -- mesure en jeu le 2026-09-02, sur une reponse de deux phrases.
+        //
+        // Une prise encore vivante se poursuit : les morceaux de la phrase suivante se rangent
+        // derriere ceux qui restent. `closed` retombe a faux avant que le fil de vidange ne
+        // relise la marque, et il la relit sous ce meme verrou.
+        std::lock_guard<std::mutex> guard(voice.mutex);
+        if (voice.device != nullptr && voice.format.sampleRate == aFormat.sampleRate &&
+            voice.format.channels == aFormat.channels &&
+            voice.format.bitsPerSample == aFormat.bitsPerSample)
+        {
+            voice.closed = false;
+            voice.playing = true;
+            return Status::Ok;
+        }
+    }
+
     StopAndJoin();
 
-    Voice& voice = TheVoice();
     std::lock_guard<std::mutex> guard(voice.mutex);
 
     WAVEFORMATEX wave{};
@@ -207,25 +282,13 @@ Status Play(const void* aSamples, size_t aBytes, const Format& aFormat)
     }
 
     voice.device_name = NameOfOutput(voice.device);
-
-    voice.samples.assign(static_cast<const uint8_t*>(aSamples),
-                         static_cast<const uint8_t*>(aSamples) + aBytes);
-    voice.header = WAVEHDR{};
-    voice.header.lpData = reinterpret_cast<LPSTR>(voice.samples.data());
-    voice.header.dwBufferLength = static_cast<DWORD>(voice.samples.size());
-
-    if (waveOutPrepareHeader(voice.device, &voice.header, sizeof(WAVEHDR)) != MMSYSERR_NOERROR ||
-        waveOutWrite(voice.device, &voice.header, sizeof(WAVEHDR)) != MMSYSERR_NOERROR)
-    {
-        waveOutClose(voice.device);
-        voice.device = nullptr;
-        voice.samples.clear();
-        return Status::WriteFailed;
-    }
-
+    voice.format = aFormat;
     voice.playing = true;
-    // The device owns the buffer until WHDR_DONE. Waiting for it is what the caller must not
-    // do, so it happens here, on a thread whose whole job is to hand the memory back.
+    voice.closed = false;
+
+    // Le peripherique possede chaque morceau jusqu'a WHDR_DONE. Attendre est ce que l'appelant
+    // ne doit pas faire, donc cela se passe ici, sur un fil dont c'est tout le travail : rendre
+    // la memoire au fur et a mesure, et fermer quand la prise est finie et vide.
     voice.drain = std::thread(
         []()
         {
@@ -234,7 +297,11 @@ Status Play(const void* aSamples, size_t aBytes, const Format& aFormat)
             {
                 {
                     std::lock_guard<std::mutex> guard(self.mutex);
-                    if (self.device == nullptr || (self.header.dwFlags & WHDR_DONE) != 0)
+                    if (self.device == nullptr)
+                    {
+                        return;
+                    }
+                    if (self.closed && AllDone(self))
                     {
                         Release(self);
                         return;
@@ -245,6 +312,71 @@ Status Play(const void* aSamples, size_t aBytes, const Format& aFormat)
         });
 
     return Status::Ok;
+}
+
+Status Push(const void* aSamples, size_t aBytes)
+{
+    if (aSamples == nullptr || aBytes == 0)
+    {
+        return Status::EmptyBuffer;
+    }
+
+    Voice& voice = TheVoice();
+    std::lock_guard<std::mutex> guard(voice.mutex);
+    // Une file fermee ne se rouvre pas : un morceau ecrit apres la fin de sa prise jouerait
+    // hors de son tour, ou derriere la suivante.
+    if (voice.device == nullptr || voice.closed)
+    {
+        return Status::NoDevice;
+    }
+
+    auto chunk = std::make_unique<Chunk>();
+    chunk->samples.assign(static_cast<const uint8_t*>(aSamples),
+                          static_cast<const uint8_t*>(aSamples) + aBytes);
+    chunk->header.lpData = reinterpret_cast<LPSTR>(chunk->samples.data());
+    chunk->header.dwBufferLength = static_cast<DWORD>(chunk->samples.size());
+
+    if (waveOutPrepareHeader(voice.device, &chunk->header, sizeof(WAVEHDR)) != MMSYSERR_NOERROR)
+    {
+        return Status::WriteFailed;
+    }
+    chunk->prepared = true;
+    if (waveOutWrite(voice.device, &chunk->header, sizeof(WAVEHDR)) != MMSYSERR_NOERROR)
+    {
+        waveOutUnprepareHeader(voice.device, &chunk->header, sizeof(WAVEHDR));
+        return Status::WriteFailed;
+    }
+
+    voice.chunks.push_back(std::move(chunk));
+    return Status::Ok;
+}
+
+void Close()
+{
+    Voice& voice = TheVoice();
+    std::lock_guard<std::mutex> guard(voice.mutex);
+    voice.closed = true;
+}
+
+// La replique entiere d'un coup : la meme file, ouverte, remplie et fermee sans respirer. Tout
+// ce qui appelait Play() avant le streaming continue de marcher a l'identique -- y compris le
+// remplacement, que l'arret explicite conserve maintenant que l'ouverture, elle, prolonge.
+Status Play(const void* aSamples, size_t aBytes, const Format& aFormat)
+{
+    if (aSamples == nullptr || aBytes == 0)
+    {
+        return Status::EmptyBuffer;
+    }
+
+    Stop();
+    const Status opened = Open(aFormat);
+    if (opened != Status::Ok)
+    {
+        return opened;
+    }
+    const Status pushed = Push(aSamples, aBytes);
+    Close();
+    return pushed;
 }
 
 Status PlayWav(const void* aImage, size_t aBytes)

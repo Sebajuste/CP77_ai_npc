@@ -119,15 +119,49 @@ func AiNpcTestSlotOverlay(t: ref<AiNpcTestRunner>) -> Void {
         AiNpcLlmRequestTimeout(AiNpcProvider.OpenRouter, null) > 0.0);
 }
 
+// Une requete part toujours avec un plafond de reponse.
+//
+// Sans lui, certains fournisseurs derriere OpenRouter reservent tout le contexte du modele et
+// refusent la requete ; le meme corps passe chez l'un et echoue chez l'autre, au hasard du
+// routage. Le plafond voyage comme tout parametre de fil : le slot le porte, l'incrustation le
+// copie. Verifie sur la chaine envoyee, et par sa valeur -- la cle ne s'ecrit que dans la
+// table d'alias.
+func AiNpcTestCompletionCap(t: ref<AiNpcTestRunner>) -> Void {
+    t.Check("cap/an unset setting still asks for a ceiling", AiNpcGetMaxTokens() > 0);
+
+    let slot = new AiNpcSlot();
+    slot.name = AiNpcSlotDefaultName();
+    slot.params = AiNpcSlotAliases("vendor/model", 77, "");
+
+    let router = AiNpcLlmChatBody(AiNpcProvider.OpenRouter, slot, "systeme", "V: salut");
+    t.Check("cap/the slot carries it onto the body", StrContains(router, "77"));
+
+    let cli = AiNpcLlmChatBody(AiNpcProvider.ClaudeCli, slot, "systeme", "V: salut");
+    t.Check("cap/both body shapes carry it", StrContains(cli, "77"));
+
+    // Un slot muet ne fabrique rien : c'est le reglage, plus haut, qui garantit le plafond.
+    slot.params = AiNpcSlotAliases("vendor/model", 0, "");
+    let unset = AiNpcLlmChatBody(AiNpcProvider.OpenRouter, slot, "systeme", "V: salut");
+    t.Check("cap/a slot asked for nothing writes nothing", !StrContains(unset, "77"));
+}
+
 /// The pass table ///
 
 func AiNpcTestPassSources(t: ref<AiNpcTestRunner>) -> Void {
     // A pass is a lane, by name: the usage report already totals per lane, and a second
     // vocabulary would be a mapping table nobody maintains.
     let names = AiNpcPassNames();
-    t.EqInt("pass/this version makes five passes", ArraySize(names), 5);
+    t.EqInt("pass/this version makes six passes", ArraySize(names), 6);
     t.Check("pass/the speaking lane is a pass", ArrayContains(names, AiNpcLaneSpeaking()));
     t.Check("pass/the test lane is a pass", ArrayContains(names, AiNpcLaneTest()));
+
+    // Le canal choisit la passe, et c'est la seule chose qui separe une replique lue a voix
+    // haute d'un SMS. Verifie sur ce que le choisisseur rend, parce qu'il a deja existe sans
+    // appelant : la table des passes etait juste, et aucun appel ne la traversait.
+    let spoken = AiNpcPassBuilderFor(AiNpcChannelId.Call, "judy", "", "", "salut", false);
+    t.EqString("pass/a call is sent on the holo pass", spoken.Pass(), AiNpcLaneHolo());
+    let written = AiNpcPassBuilderFor(AiNpcChannelId.Text, "judy", "", "", "salut", false);
+    t.EqString("pass/a text is sent on the speaking pass", written.Pass(), AiNpcLaneSpeaking());
 
     // The speaking lane has two askmakers and one source: which of the two runs is decided by
     // SpeaksFirst() at the moment of sending, and a file that could name one would be a file

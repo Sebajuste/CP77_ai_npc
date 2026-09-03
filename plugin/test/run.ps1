@@ -26,6 +26,10 @@ $outDir = Join-Path $root "plugin\build\test"
 $sources = @(
     "plugin\Audio.cpp",
     "plugin\Speech.cpp",
+    "plugin\SapiVoice.cpp",
+    "plugin\PocketVoice.cpp",
+    "plugin\VoiceArchive.cpp",
+    "plugin\VoiceMake.cpp",
     "plugin\Json.cpp",
     "plugin\Stream.cpp",
     "plugin\Transport.cpp",
@@ -41,6 +45,26 @@ foreach ($source in $sources) {
     if (-not (Test-Path $source)) { throw "Missing source: $source" }
 }
 
+# La voie parlee choisit entre deux moteurs, donc les deux se lient -- y compris ici, ou aucun
+# des deux ne parle : la suite n'assert que le repli, sur une chaine fixe. Ce qui vient du
+# moteur embarque est sa bibliotheque, pas son comportement.
+#
+# PocketVoice.cpp ne declare l'API C que pour l'appeler ; l'editeur de liens veut quand meme la
+# trouver, donc le moteur doit avoir ete bati.
+$pocketDep = Join-Path $root "vendor\pocket-deps"
+$ortLib    = Join-Path $pocketDep "onnxruntime-win-x64-1.23.2\lib\onnxruntime.lib"
+$spmLib    = Join-Path $pocketDep "build\sentencepiece.lib"
+$engine    = Join-Path $root "vendor\PocketTTS.cpp\pocket_tts.cpp"
+$ww2ogg    = Join-Path $root "vendor\ww2ogg"
+$stb       = Join-Path $root "vendor\stb"
+foreach ($needed in @($ortLib, $spmLib, $engine, "$ww2ogg\src\wwriff.cpp", "$stb\stb_vorbis.c")) {
+    if (-not (Test-Path $needed)) {
+        throw "The speech engine is not built: $needed is missing. Run: powershell -File tools\pocket-engineuild.ps1 -Fetch, then patch-runtime.py, then build.ps1"
+    }
+}
+$sources += $engine
+$sources += "$ww2ogg\src\wwriff.cpp", "$ww2ogg\src\codebook.cpp", "$ww2ogg\src\crc.c"
+
 $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
 if (-not (Test-Path $vswhere)) { throw "Visual Studio not found (vswhere.exe missing)." }
 
@@ -55,7 +79,8 @@ New-Item -ItemType Directory -Path $outDir -Force | Out-Null
 $quoted = ($sources | ForEach-Object { "`"$_`"" }) -join " "
 # winmm.lib: Audio.cpp plays a buffer through waveOut, which is the only path that needs
 # no file on disk anywhere.
-$compile = "cl.exe /nologo /EHsc /std:c++20 /W3 /MD /O2 /DNDEBUG $quoted /Fe:ai_npc_tests.exe /link winmm.lib ole32.lib"
+$includes = "/I`"$root\plugin`" /I`"$pocketDep\onnxruntime-win-x64-1.23.2\include`" /I`"$pocketDep\sentencepiece\src`" /I`"$pocketDep\dr_libs`" /I`"$ww2ogg\src`" /I`"$stb`""
+$compile = "cl.exe /nologo /EHsc /std:c++20 /W3 /MD /O2 /DNDEBUG /DPTT_SHARED_LIB $includes $quoted /Fe:ai_npc_tests.exe /link winmm.lib ole32.lib ws2_32.lib `"$spmLib`" `"$ortLib`""
 
 Write-Output "Building the plugin test host..."
 $log = & cmd.exe /c "`"$vcvars`" >nul 2>&1 && cd /d `"$outDir`" && $compile" 2>&1

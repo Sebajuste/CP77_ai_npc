@@ -256,6 +256,7 @@ nothing is sent; present means a state held until the bound you give.
 | Method | Returns | |
 |---|---|---|
 | `OpenConversation(contactId)` | `Int32` open code | Selects and opens the chat, wherever the player is. Idempotent |
+| `CallContact(contactId)` | `Int32` call code | Rings this character's holo, as the game's own call would. **Places** the call; answering is the player's |
 | `ForgetConversation(contactId)` | `Bool` | Erases a thread, irreversibly. Refused for a contact your mod did not declare. Always logged |
 | `TakeFloor(contactId, opt maxSeconds: Float)` | `Bool` | Exclusive control: only your `GetScriptedReply` is consulted, no model is asked, nobody else may write. A lease, not a lock — `0` takes the default, re-taking extends |
 | `ReleaseFloor(contactId)` | `Bool` | Ends the scene explicitly rather than letting the lease lapse |
@@ -266,6 +267,28 @@ nothing is sent; present means a state held until the bound you give.
 | `RegisterListener(listener)` | `Bool` | Watches without taking part. Idempotent by subject |
 | `UnregisterListener(subject)` | `Bool` | |
 | `UnregisterAll()` | `Void` | Everything this mod registered: extensions, listeners, held floors, waiting statements |
+
+### The call codes
+
+A call is not a thread opened out loud, and it refuses for reasons a thread has no equivalent
+of. The codes are separate from the open codes on purpose: reusing `AiNpcOpenAlreadyThere()`
+would make a call already in progress read as a success.
+
+| Code | Means |
+|---|---|
+| `AiNpcCallOk()` | Ringing |
+| `AiNpcCallBusy()` | A call is already up. `AiNpcCharacterOnCall()` says with whom |
+| `AiNpcCallNotDriven()` | Nothing drives that contact — a configuration mistake |
+| `AiNpcCallNoSession()` | No save loaded, or ai_npc not up yet. Transient |
+| `AiNpcCallEmpty()` | Empty contact id |
+
+**What a call is, and is not.** What is said on a call does not appear as a written message,
+while the memory stays shared — that is the whole of `docs/PLAN_HOLO_CHANNEL.md`. A caller that
+wants the thread wants `OpenConversation`.
+
+**Why it rings rather than connects.** The character's voice is prepared during the ring:
+cutting the reference out of the player's own archives and cloning it costs about seven seconds,
+and the ring is the only moment nobody is waiting through.
 
 ### `AiNpcClient` — commands, tags and the world
 
@@ -302,6 +325,7 @@ nothing is sent; present means a state held until the bound you give.
 | `AiNpcListBuiltInCharacters()` | `array<String>` | ai_npc's own cast |
 | `AiNpcListDrivableCharacters()` | `array<String>` | The built-ins plus every registered provider whose `IsAvailable()` is true |
 | `AiNpcCharacterInOpenChat()` | `ref<AiNpcContactProvider>` | The provider behind the open chat, or null |
+| `AiNpcCharacterOnCall()` | `String` | Who V is on a holo call with, `""` for none. Keeps naming the contact after the call ends, until the next one is placed |
 | `AiNpcReadConversation(contactId)` | `array<ref<AiNpcMessage>>` | The whole stored thread, oldest first. A snapshot. The expensive call here |
 | `AiNpcPlayerHasWritten(contactId)` | `Bool` | Cheap enough to poll; the predicate a life cycle hangs on |
 | `AiNpcFloorHeldBy(contactId)` | `String` | Who holds the exclusive turn, `""` when free |

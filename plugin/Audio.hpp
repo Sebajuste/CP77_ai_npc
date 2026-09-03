@@ -56,6 +56,25 @@ const char* Describe(Status aStatus);
 // two characters talking over each other is not a feature.
 Status Play(const void* aSamples, size_t aBytes, const Format& aFormat);
 
+// UNE PRISE DE PAROLE QUI ARRIVE EN MORCEAUX.
+//
+// Play() veut la replique entiere avant d'en jouer la premiere milliseconde, et c'est ce qui
+// coutait le plus a la voie parlee : le moteur produit son premier morceau en 123 ms et
+// personne ne l'entendait avant la fin de la synthese, une a deux secondes plus tard.
+//
+// « Une voix a la fois » ne bouge pas -- c'est la meme voix, elle arrive en plusieurs fois.
+// Open() coupe ce qui jouait, exactement comme un second Play().
+//
+//   Open(format)          ouvre le peripherique et coupe la prise precedente
+//   Push(bytes)           met un morceau a la file ; il joue apres ceux deja ecrits
+//   Close()               plus rien ne viendra ; le peripherique se ferme une fois vide
+//
+// Push() apres Close(), ou sans Open(), rend NoDevice : une file fermee ne se rouvre pas, et
+// une voix qui reprendrait apres sa fin serait un morceau joue hors de son tour.
+Status Open(const Format& aFormat);
+Status Push(const void* aSamples, size_t aBytes);
+void Close();
+
 // The same, from a WAV image held in memory: header and samples as a file would have them,
 // but never written down. The whole RIFF walk is here and validates as one -- a caller gets
 // a Status, never a half-parsed header.

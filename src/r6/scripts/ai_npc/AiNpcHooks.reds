@@ -162,6 +162,24 @@ protected cb func OnAction(action: ListenerAction, consumer: ListenerActionConsu
     return wrappedMethod(action, consumer);
 }
 
+// Escape opens the pause menu from here, on the key going up, and this controller is where that
+// is decided. A call with its line focused answers first: the key means "stop typing", and the
+// menu must not also open.
+//
+// The action is consumed as well as refused, the way the vanilla branch does once it has spawned
+// the menu: this controller is not the only listener registered on OpenPauseMenu.
+@wrapMethod(gameuiInGameMenuGameController)
+protected cb func OnAction(action: ListenerAction, consumer: ListenerActionConsumer) -> Bool {
+    let call = AiNpcCallSystem.Get();
+    if IsDefined(call)
+        && call.ReportPauseAction(ListenerAction.GetName(action), ListenerAction.GetType(action)) {
+        ListenerActionConsumer.Consume(consumer);
+        return true;
+    }
+
+    return wrappedMethod(action, consumer);
+}
+
 @wrapMethod(PlayerPuppet)
 protected cb func OnCombatStateChanged(newState: Int32) -> Bool {  // newState uses the values specified in enum PlayerCombatState
     let r: Bool = wrappedMethod(newState);
