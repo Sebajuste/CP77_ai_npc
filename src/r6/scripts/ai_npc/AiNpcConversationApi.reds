@@ -107,7 +107,7 @@ func AiNpcAppendMessage(contactId: String, message: String, fromPlayer: Bool, op
     }
 
     store.Append(contactId, filed, fromPlayer, channel);
-    AiNpcPublishMessage(contactId, filed, fromPlayer, sourceId, systemNotice);
+    AiNpcPublishMessage(contactId, filed, fromPlayer, sourceId, systemNotice, channel);
     return true;
 }
 

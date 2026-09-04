@@ -34,6 +34,23 @@ abstract class AiNpcChannel extends IScriptable {
         return AiNpcChannelId.Text;
     }
 
+    // Le même canal, sous le nom que le dehors lit. Une chaîne et non l'entier : l'ensemble est
+    // ouvert, donc un consommateur qui compare doit pouvoir recevoir un nom qu'il ne connaît
+    // pas plutôt qu'un numéro qu'il croit épuiser. `AiNpcChannelNames` épelle ceux qui existent.
+    //
+    // "text" et non "sms" : le terminal est écrit lui aussi, et il n'envoie aucun message.
+    public func Name() -> String {
+        return AiNpcTextChannel();
+    }
+
+    // Une bouche dira ceci, donc pas d'emoji, pas de didascalie, les nombres en toutes lettres.
+    //
+    // C'EST LA PROPRIÉTÉ SUR LAQUELLE ON BRANCHE, et non l'identité : une conversation en face à
+    // face est parlée comme un appel l'est, et un test contre l'appel la traiterait comme un SMS.
+    public func IsSpoken() -> Bool {
+        return false;
+    }
+
     // La moitié du tour qui appartient au joueur, dans le seul ordre juste. La session écho la
     // ligne, arrête l'état de frappe et suit la conversation ; l'appel à la voie et le dépôt
     // sont à moi.

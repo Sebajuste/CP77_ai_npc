@@ -176,7 +176,7 @@ public class AiNpcHttpSystem extends ScriptableSystem {
   private func TryScriptedReply(contactId: String, playerMessage: String) -> Bool {
     // Two sources, resolved in AiNpcResolveScriptedReply: the extension holding the floor, if
     // any, then the contact's own provider.
-    let reply = AiNpcResolveScriptedReply(contactId, playerMessage);
+    let reply = AiNpcResolveScriptedReply(contactId, playerMessage, this.m_generation.Channel());
     if Equals(StrLen(reply), 0) {
       return false;       // no opinion: let the model answer
     }
@@ -463,7 +463,7 @@ public class AiNpcHttpSystem extends ScriptableSystem {
       // Every command in one pass, against the same table the prompt was rendered from. What
       // comes back says which brackets were run, which name a real command the model fumbled,
       // and which name nothing at all -- three cases the caller has to treat differently.
-      let outcome = AiNpcApplyActions(contactId, text);
+      let outcome = AiNpcApplyActions(contactId, text, this.m_generation.Channel());
       processedText = outcome.text;
 
       // A fumbled command is worth a second, tiny request; an invented one usually is not, but

@@ -10,6 +10,7 @@ function, why an extension has no `GetBio`, what each rule was measured against 
 
 **Contents** — [Choosing a lane](#choosing-a-lane) · [Hello world](#hello-world) ·
 [How it fits together](#how-it-fits-together) · [Script reference](#script-reference) ·
+[Channels](#channels) ·
 [JSON reference](#json-reference) · [How-tos](#how-tos) ·
 [Where each piece lands](#where-each-piece-lands) · [Traps](#traps)
 
@@ -326,7 +327,7 @@ and the ring is the only moment nobody is waiting through.
 | `AiNpcListDrivableCharacters()` | `array<String>` | The built-ins plus every registered provider whose `IsAvailable()` is true |
 | `AiNpcCharacterInOpenChat()` | `ref<AiNpcContactProvider>` | The provider behind the open chat, or null |
 | `AiNpcCharacterOnCall()` | `String` | Who V is on a holo call with, `""` for none. Keeps naming the contact after the call ends, until the next one is placed |
-| `AiNpcReadConversation(contactId)` | `array<ref<AiNpcMessage>>` | The whole stored thread, oldest first. A snapshot. The expensive call here |
+| `AiNpcReadConversation(contactId)` | `array<ref<AiNpcMessage>>` | The whole stored thread, oldest first — **written and spoken lines together**, see [Channels](#channels). A snapshot. The expensive call here |
 | `AiNpcPlayerHasWritten(contactId)` | `Bool` | Cheap enough to poll; the predicate a life cycle hangs on |
 | `AiNpcFloorHeldBy(contactId)` | `String` | Who holds the exclusive turn, `""` when free |
 | `AiNpcExplainCharacter(contactId)` | `String` | Everything acting on one contact, as text: declarer, extensions, tag counts, listeners, floor. **Read this when something is wrong** |
@@ -367,6 +368,7 @@ compared ones occupy disjoint ranges, so a confusion between two vocabularies ma
 | Action results | `AiNpcActionDone(opt note)`, `AiNpcActionRefused(opt note)` | |
 | Scope tags | `AiNpcEveryContactTag()` = `"ainpc:contact"`, `AiNpcContactTagFor(id)` = `"contact:<id>"` | |
 | Command heads | `AiNpcTransferHead()` = `"[ACTION:GIVE_EDDIES:"` | |
+| Channel names | `AiNpcTextChannel()` = `"text"`, `AiNpcHoloChannel()` = `"holo"` | **Open set** — see [Channels](#channels) |
 
 Ticket states, in the order they matter to a fallback:
 
@@ -378,6 +380,32 @@ Ticket states, in the order they matter to a fallback:
 | `Unknown` | the ticket fell out of the bounded ring. **Not a failure** | no |
 | `Cancelled` | you withdrew it | no |
 | `Refused` | the player turned unprompted messages off | no — it is the same gesture they refused |
+
+### Channels
+
+A conversation is held over a medium: the phone thread today, a holo call since the call lane
+landed, a face-to-face channel next. Every place ai_npc hands you a line or asks you a question
+says which — as a **name plus two predicates**, on `AiNpcMessageEvent`, on `AiNpcContactContext`,
+and as three methods on `AiNpcMessage`.
+
+| | |
+|---|---|
+| `channel` / `Channel()` | `"text"`, `"holo"`, or the name of a channel your build has never heard of |
+| `spoken` / `IsSpoken()` | a voice says this: no emoji, no stage directions, numbers and times in words |
+| `showsInThread` / `ShowsInThread()` | the written thread paints this line |
+
+> **Compare the name for a channel you know; branch on the predicates for every other.** The set
+> is open. A listener that writes `if holo { … } else { /* texting */ }` swallows the next
+> channel into its `else` — no error, no log, and it ships that way. `spoken` and
+> `showsInThread` answer "how do I render this", and a channel added later carries them, so code
+> already written stays right without being recompiled.
+
+The names are spelled by `AiNpcTextChannel()` and `AiNpcHoloChannel()` — never typed as string
+literals, as with scope tags.
+
+**What this changed for a reader.** `AiNpcReadConversation` returns one chronology: what was
+typed and what was said out loud, in order. A mod mirroring a thread must skip what
+`ShowsInThread()` refuses, or it will paint a phone call as a series of SMS.
 
 ### `AiNpcContactProvider` — declaring a character
 
@@ -481,14 +509,15 @@ Plus `GetSubject()` and `GetContactIds()` — empty means every contact, which i
 | `language` | two-letter code, ai_npc's resolution |
 | `speaksOfPlayerAsMale`, `isRomanced`, `isBuiltIn` | |
 | `playerText` | set for `GetScriptedReply`, empty everywhere else |
+| `channel`, `spoken`, `showsInThread` | the medium this turn is held over — see [Channels](#channels). Read `spoken` before you write a scripted reply: a voice will say it |
 | `tags` | populated on the action lane, empty elsewhere. `HasTag(tag) -> Bool` |
 
 Read `tags` rather than keying behaviour on a contact id list.
 
 | Class | Fields |
 |---|---|
-| `AiNpcMessage` | `fromPlayer: Bool`, `text: String`, `gameTimeSeconds: Int32` |
-| `AiNpcMessageEvent` | `contactId`, `text`, `fromPlayer`, `sourceId` (your own mod id for lines **you** wrote), `systemNotice` |
+| `AiNpcMessage` | `fromPlayer: Bool`, `text: String`, `gameTimeSeconds: Int32`; `Channel() -> String`, `IsSpoken() -> Bool`, `ShowsInThread() -> Bool` |
+| `AiNpcMessageEvent` | `contactId`, `text`, `fromPlayer`, `sourceId` (your own mod id for lines **you** wrote), `systemNotice`, `channel`, `spoken`, `showsInThread` |
 | `AiNpcReplyFailedEvent` | `contactId`, `reason` |
 | `AiNpcActionEvent` | `contactId`, `tag`, `sourceId` (`"<modId>:<subject>"`), `applied`, `note` |
 | `AiNpcThreadEvent` | `contactId` |
@@ -1124,6 +1153,8 @@ enough to explain a reply you did not expect.
 <now>           the clock, volatile context <- + GetLiveContext + GetLiveContextAddition
                                             <- + CharacterKnows(..): spent on one reply
                                             <- + a fact watch's `event`, framed [WORLD EVENT:]
+<channel>       what the surface can show   <- the medium alone: written or spoken.
+                                               No mod lane, and no say for a character
 <explicitness>  the tier 1 ban, restated    <- level 1 only
 ```
 

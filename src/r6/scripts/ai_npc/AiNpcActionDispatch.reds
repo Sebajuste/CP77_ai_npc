@@ -49,7 +49,8 @@ public class AiNpcActionOutcome {
 
 // contactId is the one captured at send time, never the selection now: this runs after a round
 // trip, and the player may have opened somebody else.
-func AiNpcApplyActions(contactId: String, text: String) -> ref<AiNpcActionOutcome> {
+func AiNpcApplyActions(contactId: String, text: String,
+                       opt channel: AiNpcChannelId) -> ref<AiNpcActionOutcome> {
     let outcome = new AiNpcActionOutcome();
     outcome.text = text;
 
@@ -59,7 +60,7 @@ func AiNpcApplyActions(contactId: String, text: String) -> ref<AiNpcActionOutcom
         return outcome;
     }
 
-    let ctx = AiNpcBuildContactContext(contactId);
+    let ctx = AiNpcBuildContactContext(contactId, "", channel);
     let table = AiNpcBuildActionTable(contactId);
     ctx.tags = table.tags;      // as the renderer does, so a handler reads the same context here
 

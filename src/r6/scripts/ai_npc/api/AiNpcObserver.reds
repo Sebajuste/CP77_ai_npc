@@ -43,6 +43,23 @@ public class AiNpcMessageEvent extends IScriptable {
     // thread from events must see the same thread the store does, and dropping it would make
     // the two diverge exactly on the turns where something went wrong.
     public let systemNotice: Bool;
+
+    // By which medium: "text", "holo", or the name of a channel this mod has not heard of.
+    // AiNpcTextChannel() and its neighbours spell the ones that exist.
+    //
+    // COMPARE IT FOR A CHANNEL YOU KNOW; BRANCH ON THE TWO PREDICATES BELOW FOR EVERY OTHER.
+    // The set is open -- a face-to-face channel is planned -- and a listener that writes
+    // `if holo { ... } else { /* texting */ }` swallows the next one into its `else` with no
+    // error and no log.
+    public let channel: String;
+
+    // A mouth said this: no emoji, no stage directions, and nothing to paint in a phone thread.
+    // Being spoken does not make it a call, which is why this is a question of its own.
+    public let spoken: Bool;
+
+    // Whether the written thread paints this line. False for what was said out loud, of which
+    // the thread keeps only a trace -- so a mod mirroring a thread does not show it as an SMS.
+    public let showsInThread: Bool;
 }
 
 // A reply was expected and did not arrive. Only failures are announced: a reply that arrives

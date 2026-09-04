@@ -31,6 +31,33 @@ func AiNpcTestChannelValue(t: ref<AiNpcTestRunner>) -> Void {
         !AiNpcChannelOf(AiNpcChannelId.Call).ShowsInThread());
 }
 
+// Ce que le dehors lit du canal : un nom, et deux predicats. Le nom se compare pour un canal
+// qu'on connait ; les predicats repondent pour ceux qu'on ne connait pas encore.
+func AiNpcTestChannelPublicFace(t: ref<AiNpcTestRunner>) -> Void {
+    t.EqString("channel/the written channel is named text",
+        AiNpcChannelOf(AiNpcChannelId.Text).Name(), AiNpcTextChannel());
+    t.EqString("channel/the call is named holo",
+        AiNpcChannelOf(AiNpcChannelId.Call).Name(), AiNpcHoloChannel());
+    t.Check("channel/two channels do not share a name",
+        NotEquals(AiNpcTextChannel(), AiNpcHoloChannel()));
+
+    t.Check("channel/a call is spoken", AiNpcChannelOf(AiNpcChannelId.Call).IsSpoken());
+    t.Check("channel/the written channel is not",
+        !AiNpcChannelOf(AiNpcChannelId.Text).IsSpoken());
+
+    // Ce qu'un consommateur lit sur ce qu'AiNpcReadConversation lui rend : l'enregistrement
+    // derive, il ne stocke pas -- une ligne relue d'un journal ancien repond comme les autres.
+    let written = AiNpcMessageNewAt("salut", false, 100, AiNpcChannelId.Text);
+    let spoken = AiNpcMessageNewAt("salut", false, 100, AiNpcChannelId.Call);
+
+    t.EqString("channel/a stored line names its channel", written.Channel(), AiNpcTextChannel());
+    t.EqString("channel/a spoken line names its own", spoken.Channel(), AiNpcHoloChannel());
+    t.Check("channel/a spoken line says it was spoken", spoken.IsSpoken());
+    t.Check("channel/a written line does not", !written.IsSpoken());
+    t.Check("channel/the thread paints a written line", written.ShowsInThread());
+    t.Check("channel/it does not paint a spoken one", !spoken.ShowsInThread());
+}
+
 // UNE SEULE CHRONOLOGIE, UN FILTRE AU BOUT. Le store garde les deux canaux meles ; c'est la
 // lecture qui trie, et c'est ici que ce qui a ete dit reste hors du fil ecrit.
 func AiNpcTestChannelFilter(t: ref<AiNpcTestRunner>) -> Void {

@@ -59,6 +59,43 @@ to be what an `opt` parameter defaults to. `AiNpcUntilNextReply` is `0` because 
 direction — a wrong permanent fact cannot be taken back, a wrong transient one is gone after one
 generation.
 
+### A channel is named, because the set is open
+
+Every other vocabulary here is an `Int32`. The channel is a `String`, and the exception has one
+reason: the others are **closed** and this one is not. There is a written channel and a holo
+call today; a face-to-face channel is planned, and nothing says it is the last.
+
+A closed vocabulary fails safely when a consumer confuses two constants — that is what the
+disjoint ranges above buy. An open one fails the other way, and the failure is not in ai_npc's
+code at all. A listener writes what anybody would write:
+
+```swift
+if Equals(ev.channel, holo) { /* spoken */ } else { /* texting */ }
+```
+
+The day a third channel ships, that `else` receives it. The build is already published, the
+compiler has nothing to say, and a face-to-face conversation is rendered as an SMS thread. No
+version of numbering avoids it — the bug is the exhaustive `else`, not the type.
+
+So the medium is handed over as **a name plus the two predicates a renderer actually needs** —
+`spoken`, `showsInThread`. A predicate has no `else` to fall into: a channel added later
+declares both, and the code already written keeps being right. The name is there for the case
+the predicates cannot serve, which is real — a mod written *for* the holo lane, or for the
+face-to-face one, knows exactly which it wants and should not have to infer it from two
+booleans. Hence the rule the reference states: compare the name for a channel you know, branch
+on the predicates for every other.
+
+`String` rather than `Int32` also because it costs nothing here. The reason vocabularies are
+functions is that an `Int32` crosses the `@if` boundary where a type does not; a `String`
+crosses it the same way, and a degraded build stores `""`. It reads in a log, it needs no range
+reserved, and a mod that one day brings its own surface can carry its own name without ai_npc
+minting a number for it. This is the shape `tags` already has, for the same reason.
+
+The enum behind it, `AiNpcChannelId`, stays internal and always will. It is the **disk value**:
+numbered, with the written channel at zero so every line stored before the field reads back as
+what it was. Exporting it would publish a numbering that exists to keep old journals readable,
+and invite exactly the exhaustive comparison above.
+
 ### Codes rather than `Bool`, where the refusals are different jobs
 
 `CharacterWrote` fails three ways, and a `Bool` collapsed a held floor — temporary, with a

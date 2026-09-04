@@ -31,6 +31,20 @@ public class AiNpcContactContext extends IScriptable {
     // is being built, on its own schedule rather than in answer to a message.
     public let playerText: String;
 
+    // By which medium this turn is being held: "text", "holo", or the name of a channel this
+    // mod has not heard of. AiNpcTextChannel() and its neighbours spell the ones that exist.
+    //
+    // COMPARE IT FOR A CHANNEL YOU KNOW; BRANCH ON THE TWO PREDICATES BELOW FOR EVERY OTHER.
+    public let channel: String;
+
+    // A voice will say what you return from GetScriptedReply: no emoji, no stage directions
+    // between asterisks, numbers and times written out in words. THE ONE TO READ -- being
+    // spoken is not being on the phone, and a face-to-face channel is spoken too.
+    public let spoken: Bool;
+
+    // Whether the written thread paints this turn.
+    public let showsInThread: Bool;
+
     // What this contact IS: "ainpc:contact", "contact:judy", "joytoy:client". Populated on the
     // action lane, where it is resolved anyway, and empty elsewhere.
     //

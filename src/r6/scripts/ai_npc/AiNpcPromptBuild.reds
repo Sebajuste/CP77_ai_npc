@@ -108,7 +108,7 @@ func AiNpcBuildSystemPromptWith(contactId: String, pendingContext: String,
 
     // Built once and handed to every extension question below, so a dozen contributions do
     // not mean a dozen quest-fact reads.
-    let ctx = AiNpcBuildContactContext(contactId);
+    let ctx = AiNpcBuildContactContext(contactId, "", AiNpcChannelOfPass(pass));
 
     // A statement that had nowhere to land settles here: the first moment the conversation is
     // certainly present. Retrying at a point the code already reaches beats a notification

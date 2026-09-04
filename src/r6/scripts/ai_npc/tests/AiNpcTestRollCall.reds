@@ -97,6 +97,7 @@ func AiNpcRunAllTests() -> ref<AiNpcTestRunner> {
     AiNpcTestSessionRegistryPolicy(t);
     AiNpcTestSessionPolicy(t);
     AiNpcTestChannelValue(t);
+    AiNpcTestChannelPublicFace(t);
     AiNpcTestChannelFilter(t);
     AiNpcTestChannelAccepts(t);
     AiNpcTestChannelJournal(t);

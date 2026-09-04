@@ -12,6 +12,14 @@ class AiNpcChannelHolo extends AiNpcChannel {
         return AiNpcChannelId.Call;
     }
 
+    public func Name() -> String {
+        return AiNpcHoloChannel();
+    }
+
+    public func IsSpoken() -> Bool {
+        return true;
+    }
+
     // Le fil écrit ne peint pas ce qui a été dit de vive voix. Une ligne d'appel y apparaîtra,
     // sans son contenu, et elle sera DÉRIVÉE de la suite des lignes parlées plutôt que stockée.
     public func ShowsInThread() -> Bool {

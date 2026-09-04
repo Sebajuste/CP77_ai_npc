@@ -11,6 +11,10 @@ class AiNpcChannelText extends AiNpcChannel {
         return AiNpcChannelId.Text;
     }
 
+    public func Name() -> String {
+        return AiNpcTextChannel();
+    }
+
     // Une seule décision, et c'est une question : quelqu'un a-t-il peint ceci ? Chaque surface
     // capable de rendre se la voit offrir, la plus récemment ouverte d'abord, et décide pour
     // elle-même. Que personne ne rende n'est pas une erreur -- c'est à ça que sert la
