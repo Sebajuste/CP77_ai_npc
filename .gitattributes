@@ -1,5 +1,13 @@
-# Fins de ligne normalisees dans le depot, quelle que soit la config locale.
-* text=auto
+# Fins de ligne normalisees dans le depot ET DANS L'ARBRE DE TRAVAIL, quelle que soit la
+# config locale.
+#
+# `eol=lf` et pas seulement `text=auto`, parce que le zip est fait des fichiers de l'arbre :
+# avec `core.autocrlf=true`, un fichier extrait par git arrivait en CRLF et partait tel quel
+# dans le mod. Un litteral de chaine qui traverse une fin de ligne physique -- il y en a dans
+# AiNpcMemory et AiNpcSectionText, qui construisent du prompt -- emportait alors un  que
+# personne n'avait ecrit. Mesure le 2026-09-04 : 26 assertions en echec en jeu apres une
+# fusion qui avait re-extrait 122 fichiers, sur des chaines identiques a l'oeil.
+* text=auto eol=lf
 
 # Formats binaires — jamais de normalisation : une substitution CRLF
 # corromprait silencieusement un CR2W ou une image.
