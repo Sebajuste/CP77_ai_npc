@@ -74,9 +74,9 @@ func AiNpcRecipeTemplate() -> String {
         "            \"quest\": [\"name\", \"context\"],\n" +
         "            \"actions\": false\n" +
         "        },\n" +
-        "        \"_dedicated\": \"The conversation recipe Mod Settings > Command Handling binds when you pick Dedicated. It differs from default by two lines: no <actions> block, and a REACH rubric that does not point at one. The commands are chosen afterwards, by the actions recipe below.\",\n" +
+        "        \"_dedicated\": \"The conversation recipe Mod Settings > Command Handling binds when you pick Dedicated. It differs from default by two lines: no <actions> block, and no REACH rubric -- with the medium stated by <channel>, that wording had nothing left to say. The commands are chosen afterwards, by the actions recipe below.\",\n" +
         "        \"dedicated\": {\n" +
-        "            \"interactions\": { \"parts\": [\"reach\", \"real\", \"promises\"], \"source\": \"dedicated\" },\n" +
+        "            \"interactions\": { \"parts\": [\"real\", \"promises\"], \"source\": \"dedicated\" },\n" +
         "            \"actions\": false\n" +
         "        },\n" +
         "        \"_perpass\": \"The mod ships one recipe per pass, and a preset binds them by name in settings.json. The three below remove nothing: their pass builds both its messages itself, and the recipe only says which pass it belongs to.\",\n" +

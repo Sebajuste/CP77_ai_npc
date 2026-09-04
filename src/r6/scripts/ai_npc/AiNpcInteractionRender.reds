@@ -26,15 +26,25 @@ func AiNpcInteractionDefaultSource() -> String {
 
 // The conversation that carries <actions>: the vocabulary is in the same prompt, and the
 // character writes a command inside its reply or writes none.
+//
+// LE MEDIUM N'EST PLUS ICI. Cette phrase commencait par « You reach V only by text message »,
+// et elle etait fausse pendant un appel : un personnage au telephone lisait qu'il envoyait des
+// SMS. Le medium est affirme par <channel>, qui sait sur quelle surface le tour se tient. Ce
+// qui reste vaut sur toutes.
 func AiNpcReachConversation() -> String {
-    return "You reach V only by text message, and the commands in <actions> are the only way you can act on the world. Use them when the context calls for it, exactly as written, only when it is necessary; skip actions otherwise.";
+    return "The commands in <actions> are the only way you can act on the world. Use them when the context calls for it, exactly as written, only when it is necessary; skip actions otherwise.";
 }
 
 // The conversation whose commands were moved to a second call. It carries no vocabulary, so
 // it asks for none: naming a block this prompt does not hold is what makes a model write the
 // name itself, as prose, in the reply the player reads.
+//
+// VIDE, DONC PAS DE RUBRIQUE. Tout ce qu'elle disait etait le medium, parti dans <channel> ;
+// il ne restait qu'un intitule sans phrase, et une rubrique qui n'affirme rien coute un nom
+// que le modele doit lire. Rendre "" est la reponse, pas un manque : AiNpcRenderRules laisse
+// tomber une rubrique sans texte, et c'est le seul endroit qui en decide.
 func AiNpcReachDedicated() -> String {
-    return "You reach V only by text message.";
+    return "";
 }
 
 // The command call: the vocabulary and nothing else, answered in one line. NONE is named
