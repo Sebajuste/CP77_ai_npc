@@ -537,7 +537,6 @@ Read `sourceId` in `OnMessage`, or a mod that answers messages will answer itsel
 | `SetInteraction(key, text)` | one rubric of `<interactions>` |
 | `worldBackground` | `<world_background>` |
 | `playerDescription` | `<target>`, life path included |
-| `worldMechanics` | `<mechanics>` |
 | `language` | the active language rule |
 | `speechStyle` | the SPEECH register, for a contact with no provider. `GetSpeechStyle` wins when both are set |
 
@@ -656,7 +655,6 @@ In JSON the shape says the regime: **a string replaces, an object contributes.**
     "interactions": { "REACH": "...", "REAL": "..." },
     "worldBackground": "...",
     "playerDescription": "...",
-    "worldMechanics": "...",
     "tone": { "Normal": "...", "NSFW": "...", "NSFW_Hard": "..." },
     "language": "..."
 }
@@ -720,7 +718,7 @@ variant is dropped.
   "fact": "ainpc_nadia_booked", "value": 1 }
 ```
 
-The tag is advertised in `<commands>`, scoped to this character alone, and **stripped from the
+The tag is advertised in `<actions>`, scoped to this character alone, and **stripped from the
 message before the player sees it**. Firing it sets the fact, and that is the only effect a
 file can have.
 
@@ -1137,11 +1135,11 @@ enough to explain a reply you did not expect.
 <target>        who V is                    <- life path + gender + "appearance",
                                                or "playerDescription" replacing all three
 <relationship>  how they see V              <- GetRelationship / "relationship"
-<interactions>  what texting can and cannot do
+<interactions>  what texting can and cannot do; REACH takes the wording
+                the recipe's source names
 <world_background>  the world, and how a local reacts to it
                                             <- + RegisterWorldKnowledge
-<mechanics>     how the world works         <- worldMechanics
-<commands>      what this contact may DO    <- every AddAction whose tag this contact carries
+<actions>       what this contact may DO    <- every AddAction whose tag this contact carries
 <language>      language instruction
 --- volatile ----------------------------------------------------------------
 <memory>        what fell out of the window <- see MEMORY.md; absent until compacted
@@ -1170,7 +1168,7 @@ smuggled its text into a block a player never trims would be a mod that ignored 
 `recipes.example.json`, rewritten at every launch, is the whole vocabulary.
 
 `prompts.json` reaches the sections that are not per-character — `interactions`,
-`worldBackground`, `worldMechanics`, `rules` and `languages`. There is no `tone` key there:
+`worldBackground`, `rules` and `languages`. There is no `tone` key there:
 `<explicitness>` is the player's setting.
 
 **`worldBackground` is not empty by default**, and a contact you register inherits it: it is a

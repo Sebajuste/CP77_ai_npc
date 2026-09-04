@@ -46,10 +46,12 @@ func AiNpcRecipeTemplate() -> String {
         "            \"target\": { \"level\": \"full\", \"source\": \"player\" },\n" +
         "            \"_relationship\": \"<relationship>: how this character sees V.\",\n" +
         "            \"relationship\": \"full\",\n" +
-        "            \"_world\": \"Three tags, one key: <interactions> what they can do to reach V, <world_background> Night City, <mechanics> how the world works.\",\n" +
-        "            \"world\": [\"interactions\", \"background\", \"mechanics\"],\n" +
-        "            \"_commands\": \"<commands>: the commands this character may write. false removes the block AND the pass that repairs a malformed one -- with no vocabulary in the prompt, a bracket in a reply is prose.\",\n" +
-        "            \"commands\": true,\n" +
+        "            \"_interactions\": \"<interactions>: how this character may act. reach is the conduct rubric -- what to write when a command applies and what to write when none does -- and source is which wording it takes: conversation carries <actions>, dedicated is the same chat with the commands moved to their own request, commands is that request. real and promises state what is true rather than what to write.\",\n" +
+        "            \"interactions\": { \"parts\": [\"reach\", \"real\", \"promises\"], \"source\": \"conversation\" },\n" +
+        "            \"_world\": \"<world_background>: Night City, and how a local reacts to it.\",\n" +
+        "            \"world\": [\"background\"],\n" +
+        "            \"_actions\": \"<actions>: the commands this character may write. false removes the block AND the pass that repairs a malformed one -- with no vocabulary in the prompt, a bracket in a reply is prose.\",\n" +
+        "            \"actions\": true,\n" +
         "            \"_memory\": \"<memory>: what they remember of earlier conversations. [\\\"facts\\\"] keeps the consolidated facts and drops the story, the open loops and the agreements.\",\n" +
         "            \"memory\": [\"chronicle\", \"facts\", \"open\", \"agreed\", \"tone\"],\n" +
         "            \"_intent\": \"<intent>: what they want of V. own is theirs, extensions is what other installed mods want of V through them.\",\n" +
@@ -70,7 +72,12 @@ func AiNpcRecipeTemplate() -> String {
         "            \"character\": [\"bio\"],\n" +
         "            \"memory\": [\"facts\"],\n" +
         "            \"quest\": [\"name\", \"context\"],\n" +
-        "            \"commands\": false\n" +
+        "            \"actions\": false\n" +
+        "        },\n" +
+        "        \"_dedicated\": \"The conversation recipe Mod Settings > Command Handling binds when you pick Dedicated. It differs from default by two lines: no <actions> block, and a REACH rubric that does not point at one. The commands are chosen afterwards, by the actions recipe below.\",\n" +
+        "        \"dedicated\": {\n" +
+        "            \"interactions\": { \"parts\": [\"reach\", \"real\", \"promises\"], \"source\": \"dedicated\" },\n" +
+        "            \"actions\": false\n" +
         "        },\n" +
         "        \"_perpass\": \"The mod ships one recipe per pass, and a preset binds them by name in settings.json. The three below remove nothing: their pass builds both its messages itself, and the recipe only says which pass it belongs to.\",\n" +
         "        \"_compaction\": \"A recipe for another pass. It removes nothing: the compaction builds both its messages itself, and this only says which pass it belongs to. Bind it with \\\"passes\\\": { \\\"thinking\\\": { \\\"recipe\\\": \\\"compaction\\\" } } in settings.json.\",\n" +
@@ -80,18 +87,20 @@ func AiNpcRecipeTemplate() -> String {
         "        },\n" +
         "        \"_repair\": \"The second request the mod makes when a character writes a command with a wrong bracket: the command list, and the broken tag. Bound by passes.repair.\",\n" +
         "        \"repair\": {\n" +
-        "            \"instruction\": { \"source\": \"commands\" },\n" +
+        "            \"interactions\": { \"parts\": [\"reach\"], \"source\": \"commands\" },\n" +
+        "            \"instruction\": { \"source\": \"actions\" },\n" +
         "            \"ask\": { \"source\": \"repair\" }\n" +
         "        },\n" +
         "        \"_actions\": \"The action selection, when Mod Settings > Command Handling is set to Dedicated: the command list, the last few messages and the reply that was just written. It carries no bio, no world and no tier -- none of them decides whether money changed hands. Bound by passes.actions.\",\n" +
         "        \"actions\": {\n" +
-        "            \"instruction\": { \"source\": \"commands\" },\n" +
+        "            \"interactions\": { \"parts\": [\"reach\"], \"source\": \"commands\" },\n" +
+        "            \"instruction\": { \"source\": \"actions\" },\n" +
         "            \"ask\": { \"source\": \"selector\" }\n" +
         "        },\n" +
         "        \"_spoken\": \"A reply that is SAID, on a holo call. Same blocks as the written one -- it is a character speaking either way -- but its own recipe, because what is spoken cannot be re-read: the length rule and the form rule are the two you will want to change first. Bind it with \\\"passes\\\": { \\\"holo\\\": { \\\"recipe\\\": \\\"spoken\\\" } }. Left unbound, a call renders exactly like a text.\",\n" +
         "        \"spoken\": {\n" +
-        "            \"_commands\": \"No command is written on a call: the mod only offers them in the dedicated mode, and a bracketed tag read out loud is not a thing anyone says. Dropping the block also drops the repair pass that would chase a malformed one.\",\n" +
-        "            \"commands\": false,\n" +
+        "            \"_actions\": \"No command is written on a call: the mod only offers them in the dedicated mode, and a bracketed tag read out loud is not a thing anyone says. Dropping the block also drops the repair pass that would chase a malformed one.\",\n" +
+        "            \"actions\": false,\n" +
         "            \"instruction\": { \"source\": \"conversation\" },\n" +
         "            \"ask\": { \"source\": \"conversation\" }\n" +
         "        },\n" +

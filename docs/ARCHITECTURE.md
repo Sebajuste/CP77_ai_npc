@@ -406,9 +406,9 @@ flowchart TB
     B --> C["&lt;character&gt; sheet + register + what extensions add"]
     C --> D["&lt;target&gt; who they are writing to"]
     D --> E["&lt;relationship&gt;"]
-    E --> F["&lt;interactions&gt; what may reach V, and how"]
+    E --> F["&lt;interactions&gt; what may reach V, and how; REACH is worded per prompt"]
     F --> G["&lt;world_background&gt; incl. &lt;world_lore&gt;"]
-    G --> H["&lt;mechanics&gt; the commands the model may emit"]
+    G --> H["&lt;actions&gt; the commands the model may emit"]
     H --> I["&lt;memory&gt; what this character remembers"]
     I --> J["&lt;intent&gt; hers, plus what extensions add"]
     J --> K["&lt;mission&gt; quest state"]
@@ -434,7 +434,7 @@ Two blocks refuse removal: `<system>`, which carries the fiction and the locked 
 `<explicitness>`, which states what the player consented to in Mod Settings. A recipe is not a
 better position from which to answer a question that was put to the player.
 
-Dropping `<commands>` drops the pass that repairs a malformed one with it. The two ask the same
+Dropping `<actions>` drops the pass that repairs a malformed one with it. The two ask the same
 recipe, because a bracket in a reply the model was never taught to write is prose, and repairing
 prose against an empty rulebook replaces a good reply with a worse one.
 
@@ -462,7 +462,7 @@ passes.speaking.recipe  →  recipes.<name>   (recipes.json)    what the instruc
 ```
 
 **Where a command is chosen is a setting, not a recipe.** Mod Settings > Command Handling has
-two values. `Embedded`, the default, is what the prompt chapter above describes: `<commands>` is
+two values. `Embedded`, the default, is what the prompt chapter above describes: `<actions>` is
 a block of the conversation prompt, the character writes a bracket inside its reply, and the mod
 takes it out again on the way to the bubble. `Dedicated` removes that block from the
 conversation and gives the choice to the `actions` pass — `AiNpcActionService`, one request per
@@ -551,7 +551,7 @@ ones an event interrupts.
 `<now>` carries the clock, a neutral weather line, whatever another mod put on the wire for
 this contact, and the character's own live context.
 
-**Nothing in `<now>` may ask for an output.** A line there lands after `<mechanics>` and last
+**Nothing in `<now>` may ask for an output.** A line there lands after `<actions>` and last
 but for the closing token, so an instruction placed in it competes with the one the prompt
 already gave, from a later and more specific position — measured at 5 replies in 6 emitting
 their action command with no ambient event live, against 1 in 6 with an instruction-bearing
@@ -638,7 +638,7 @@ refusals are logged with its name on them.
 |---|---|---:|
 | `GetRuleContributions(block, ctx)` | `<system_rules>` or `<interactions>`, by key | 600 / 2 000 chars |
 | `GetIntentAddition(ctx)` | `<intent>`, on its own line under the character's | 400 chars |
-| `GetActionAddition(ctx)` + `GetActionTags` / `GetActionTagPrefixes` | `<mechanics>`, plus the tags it claims | — |
+| `GetActionAddition(ctx)` + `GetActionTags` / `GetActionTagPrefixes` | `<actions>`, plus the tags it claims | — |
 | `GetLiveContextAddition(ctx)` | `<now>` | 400 / 1 200 chars |
 | `GetScriptedReply(ctx)` | answers instead of the model; no request is sent | — |
 

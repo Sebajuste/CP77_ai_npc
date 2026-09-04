@@ -67,10 +67,12 @@ func AiNpcRecipeSchema() -> array<ref<AiNpcRecipeBlockSchema>> {
     ArrayPush(schema, AiNpcRecipeBlockSchemaOf("character", ["bio", "speech", "additions"]));
     ArrayPush(schema, AiNpcRecipeSourced("target", AiNpcTargetSources()));
     ArrayPush(schema, AiNpcRecipeWhole("relationship"));
+    ArrayPush(schema, AiNpcRecipePartedSource("interactions",
+        ["reach", "real", "promises"], AiNpcInteractionSources()));
     // Three tags, one key. They answer one question between them -- what the world is and what
     // may be done in it -- and a player trimming the prompt trims them together.
-    ArrayPush(schema, AiNpcRecipeBlockSchemaOf("world", ["interactions", "background", "mechanics"]));
-    ArrayPush(schema, AiNpcRecipeWhole("commands"));
+    ArrayPush(schema, AiNpcRecipeBlockSchemaOf("world", ["background"]));
+    ArrayPush(schema, AiNpcRecipeWhole("actions"));
     ArrayPush(schema, AiNpcRecipeBlockSchemaOf("memory", ["chronicle", "facts", "open", "agreed", "tone"]));
     ArrayPush(schema, AiNpcRecipeBlockSchemaOf("intent", ["own", "extensions"]));
     ArrayPush(schema, AiNpcRecipeBlockSchemaOf("quest", ["name", "context", "objective"]));
@@ -114,6 +116,17 @@ func AiNpcRecipeRequired(key: String) -> ref<AiNpcRecipeBlockSchema> {
 
 func AiNpcRecipeSourced(key: String, sources: array<String>) -> ref<AiNpcRecipeBlockSchema> {
     let entry = AiNpcRecipeWhole(key);
+    entry.sources = sources;
+    return entry;
+}
+
+// Parts AND a source: the parts say which rubrics are rendered, the source says which text
+// the one that varies is written from. <interactions> is the only block that needs both --
+// a command call wants the conduct rubric alone, and worded for a call that answers in one
+// line rather than for a conversation.
+func AiNpcRecipePartedSource(key: String, parts: array<String>,
+                             sources: array<String>) -> ref<AiNpcRecipeBlockSchema> {
+    let entry = AiNpcRecipeBlockSchemaOf(key, parts);
     entry.sources = sources;
     return entry;
 }
@@ -183,7 +196,7 @@ func AiNpcRecipeSpoken() -> ref<AiNpcRecipe> {
     let i = 0;
     let count = ArraySize(schema);
     while i < count {
-        if NotEquals(schema[i].key, "commands") {
+        if NotEquals(schema[i].key, "actions") {
             ArrayPush(recipe.blocks, AiNpcRecipeBlockOf(schema[i].key, schema[i].parts));
         }
         i += 1;

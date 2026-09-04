@@ -464,7 +464,7 @@ func AiNpcTestRepairPolicy(t: ref<AiNpcTestRunner>) -> Void {
     // than rescanned: whether a bracket names a real command is the claim table's answer, and
     // a second answer computed inside the repair is a second answer to drift.
     let candidates = ["[ACTION:KABUKI_SF:2200:1000:1]"];
-    let vocabulary = "<commands>[ACTION:TRICK:{place}:{hour}]: when you agree a meeting.</commands>";
+    let vocabulary = "<actions>[ACTION:TRICK:{place}:{hour}]: when you agree a meeting.</actions>";
 
     let a = new AiNpcRepair();
     t.EqString("repair/an unroutable command is claimed",
@@ -658,7 +658,7 @@ func AiNpcTestGeneration(t: ref<AiNpcTestRunner>) -> Void {
     // beginning one IS refilling it.
     let broken = "Deal. [ACTION:BROKEN:1]";
     let candidates = ["[ACTION:BROKEN:1]"];
-    let vocabulary = "<commands>[ACTION:TRICK:{place}:{hour}]: when you agree a meeting.</commands>";
+    let vocabulary = "<actions>[ACTION:TRICK:{place}:{hour}]: when you agree a meeting.</actions>";
     t.EqString("gen/a fresh generation brings a fresh repair budget",
         gen.Repair().Claim(broken, candidates, vocabulary, true, true, true), "[ACTION:BROKEN:1]");
     t.EqString("gen/spent within it", gen.Repair().Claim(broken, candidates, vocabulary, true, true, true), "");

@@ -34,3 +34,15 @@ class AiNpcPassBuilder extends IScriptable {
         return true;
     }
 }
+
+// Whether the conversation prompt carries the command vocabulary, which is the whole of what
+// "Embedded" and "Dedicated" name. THE RECIPE ANSWERS IT, not the menu: the Command Handling
+// setting picks which conversation recipe the speaking pass is bound to (AiNpcPassRecipeName),
+// and a recipes.json written by hand reaches the same answer without touching the menu.
+//
+// Here rather than beside its two readers, because the recipe has one door -- see the spine
+// rule in tools\lint.ps1. Both readers live in the speaking lane, which is the pass this asks
+// about.
+func AiNpcSpeakingCarriesActions() -> Bool {
+    return AiNpcRecipeHas(AiNpcPassRecipe(AiNpcLaneSpeaking()), "actions");
+}

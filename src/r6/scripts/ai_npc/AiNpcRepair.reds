@@ -88,6 +88,5 @@ public class AiNpcRepair {
 func AiNpcRepairAsk(tag: String) -> String {
     return s"You wrote this command in your last message:\n\(tag)\n\n"
         + "It is not one of the commands above, so nothing happened. Write the correct command "
-        + "for what you have just agreed, alone, on one line, with no other text. If none of "
-        + "the commands applies, write NONE.";
+        + "for what you have just agreed, alone, on one line, with no other text.";
 }

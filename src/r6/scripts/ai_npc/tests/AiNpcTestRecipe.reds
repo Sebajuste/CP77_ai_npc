@@ -111,16 +111,16 @@ func AiNpcTestRecipeParse(t: ref<AiNpcTestRunner>) -> Void {
     let byBool = AiNpcTestRecipeOf("{\"commands\": false}", issues);
     let byList = AiNpcTestRecipeOf("{\"commands\": []}", issues);
     let byNull = AiNpcTestRecipeOf("{\"commands\": null}", issues);
-    t.Check("recipe/none removes the block", !AiNpcRecipeHas(byWord, "commands"));
-    t.Check("recipe/false removes the block", !AiNpcRecipeHas(byBool, "commands"));
-    t.Check("recipe/an empty list removes the block", !AiNpcRecipeHas(byList, "commands"));
-    t.Check("recipe/null removes the block", !AiNpcRecipeHas(byNull, "commands"));
+    t.Check("recipe/none removes the block", !AiNpcRecipeHas(byWord, "actions"));
+    t.Check("recipe/false removes the block", !AiNpcRecipeHas(byBool, "actions"));
+    t.Check("recipe/an empty list removes the block", !AiNpcRecipeHas(byList, "actions"));
+    t.Check("recipe/null removes the block", !AiNpcRecipeHas(byNull, "actions"));
     t.EqInt("recipe/removing a block reports nothing", ArraySize(issues), 0);
 
     // null is written, absence is not, and they mean different things. A key nobody wrote
     // keeps the mod's answer; a key written as null is somebody saying "not this one".
     let absent = AiNpcTestRecipeOf("{\"memory\": [\"facts\"]}", issues);
-    t.Check("recipe/an absent key is not a null one", AiNpcRecipeHas(absent, "commands"));
+    t.Check("recipe/an absent key is not a null one", AiNpcRecipeHas(absent, "actions"));
 
     // A number resembles all of them and means none: 1 would read as true on one line and 0
     // would delete a block on the next.
@@ -236,7 +236,7 @@ func AiNpcTestRecipeBook(t: ref<AiNpcTestRunner>) -> Void {
     t.EqInt("recipe/both recipes are read", ArraySize(book.recipes), 2);
     t.EqString("recipe/active is read", book.active, "compact");
     t.Check("recipe/the active recipe is the one selected",
-        !AiNpcRecipeHas(AiNpcRecipeBookActive(book), "commands"));
+        !AiNpcRecipeHas(AiNpcRecipeBookActive(book), "actions"));
     t.EqInt("recipe/a well-formed book reports nothing", ArraySize(issues), 0);
 
     // Pointing "active" at nothing is the one mistake whose symptom is indistinguishable from
@@ -247,7 +247,7 @@ func AiNpcTestRecipeBook(t: ref<AiNpcTestRunner>) -> Void {
         "test", missing);
     t.EqInt("recipe/an active nobody declares is reported", ArraySize(missing), 1);
     t.Check("recipe/an active nobody declares falls back to the full render",
-        AiNpcRecipeHas(AiNpcRecipeBookActive(orphan), "commands"));
+        AiNpcRecipeHas(AiNpcRecipeBookActive(orphan), "actions"));
 
     // A leading underscore is a comment. The shipped template annotates itself with them, so
     // copying it must not produce warnings about its own documentation.
@@ -309,7 +309,7 @@ func AiNpcTestRecipeTemplate(t: ref<AiNpcTestRunner>) -> Void {
     t.Check("recipe/the template ships a trimmed example", IsDefined(compact));
     if IsDefined(compact) {
         t.Check("recipe/the trimmed example drops the commands",
-            !AiNpcRecipeHas(compact, "commands"));
+            !AiNpcRecipeHas(compact, "actions"));
         t.Check("recipe/the trimmed example keeps the bio",
             AiNpcRecipeWants(compact, "character", "bio"));
         t.Check("recipe/the trimmed example drops the register",

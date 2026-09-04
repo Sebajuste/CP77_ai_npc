@@ -189,11 +189,6 @@ func AiNpcTestConfigHelpers(t: ref<AiNpcTestRunner>) -> Void {
 
 /// Per-contact prompt overrides ///
 
-// The chain is contact -> prompts.json -> built-in, and the level that carries the risk is
-// the first: it is the only one that can be half-filled. An override object whose
-// worldMechanics is empty must leave <mechanics> resolving further down, not blank it --
-// a silently emptied section is the failure mode that looks like a working prompt.
-
 func AiNpcTestLanguageFromLocale(t: ref<AiNpcTestRunner>) -> Void {
     t.EqInt("locale/french", EnumInt(AiNpcLanguageFromLocale(n"fr-fr")), EnumInt(AiNpcLanguage.French));
     t.EqInt("locale/german", EnumInt(AiNpcLanguageFromLocale(n"de-de")), EnumInt(AiNpcLanguage.German));

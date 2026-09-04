@@ -171,9 +171,9 @@ func AiNpcTestPassSources(t: ref<AiNpcTestRunner>) -> Void {
     t.EqString("pass/repair asks its own question",
         AiNpcPassAskSource(AiNpcLaneRepair()), "repair");
     t.EqString("pass/repair instructs with the commands",
-        AiNpcPassInstructionSource(AiNpcLaneRepair()), "commands");
+        AiNpcPassInstructionSource(AiNpcLaneRepair()), "actions");
     t.EqString("pass/the selection is instructed with the same table the repair is",
-        AiNpcPassInstructionSource(AiNpcLaneActions()), "commands");
+        AiNpcPassInstructionSource(AiNpcLaneActions()), "actions");
     t.EqString("pass/the selection reads what was written",
         AiNpcPassAskSource(AiNpcLaneActions()), "selector");
     t.EqString("pass/a pass this version does not make renders nothing",

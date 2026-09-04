@@ -284,7 +284,7 @@ double-counts the cells that ran twice. Score by keeping the last row for each
 - The rendezvous samples for anything below the top three, and for the free default.
 - **The fixture table and the tier table still describe the previous command block.** Only the
   rendezvous samples were replayed against the current one. The eighteen fixtures barely touch
-  `<commands>` — one of them carries a command at all — so the form and language columns are
+  `<actions>` — one of them carries a command at all — so the form and language columns are
   unaffected; the tier numbers were taken on the old block and have not been rechecked.
 - Refusal rates for anything other than the yardstick.
 - How much of the +2/+1/+4 belongs to the wording rather than to the bench reader and the

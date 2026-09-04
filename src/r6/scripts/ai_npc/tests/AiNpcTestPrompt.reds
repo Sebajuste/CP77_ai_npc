@@ -375,7 +375,7 @@ func AiNpcTestGenderStatement(t: ref<AiNpcTestRunner>) -> Void {
 
 // The chain is contact -> prompts.json -> built-in, and the level that carries the risk is
 // the first: it is the only one that can be half-filled. An override object whose
-// worldMechanics is empty must leave <mechanics> resolving further down, not blank it --
+// worldBackground is empty must leave the section resolving further down, not blank it --
 // a silently emptied section is the failure mode that looks like a working prompt.
 func AiNpcTestPromptOverrides(t: ref<AiNpcTestRunner>) -> Void {
     let def = new AiNpcCharacterDef();
@@ -411,7 +411,7 @@ func AiNpcTestPromptOverrides(t: ref<AiNpcTestRunner>) -> Void {
     t.EqInt("overrides/a contributed rubric is carried", ArraySize(carried), 1);
     t.EqString("overrides/... with its text", carried[0].text, "Replaced.");
     t.EqString("overrides/an unset section stays empty, so resolution falls through",
-        withPrompts.GetPromptOverrides().worldMechanics, "");
+        withPrompts.GetPromptOverrides().worldBackground, "");
 
     // The base class must stay silent by default, or every contact that does not care
     // would start replacing sections with empty strings.

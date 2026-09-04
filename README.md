@@ -620,7 +620,7 @@ the scripts, and contacts that belong to other mods can be given a voice there t
 
 | File | Holds |
 |---|---|
-| `prompts.json` | world background, mechanics, guidelines, tone tiers, per-language text |
+| `prompts.json` | world background, guidelines, tone tiers, per-language text |
 | `characters.user.json` | your own character sheets and overrides — never overwritten |
 | `characters.<mod>.json` | dropped in by another mod |
 | `characters.example.json` | rewritten every launch, never read: the live schema reference |

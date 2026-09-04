@@ -245,7 +245,7 @@ public class AiNpcHttpSystem extends ScriptableSystem {
     // porte pas : la recette `spoken` laisse tomber le bloc, donc le modele n'a jamais entendu
     // parler d'une commande, et la passe de reparation qui en cherche une derriere chaque
     // reponse n'a rien a y chercher.
-    this.m_offersCommands = AiNpcRecipeHas(builder.Recipe(), "commands");
+    this.m_offersCommands = AiNpcRecipeHas(builder.Recipe(), "actions");
 
     // One send for both transports, and this lane is not told which one runs. Naming the CLI
     // type in one file limits the blast radius of a plugin that failed to load.
@@ -456,10 +456,9 @@ public class AiNpcHttpSystem extends ScriptableSystem {
   private func HandleMessage(contactId: String, text: String, opt carrier: Bool, opt authored: Bool) {
     let processedText = text;
 
-    // In Dedicated mode the reply was written without the command vocabulary, so a bracket in
-    // it would be prose -- the same rule a recipe that drops <commands> already follows. The
-    // selection happens after delivery instead, in a request of its own.
-    if !AiNpcActionsAreDedicated() {
+    // A reply written without the command vocabulary carries no command: a bracket in it is
+    // prose. The selection happens after delivery instead, in a request of its own.
+    if AiNpcSpeakingCarriesActions() {
       // Every command in one pass, against the same table the prompt was rendered from. What
       // comes back says which brackets were run, which name a real command the model fumbled,
       // and which name nothing at all -- three cases the caller has to treat differently.
@@ -587,10 +586,8 @@ public class AiNpcHttpSystem extends ScriptableSystem {
   // Whether a repair is owed is AiNpcRepair's decision, and the four conditions are handed to
   // it rather than read by it, which is what makes them assertable offline.
   // The vocabulary handed to the repair is the contact's REAL one, rendered from the same
-  // table the first prompt used. It used to be the world-mechanics section, which by then
-  // described the eddie transfer and nothing else -- so a fumbled rendezvous command was
-  // judged against a rulebook that did not contain it, and the model was asked to correct a
-  // word it had never been shown.
+  // table the first prompt used: a repair judged against any other rulebook asks the model
+  // to correct a word it was never shown.
   private func TryRepairActions(contactId: String, text: String, candidates: array<String>) -> Bool {
     // Built before the claim, because the claim is made against the vocabulary this pass would
     // send: the builder is the one place that renders it, and the tag it aims at comes out of

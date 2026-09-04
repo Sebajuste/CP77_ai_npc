@@ -3,7 +3,7 @@
 
 Everything a prompt is made of that is NOT a cast sheet: <system_rules>, <world_lore> and its
 per-language WORDS table, the three tone tiers and their reminders, the language rule, the
-speech style, V's description clauses, the money-transfer mechanics. All of it is authored
+speech style, V's description clauses, the money-transfer text. All of it is authored
 text, all of it lives in string literals, and none of it is copied here.
 
 WHAT IS HARVESTED AND WHAT IS NOT. A section function in the mod has the same shape every
@@ -211,10 +211,16 @@ def _is_append(reader):
 # prompt, and a list nobody maintains cannot fail loudly.
 SOURCES = {
     "AiNpcPromptSections.reds": (
-        "AiNpcCoreInteractionRules", "AiNpcBuiltinWorldLoreFor",
+        "AiNpcBuiltinWorldLoreFor",
         "AiNpcWorldLoreWords", "AiNpcGetConversationTypePrompt", "AiNpcGetToneReminder",
         "AiNpcCoreRules",
     ),
+    # <interactions>: the rubrics, and the three wordings of the one that asks for an output.
+    # Each wording is its own function so that what a recipe's source picks is harvested as
+    # three texts rather than as a branch this reader would have to key.
+    "AiNpcInteractionRender.reds": ("AiNpcCoreInteractionRules", "AiNpcInteractionSources",
+                                    "AiNpcInteractionDefaultSource", "AiNpcReachConversation",
+                                    "AiNpcReachDedicated", "AiNpcReachCommands"),
     "AiNpcLanguage.reds": ("AiNpcBuiltinLanguageRule", "AiNpcDefaultSpeechStyle",
                            "AiNpcCrudeWordsFor"),
     # The built-in command, declared through the same door a mod uses. Its pattern and its
@@ -285,10 +291,14 @@ def read_all(script_dir):
         "contactIds": _string_array(final("AiNpcGetAllContactIds")),
 
         # <interactions>, rubric by rubric, in the order AiNpcCoreInteractionRules pushes them.
+        # Each push carries the recipe part that decides it, so a recipe naming ["reach"] alone
+        # renders the conduct rubric alone here too.
         "coreInteractionRules": harvested["AiNpcCoreInteractionRules"].pushes.get("rules", []),
-        # <mechanics> carries no built-in text any more: it is prose about how the world works,
-        # and Night City needs none explained to somebody who lives in it. The commands moved
-        # to their own block, rendered from the declarations.
+        "interactionSources": _string_array(final("AiNpcInteractionSources")),
+        "interactionDefaultSource": final("AiNpcInteractionDefaultSource"),
+        "reachConversation": final("AiNpcReachConversation"),
+        "reachDedicated": final("AiNpcReachDedicated"),
+        "reachCommands": final("AiNpcReachCommands"),
         "transferCap": final("AiNpcTransferCap"),
         "worldLore": final("AiNpcBuiltinWorldLoreFor"),
         "worldLoreWords": _with_default(harvested["AiNpcWorldLoreWords"]),

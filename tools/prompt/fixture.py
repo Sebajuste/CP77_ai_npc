@@ -52,7 +52,7 @@ KEYS = (
     "evelynDead", "evelynRescued", "cloudsSettled", "leftNightCity",
     "johnnyRevealed", "johnnyDateDone", "confidedInV",
     "player", "quest", "now", "messages", "ask", "speaksFirst", "reason", "intent", "pass",
-    "memory", "memoryEnabled", "commandsDedicated", "pendingContext", "weather",
+    "memory", "memoryEnabled", "pendingContext", "weather",
     "extensionContext",
     "extensionRules", "extensionInteractions", "extensionIntent",
     "extensionActions", "worldKnowledge", "characterAdditions",
@@ -151,7 +151,6 @@ def load(path):
         # is rendered into the conversation prompt. Dedicated moves it into the action pass's
         # own request, so the character is asked for prose and nothing else -- which is a
         # different prompt, and the reason this is a field rather than an assumption.
-        "commandsDedicated": bool(raw.get("commandsDedicated", False)),
         "pendingContext": raw.get("pendingContext", ""),
         # The word AiNpcWeatherLine puts in <now>. "" removes the line, which the game never
         # does -- kept so its absence can be measured.

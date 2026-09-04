@@ -372,12 +372,12 @@ if ($leaky) {
 # AiNpcConfiguredSection takes the contact's text and the global default as two plain
 # strings, which is what let the three-level chain be written once instead of eight times.
 # The cost of that shape is that nothing in the language stops the two arguments naming
-# DIFFERENT fields -- resolving `over.worldMechanics` against `prompts.worldBackground`
+# DIFFERENT fields -- resolving `over.playerDescription` against `prompts.worldBackground`
 # compiles, runs, and produces a prompt that is wrong in a way no error will ever mention.
 #
 # So the agreement is checked here. Only calls whose two arguments are both plain field
-# accesses are in scope; the tone sections pass AiNpcPickTone(...) and the mechanics section
-# passes "" for a level it deliberately skips, and neither is a field to compare.
+# accesses are in scope; the tone sections pass AiNpcPickTone(...), which is not a field to
+# compare.
 $sectionMismatches = @()
 $sectionsChecked = 0
 foreach ($m in [regex]::Matches($allText, '(?s)AiNpcConfiguredSection\(\s*contactId,\s*([^,;]*?)\.(\w+),\s*([^,;]*?)\.(\w+)\)')) {
@@ -713,7 +713,7 @@ if ($registrarHits -eq 0) {
 # return URLs and model ids, and a rule that swept those would compare names against addresses.
 $providerNames = @()
 $llm = Read-Code (Join-Path $modSrc "AiNpcLlm.reds")
-$nameFunc = [regex]::Match($llm, 'func AiNpcProviderName\([^)]*\)[^{]*\{(.*?)
+$nameFunc = [regex]::Match($llm, 'func AiNpcProviderName\([^)]*\)[^{]*\{(.*?)?
 \}', 'Singleline')
 if ($nameFunc.Success) {
     foreach ($m in [regex]::Matches($nameFunc.Groups[1].Value, 'case AiNpcProvider\.\w+:\s*return "([^"]+)";')) {
@@ -1642,7 +1642,7 @@ if (-not $versionMatch.Success) {
 #     which renders every block -- equal to what the mod sends out of the box.
 $schemaText = Read-Code (Join-Path $modSrc "AiNpcRecipeSchema.reds")
 $recipeBlocks = @{}
-foreach ($m in [regex]::Matches($schemaText, 'AiNpcRecipeBlockSchemaOf\("(\w+)",\s*\[([^\]]*)\]\)')) {
+foreach ($m in [regex]::Matches($schemaText, 'AiNpcRecipe(?:BlockSchemaOf|PartedSource)\("(\w+)",\s*\[([^\]]*)\]')) {
     $parts = @()
     foreach ($p in [regex]::Matches($m.Groups[2].Value, '"(\w+)"')) { $parts += $p.Groups[1].Value }
     $recipeBlocks[$m.Groups[1].Value] = $parts

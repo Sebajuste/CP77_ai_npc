@@ -636,17 +636,17 @@
           "args": [],
           "call": "AiNpcActionBlockOpen"
         },
-        "Write a command exactly as written, on the last line of your message, only when what it describes has been agreed; fill its slots from the parameters below.\n",
+        "Write a command exactly as written, on the last line of your message; fill its slots from the parameters below.\n",
         {
           "ref": "lines"
         },
         {
           "ref": "definitions"
         },
-        "</commands>"
+        "</actions>"
       ]
     },
-    "actionBlockOpen": "<commands>",
+    "actionBlockOpen": "<actions>",
     "bioFallback": "You are a Night City local in a text conversation with V.",
     "channelPrompt": {
       "Call": "You and V are on a call. Your reply is read out loud by a speech engine. Write every number, time and amount in words. Write names, acronyms and abbreviations out in full. No emoji, no typed smileys, no asterisks, no formatting of any kind.",
@@ -667,25 +667,65 @@
     ],
     "coreInteractionRules": [
       {
-        "args": [
-          "REACH",
-          "The commands in <mechanics> are the only way you can act on the world. Use them when the context calls for it, exactly as written."
-        ],
-        "call": "AiNpcRuleOf"
+        "node": {
+          "args": [
+            "REACH",
+            {
+              "args": [
+                {
+                  "ref": "source"
+                }
+              ],
+              "call": "AiNpcReachRule"
+            }
+          ],
+          "call": "AiNpcRuleOf"
+        },
+        "when": {
+          "clauses": [],
+          "recipe": [
+            {
+              "block": "interactions",
+              "part": "reach"
+            }
+          ]
+        }
       },
       {
-        "args": [
-          "REAL",
-          "What a command did is real, and so is what your memory says you agreed to."
-        ],
-        "call": "AiNpcRuleOf"
+        "node": {
+          "args": [
+            "REAL",
+            "What a command did is real, and so is what your memory says you agreed to."
+          ],
+          "call": "AiNpcRuleOf"
+        },
+        "when": {
+          "clauses": [],
+          "recipe": [
+            {
+              "block": "interactions",
+              "part": "real"
+            }
+          ]
+        }
       },
       {
-        "args": [
-          "PROMISES",
-          "Everything else you never did: do not announce it, do not promise it."
-        ],
-        "call": "AiNpcRuleOf"
+        "node": {
+          "args": [
+            "PROMISES",
+            "Everything else you never did: do not announce it, do not promise it."
+          ],
+          "call": "AiNpcRuleOf"
+        },
+        "when": {
+          "clauses": [],
+          "recipe": [
+            {
+              "block": "interactions",
+              "part": "promises"
+            }
+          ]
+        }
       }
     ],
     "coreRules": [
@@ -856,23 +896,15 @@
         }
       },
       {
-        "node": {
-          "args": [
-            {
-              "ref": "contactId"
-            }
-          ],
-          "call": "AiNpcGetWorldInteractions"
-        },
-        "when": {
-          "clauses": [],
-          "recipe": [
-            {
-              "block": "world",
-              "part": "interactions"
-            }
-          ]
-        }
+        "args": [
+          {
+            "ref": "contactId"
+          },
+          {
+            "ref": "recipe"
+          }
+        ],
+        "call": "AiNpcRenderInteractions"
       },
       {
         "node": {
@@ -902,31 +934,6 @@
       {
         "node": {
           "args": [
-            "mechanics",
-            {
-              "args": [
-                {
-                  "ref": "contactId"
-                }
-              ],
-              "call": "AiNpcGetWorldMechanics"
-            }
-          ],
-          "call": "AiNpcSection"
-        },
-        "when": {
-          "clauses": [],
-          "recipe": [
-            {
-              "block": "world",
-              "part": "mechanics"
-            }
-          ]
-        }
-      },
-      {
-        "node": {
-          "args": [
             {
               "ref": "ctx"
             },
@@ -942,12 +949,10 @@
           "call": "AiNpcRenderActionBlock"
         },
         "when": {
-          "clauses": [
-            "!AiNpcActionsAreDedicated()"
-          ],
+          "clauses": [],
           "recipe": [
             {
-              "block": "commands"
+              "block": "actions"
             }
           ]
         }
@@ -1226,6 +1231,12 @@
         ": "
       ]
     },
+    "interactionDefaultSource": "conversation",
+    "interactionSources": [
+      "conversation",
+      "dedicated",
+      "commands"
+    ],
     "lanes": {
       "AiNpcLaneActions": "actions",
       "AiNpcLaneRepair": "repair",
@@ -1672,7 +1683,7 @@
     "passInstructionSources": [
       "conversation",
       "memory",
-      "commands",
+      "actions",
       "test"
     ],
     "playerDescription": [
@@ -1723,6 +1734,9 @@
         ". "
       ]
     },
+    "reachCommands": "Determine if an action is required; use commands in <actions> if you decide it is necessary. Otherwise answer NONE.",
+    "reachConversation": "You reach V only by text message, and the commands in <actions> are the only way you can act on the world. Use them when the context calls for it, exactly as written, only when it is necessary; skip actions otherwise.",
+    "reachDedicated": "You reach V only by text message.",
     "reasonLine": {
       "concat": [
         "(",
@@ -1782,12 +1796,27 @@
       },
       {
         "args": [
+          "interactions",
+          {
+            "array": [
+              "reach",
+              "real",
+              "promises"
+            ]
+          },
+          {
+            "args": [],
+            "call": "AiNpcInteractionSources"
+          }
+        ],
+        "call": "AiNpcRecipePartedSource"
+      },
+      {
+        "args": [
           "world",
           {
             "array": [
-              "interactions",
-              "background",
-              "mechanics"
+              "background"
             ]
           }
         ],
@@ -1795,7 +1824,7 @@
       },
       {
         "args": [
-          "commands"
+          "actions"
         ],
         "call": "AiNpcRecipeWhole"
       },
@@ -1880,14 +1909,14 @@
         "call": "AiNpcRecipeMessage"
       }
     ],
-    "recipeTemplate": "{\n    \"_doc\": \"What the system prompt renders, block by block. Copy this file to recipes.json to use it; this one is rewritten every launch and never read. Keys starting with _ are comments.\",\n    \"_order\": \"The ORDER of the blocks is not in this file. The mod renders them in one fixed sequence, ranked by how often each one changes, because an OpenAI-compatible backend stops discounting a repeated prompt at the first thing that moves. This file says WHAT is rendered, never WHERE.\",\n    \"_absent\": \"A key you leave out keeps the mod's own answer -- it does NOT remove the block. That is what lets a block added by a later version reach a file written today. Removing a block is explicit, and null is one of the ways to say it: null, false, \\\"none\\\", or an empty list all remove it.\",\n    \"_messages\": \"A request is two messages, and the last two keys of a recipe name who writes each one: instruction is everything above, ask is the turn handed to the character. A recipe that names neither is a conversation recipe, and every pass keeps its own builder -- which is what the mod does out of the box. You only write them to say which pass a recipe was written for, so that binding it to another one in settings.json is refused instead of silently rendering nothing.\",\n    \"_values\": \"Five shapes: \\\"full\\\" (every part), a list of parts, null or false or \\\"none\\\" (not rendered), an object with \\\"parts\\\"/\\\"level\\\" and the block's own options, and nothing at all -- an absent key keeps the mod's answer.\",\n    \"version\": 1,\n    \"_active\": \"Which recipe below the mod renders with.\",\n    \"active\": \"default\",\n    \"recipes\": {\n        \"_default\": \"The mod's own, written out in full. Every value here is what you get by omitting the key.\",\n        \"default\": {\n            \"_system\": \"<system>: the fiction, and the rules that describe the chat itself. Cannot be removed -- FORM, TIME and LENGTH live here.\",\n            \"system\": \"full\",\n            \"_explicitness\": \"<explicitness>: what YOU allowed in the Mod Settings menu, stated once at the top and restated last. Cannot be removed: it answers a question that was put to you, not to a character and not to this file.\",\n            \"explicitness\": \"full\",\n            \"_character\": \"<character>: who this character is. bio is the description, speech is how they talk, additions is what another installed mod appended. [\\\"bio\\\"] alone is the character without a register.\",\n            \"character\": [\"bio\", \"speech\", \"additions\"],\n            \"_target\": \"<target>: who the character is writing TO. source names them; \\\"player\\\" is V, and it is the only source this version implements.\",\n            \"target\": { \"level\": \"full\", \"source\": \"player\" },\n            \"_relationship\": \"<relationship>: how this character sees V.\",\n            \"relationship\": \"full\",\n            \"_world\": \"Three tags, one key: <interactions> what they can do to reach V, <world_background> Night City, <mechanics> how the world works.\",\n            \"world\": [\"interactions\", \"background\", \"mechanics\"],\n            \"_commands\": \"<commands>: the commands this character may write. false removes the block AND the pass that repairs a malformed one -- with no vocabulary in the prompt, a bracket in a reply is prose.\",\n            \"commands\": true,\n            \"_memory\": \"<memory>: what they remember of earlier conversations. [\\\"facts\\\"] keeps the consolidated facts and drops the story, the open loops and the agreements.\",\n            \"memory\": [\"chronicle\", \"facts\", \"open\", \"agreed\", \"tone\"],\n            \"_intent\": \"<intent>: what they want of V. own is theirs, extensions is what other installed mods want of V through them.\",\n            \"intent\": [\"own\", \"extensions\"],\n            \"_quest\": \"<quest>: the quest you are tracking. name is its title, context what this character says about it, objective what you are doing right now.\",\n            \"quest\": [\"name\", \"context\", \"objective\"],\n            \"_now\": \"<now>: the only block that changes every message. clock is the time, weather the sky, pending what another mod seeded, live the character's own current state.\",\n            \"now\": [\"clock\", \"weather\", \"pending\", \"live\"],\n            \"_channel\": \"The surface this reply lands on, and what it accepts. Cannot be removed -- a character that believed it was texting during a call would write for a screen, and the rules here are measured rather than editorial. It carries no parts: the mod writes one text per channel.\",\n            \"channel\": \"full\",\n            \"_instruction\": \"The first message: every block above. source is the pass that builds it -- conversation, memory, commands or test. Cannot be removed.\",\n            \"instruction\": { \"source\": \"conversation\" },\n            \"_ask\": \"The second message: the transcript, ending on the turn handed to the character. source is conversation, memory, repair or test. Cannot be removed.\",\n            \"ask\": { \"source\": \"conversation\" }\n        },\n        \"_compact\": \"An example of the shape you actually write: only what differs. Set active to \\\"compact\\\" to render this one.\",\n        \"compact\": {\n            \"character\": [\"bio\"],\n            \"memory\": [\"facts\"],\n            \"quest\": [\"name\", \"context\"],\n            \"commands\": false\n        },\n        \"_perpass\": \"The mod ships one recipe per pass, and a preset binds them by name in settings.json. The three below remove nothing: their pass builds both its messages itself, and the recipe only says which pass it belongs to.\",\n        \"_compaction\": \"A recipe for another pass. It removes nothing: the compaction builds both its messages itself, and this only says which pass it belongs to. Bind it with \\\"passes\\\": { \\\"thinking\\\": { \\\"recipe\\\": \\\"compaction\\\" } } in settings.json.\",\n        \"compaction\": {\n            \"instruction\": { \"source\": \"memory\" },\n            \"ask\": { \"source\": \"memory\" }\n        },\n        \"_repair\": \"The second request the mod makes when a character writes a command with a wrong bracket: the command list, and the broken tag. Bound by passes.repair.\",\n        \"repair\": {\n            \"instruction\": { \"source\": \"commands\" },\n            \"ask\": { \"source\": \"repair\" }\n        },\n        \"_actions\": \"The action selection, when Mod Settings > Command Handling is set to Dedicated: the command list, the last few messages and the reply that was just written. It carries no bio, no world and no tier -- none of them decides whether money changed hands. Bound by passes.actions.\",\n        \"actions\": {\n            \"instruction\": { \"source\": \"commands\" },\n            \"ask\": { \"source\": \"selector\" }\n        },\n        \"_spoken\": \"A reply that is SAID, on a holo call. Same blocks as the written one -- it is a character speaking either way -- but its own recipe, because what is spoken cannot be re-read: the length rule and the form rule are the two you will want to change first. Bind it with \\\"passes\\\": { \\\"holo\\\": { \\\"recipe\\\": \\\"spoken\\\" } }. Left unbound, a call renders exactly like a text.\",\n        \"spoken\": {\n            \"_commands\": \"No command is written on a call: the mod only offers them in the dedicated mode, and a bracketed tag read out loud is not a thing anyone says. Dropping the block also drops the repair pass that would chase a malformed one.\",\n            \"commands\": false,\n            \"instruction\": { \"source\": \"conversation\" },\n            \"ask\": { \"source\": \"conversation\" }\n        },\n        \"_test\": \"The connection check: two sentences, sent on the slot the reply is written on. Bound by passes.test.\",\n        \"test\": {\n            \"instruction\": { \"source\": \"test\" },\n            \"ask\": { \"source\": \"test\" }\n        }\n    }\n}\n",
+    "recipeTemplate": "{\n    \"_doc\": \"What the system prompt renders, block by block. Copy this file to recipes.json to use it; this one is rewritten every launch and never read. Keys starting with _ are comments.\",\n    \"_order\": \"The ORDER of the blocks is not in this file. The mod renders them in one fixed sequence, ranked by how often each one changes, because an OpenAI-compatible backend stops discounting a repeated prompt at the first thing that moves. This file says WHAT is rendered, never WHERE.\",\n    \"_absent\": \"A key you leave out keeps the mod's own answer -- it does NOT remove the block. That is what lets a block added by a later version reach a file written today. Removing a block is explicit, and null is one of the ways to say it: null, false, \\\"none\\\", or an empty list all remove it.\",\n    \"_messages\": \"A request is two messages, and the last two keys of a recipe name who writes each one: instruction is everything above, ask is the turn handed to the character. A recipe that names neither is a conversation recipe, and every pass keeps its own builder -- which is what the mod does out of the box. You only write them to say which pass a recipe was written for, so that binding it to another one in settings.json is refused instead of silently rendering nothing.\",\n    \"_values\": \"Five shapes: \\\"full\\\" (every part), a list of parts, null or false or \\\"none\\\" (not rendered), an object with \\\"parts\\\"/\\\"level\\\" and the block's own options, and nothing at all -- an absent key keeps the mod's answer.\",\n    \"version\": 1,\n    \"_active\": \"Which recipe below the mod renders with.\",\n    \"active\": \"default\",\n    \"recipes\": {\n        \"_default\": \"The mod's own, written out in full. Every value here is what you get by omitting the key.\",\n        \"default\": {\n            \"_system\": \"<system>: the fiction, and the rules that describe the chat itself. Cannot be removed -- FORM, TIME and LENGTH live here.\",\n            \"system\": \"full\",\n            \"_explicitness\": \"<explicitness>: what YOU allowed in the Mod Settings menu, stated once at the top and restated last. Cannot be removed: it answers a question that was put to you, not to a character and not to this file.\",\n            \"explicitness\": \"full\",\n            \"_character\": \"<character>: who this character is. bio is the description, speech is how they talk, additions is what another installed mod appended. [\\\"bio\\\"] alone is the character without a register.\",\n            \"character\": [\"bio\", \"speech\", \"additions\"],\n            \"_target\": \"<target>: who the character is writing TO. source names them; \\\"player\\\" is V, and it is the only source this version implements.\",\n            \"target\": { \"level\": \"full\", \"source\": \"player\" },\n            \"_relationship\": \"<relationship>: how this character sees V.\",\n            \"relationship\": \"full\",\n            \"_interactions\": \"<interactions>: how this character may act. reach is the conduct rubric -- what to write when a command applies and what to write when none does -- and source is which wording it takes: conversation carries <actions>, dedicated is the same chat with the commands moved to their own request, commands is that request. real and promises state what is true rather than what to write.\",\n            \"interactions\": { \"parts\": [\"reach\", \"real\", \"promises\"], \"source\": \"conversation\" },\n            \"_world\": \"<world_background>: Night City, and how a local reacts to it.\",\n            \"world\": [\"background\"],\n            \"_actions\": \"<actions>: the commands this character may write. false removes the block AND the pass that repairs a malformed one -- with no vocabulary in the prompt, a bracket in a reply is prose.\",\n            \"actions\": true,\n            \"_memory\": \"<memory>: what they remember of earlier conversations. [\\\"facts\\\"] keeps the consolidated facts and drops the story, the open loops and the agreements.\",\n            \"memory\": [\"chronicle\", \"facts\", \"open\", \"agreed\", \"tone\"],\n            \"_intent\": \"<intent>: what they want of V. own is theirs, extensions is what other installed mods want of V through them.\",\n            \"intent\": [\"own\", \"extensions\"],\n            \"_quest\": \"<quest>: the quest you are tracking. name is its title, context what this character says about it, objective what you are doing right now.\",\n            \"quest\": [\"name\", \"context\", \"objective\"],\n            \"_now\": \"<now>: the only block that changes every message. clock is the time, weather the sky, pending what another mod seeded, live the character's own current state.\",\n            \"now\": [\"clock\", \"weather\", \"pending\", \"live\"],\n            \"_channel\": \"The surface this reply lands on, and what it accepts. Cannot be removed -- a character that believed it was texting during a call would write for a screen, and the rules here are measured rather than editorial. It carries no parts: the mod writes one text per channel.\",\n            \"channel\": \"full\",\n            \"_instruction\": \"The first message: every block above. source is the pass that builds it -- conversation, memory, commands or test. Cannot be removed.\",\n            \"instruction\": { \"source\": \"conversation\" },\n            \"_ask\": \"The second message: the transcript, ending on the turn handed to the character. source is conversation, memory, repair or test. Cannot be removed.\",\n            \"ask\": { \"source\": \"conversation\" }\n        },\n        \"_compact\": \"An example of the shape you actually write: only what differs. Set active to \\\"compact\\\" to render this one.\",\n        \"compact\": {\n            \"character\": [\"bio\"],\n            \"memory\": [\"facts\"],\n            \"quest\": [\"name\", \"context\"],\n            \"actions\": false\n        },\n        \"_dedicated\": \"The conversation recipe Mod Settings > Command Handling binds when you pick Dedicated. It differs from default by two lines: no <actions> block, and a REACH rubric that does not point at one. The commands are chosen afterwards, by the actions recipe below.\",\n        \"dedicated\": {\n            \"interactions\": { \"parts\": [\"reach\", \"real\", \"promises\"], \"source\": \"dedicated\" },\n            \"actions\": false\n        },\n        \"_perpass\": \"The mod ships one recipe per pass, and a preset binds them by name in settings.json. The three below remove nothing: their pass builds both its messages itself, and the recipe only says which pass it belongs to.\",\n        \"_compaction\": \"A recipe for another pass. It removes nothing: the compaction builds both its messages itself, and this only says which pass it belongs to. Bind it with \\\"passes\\\": { \\\"thinking\\\": { \\\"recipe\\\": \\\"compaction\\\" } } in settings.json.\",\n        \"compaction\": {\n            \"instruction\": { \"source\": \"memory\" },\n            \"ask\": { \"source\": \"memory\" }\n        },\n        \"_repair\": \"The second request the mod makes when a character writes a command with a wrong bracket: the command list, and the broken tag. Bound by passes.repair.\",\n        \"repair\": {\n            \"interactions\": { \"parts\": [\"reach\"], \"source\": \"commands\" },\n            \"instruction\": { \"source\": \"actions\" },\n            \"ask\": { \"source\": \"repair\" }\n        },\n        \"_actions\": \"The action selection, when Mod Settings > Command Handling is set to Dedicated: the command list, the last few messages and the reply that was just written. It carries no bio, no world and no tier -- none of them decides whether money changed hands. Bound by passes.actions.\",\n        \"actions\": {\n            \"interactions\": { \"parts\": [\"reach\"], \"source\": \"commands\" },\n            \"instruction\": { \"source\": \"actions\" },\n            \"ask\": { \"source\": \"selector\" }\n        },\n        \"_spoken\": \"A reply that is SAID, on a holo call. Same blocks as the written one -- it is a character speaking either way -- but its own recipe, because what is spoken cannot be re-read: the length rule and the form rule are the two you will want to change first. Bind it with \\\"passes\\\": { \\\"holo\\\": { \\\"recipe\\\": \\\"spoken\\\" } }. Left unbound, a call renders exactly like a text.\",\n        \"spoken\": {\n            \"_actions\": \"No command is written on a call: the mod only offers them in the dedicated mode, and a bracketed tag read out loud is not a thing anyone says. Dropping the block also drops the repair pass that would chase a malformed one.\",\n            \"actions\": false,\n            \"instruction\": { \"source\": \"conversation\" },\n            \"ask\": { \"source\": \"conversation\" }\n        },\n        \"_test\": \"The connection check: two sentences, sent on the slot the reply is written on. Bound by passes.test.\",\n        \"test\": {\n            \"instruction\": { \"source\": \"test\" },\n            \"ask\": { \"source\": \"test\" }\n        }\n    }\n}\n",
     "repairAsk": {
       "concat": [
         "You wrote this command in your last message:\n",
         {
           "ref": "tag"
         },
-        "\n\nIt is not one of the commands above, so nothing happened. Write the correct command for what you have just agreed, alone, on one line, with no other text. If none of the commands applies, write NONE."
+        "\n\nIt is not one of the commands above, so nothing happened. Write the correct command for what you have just agreed, alone, on one line, with no other text."
       ]
     },
     "romanceRefusal": "You and V are not together. An advance from V is not taken up: turn it down in your own words, and never answer as though it had not been made.",
@@ -1908,12 +1937,7 @@
           ],
           "call": "AiNpcTranscriptLine"
         },
-        "\n\nRead the last message only. If it carries out one of the commands above, write that command alone, on one line, with no other text. If it does not, write ",
-        {
-          "args": [],
-          "call": "AiNpcActionSelectorNone"
-        },
-        "."
+        "\n\nRead the last message only, and answer for it alone, on one line, with no other text."
       ]
     },
     "selectorNone": "NONE",
@@ -2005,21 +2029,22 @@
     }
   },
   "sources": {
-    "AiNpcActionPrompt.reds": "72281115268c",
-    "AiNpcActionSelector.reds": "0c2c7af7594f",
+    "AiNpcActionPrompt.reds": "49b35b00bade",
+    "AiNpcActionSelector.reds": "605337317389",
     "AiNpcChannelPrompt.reds": "80a094342194",
     "AiNpcCharacterRender.reds": "d88a8644537e",
     "AiNpcContacts.reds": "ff4b01ac86b6",
     "AiNpcContextData.reds": "57b1f9152290",
+    "AiNpcInteractionRender.reds": "f3118e860fe0",
     "AiNpcLanguage.reds": "93fcdec1760b",
     "AiNpcMemory.reds": "fe925b09f83f",
-    "AiNpcPass.reds": "9f1859c53d91",
+    "AiNpcPass.reds": "6fe5fa98015f",
     "AiNpcPlayer.reds": "562a58c45bbf",
-    "AiNpcPromptBuild.reds": "c3d605193022",
-    "AiNpcPromptSections.reds": "e3f4bb3ff0b3",
-    "AiNpcRecipeSchema.reds": "834abd1989c9",
-    "AiNpcRecipeTemplate.reds": "315f2529a517",
-    "AiNpcRepair.reds": "2f2e67da696e",
+    "AiNpcPromptBuild.reds": "297558fcfae6",
+    "AiNpcPromptSections.reds": "bd0ea47f2597",
+    "AiNpcRecipeSchema.reds": "ffb2f150ab4b",
+    "AiNpcRecipeTemplate.reds": "bd95a4df2cc7",
+    "AiNpcRepair.reds": "41e6ca6e004d",
     "AiNpcRequestLog.reds": "0225553adc1c",
     "AiNpcRomanceExtension.reds": "7434a37d4e0e",
     "AiNpcTargetRender.reds": "28be3840033a",

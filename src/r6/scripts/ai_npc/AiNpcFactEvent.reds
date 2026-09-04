@@ -4,7 +4,7 @@
 // assertable without a session. The sentence itself comes from a quest fact watch --
 // see AiNpcFactBridge.reds.
 //
-// NOTHING HERE MAY ASK FOR AN OUTPUT. A line in <now> lands after <mechanics> and last but
+// NOTHING HERE MAY ASK FOR AN OUTPUT. A line in <now> lands after <actions> and last but
 // for the closing token, so an instruction here competes with the one the prompt already
 // gave, from a later and more specific position -- measured at 5/6 replies emitting their
 // action command with no ambient event against 1/6 with an instruction-bearing one live.

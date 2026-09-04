@@ -423,7 +423,7 @@ A block belongs to whoever owns what it states, and that decides how a mod reach
 | What the block states | Regime | Blocks |
 |---|---|---|
 | the mod's policy | **composed** by key | `<system_rules>`, `<interactions>` |
-| the character | **replaced** whole | `<character>` (SPEECH included), `<relationship>`, `<intent>`, `<target>`, `<mechanics>` |
+| the character | **replaced** whole | `<character>` (SPEECH included), `<relationship>`, `<intent>`, `<target>` |
 | the moment | **added** to, with a budget | `<now>`, `<intent>` |
 | the player's consent | **nothing** | `<explicitness>` |
 

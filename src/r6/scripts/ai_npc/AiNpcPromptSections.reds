@@ -20,7 +20,7 @@ module AiNpc
 // a gendered word; the built-in text is composed in code and calls AiNpcGetGenderedWord.
 //
 // "" means no opinion, never "blank this section". tools/lint.ps1 leans on that when it
-// checks that both arguments name the same field: `over.worldMechanics` resolved against
+// checks that both arguments name the same field: `over.playerDescription` resolved against
 // `prompts.worldBackground` would compile, run, and be silently wrong.
 func AiNpcConfiguredSection(contactId: String, contactText: String, globalText: String) -> String {
     // Both levels are somebody else's text, so both go through the same door: a tag inside
@@ -92,36 +92,6 @@ func AiNpcGetPromptConfig() -> ref<AiNpcPromptConfig> {
 // command -- and when this text was rewritten here, its copy went on stating the old policy
 // with nothing to say so. A rubric lets a mod lift the clause it needs and inherit the rest.
 //
-// PROMISES is locked. It is the one clause whose loss the player sees: a character promising
-// to come and getting nobody there reads as the mod being broken rather than as a character
-// changing its mind.
-func AiNpcGetWorldInteractions(contactId: String) -> String {
-    return AiNpcRenderRules("interactions",
-        AiNpcComposedRules("interactions", contactId, AiNpcCoreInteractionRules(),
-            AiNpcPromptOverridesFor(contactId).interactions,
-            AiNpcGetPromptConfig().interactions,
-            AiNpcExtensionInteractionRules(AiNpcBuildContactContext(contactId))));
-}
-
-func AiNpcCoreInteractionRules() -> array<ref<AiNpcRule>> {
-    let rules: array<ref<AiNpcRule>>;
-
-    // Named rather than enumerated: <mechanics> is where the command vocabulary is written,
-    // so pointing at it stays true when a provider or an extension adds one.
-    // Sa première moitié -- « You reach V only by text message » -- est partie dans <channel> :
-    // elle affirmait le médium, et elle avait tort pendant un appel. Ce qui reste vaut partout.
-    ArrayPush(rules, AiNpcRuleOf("REACH", "The commands in <mechanics> are the only way you can act on the world. Use them when the context calls for it, exactly as written."));
-    // The test is "did it happen?", never "is it an act?". A blanket ban on acts forbids
-    // exactly what the commands do -- a transfer moves real eddies -- from a section read
-    // before the commands are announced, which a model resolves by committing to nothing.
-    ArrayPush(rules, AiNpcRuleOf("REAL", "What a command did is real, and so is what your memory says you agreed to."));
-    // Locked. An offer that never arrives reads as a broken promise, and the player is the
-    // one who finds out.
-    ArrayPush(rules, AiNpcRuleOf("PROMISES", "Everything else you never did: do not announce it, do not promise it."));
-
-    return rules;
-}
-
 // Who V is, never folded into <world_background>: sharing one override between the world and
 // the person means a contact that needs a different world can only have one by also deleting
 // the description of who it is writing to.
@@ -270,23 +240,6 @@ func AiNpcBuiltinWorldLoreFor(language: AiNpcLanguage) -> String {
 // The lore for the session actually running.
 func AiNpcBuiltinWorldLore() -> String {
     return AiNpcBuiltinWorldLoreFor(AiNpcResolveLanguage());
-}
-
-// Prose about how the world works, and nothing about any particular command.
-//
-// It used to carry the eddie-transfer text as well, and that conflation had a consequence
-// nobody meant: a contact that opted out of transfers lost this whole section, including an
-// override written about something else entirely. The commands now live in <commands>, which
-// is rendered from the claim table, so this is free to be what its name says.
-//
-// Empty by default. Night City needs no mechanical explanation to a character who lives in it;
-// this exists for a mod that has added a system of its own and has to state its rules.
-func AiNpcGetWorldMechanics(contactId: String) -> String {
-    let over = AiNpcPromptOverridesFor(contactId);
-    if NotEquals(StrLen(over.worldMechanics), 0) {
-        return AiNpcExpandTemplateFor(contactId, over.worldMechanics);
-    }
-    return AiNpcConfiguredSection(contactId, "", AiNpcGetPromptConfig().worldMechanics);
 }
 
 // What the player agreed to see, as the block the model reads once at the top. A permission,

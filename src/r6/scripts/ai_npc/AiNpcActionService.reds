@@ -1,7 +1,7 @@
 // The action pass: one request per reply, asking a model what the character just did.
 //
 // It exists so the dialogue model can stop being asked two things at once. In Dedicated mode
-// the <commands> block leaves the conversation prompt entirely -- the character writes prose
+// the <actions> block leaves the conversation prompt entirely -- the character writes prose
 // and nothing else -- and this lane reads that prose against the command table afterwards.
 // Embedded mode is the other half of the switch and the default: the block stays in the
 // conversation, the reply carries its own brackets, and this system never sends anything.
@@ -43,7 +43,7 @@ public class AiNpcActionService extends ScriptableSystem {
     // and none of them reaches the player: the message they are reading is already correct,
     // and what is at stake is whether a command fires behind it.
     public func Examine(contactId: String, reply: String) -> Void {
-        if !AiNpcActionsAreDedicated() {
+        if AiNpcSpeakingCarriesActions() {
             return;
         }
         if Equals(StrLen(contactId), 0) || Equals(StrLen(reply), 0) {

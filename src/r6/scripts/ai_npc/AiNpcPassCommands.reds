@@ -1,7 +1,12 @@
 // The two passes instructed by the command table: the repair, and the action selection.
 //
-// Both are handed the vocabulary and nothing else -- no persona, no world, no tier. None of
-// them decides whether a command fires.
+// Both are handed the vocabulary and the conduct rubric, and nothing else -- no persona, no
+// world, no tier. None of those decides whether a command fires.
+//
+// The rubric is <interactions> at its "commands" source, which is the same block a
+// conversation renders and the same lane a mod contributes to. It is what says NONE, because
+// a call whose whole output is one line needs a word for "nothing happened" -- and saying it
+// here rather than in the ask keeps one rubric per prompt asking for the output.
 //
 // An empty table means this contact was never given a command, so a bracket in its reply is
 // prose. Ready() is false there, and both lanes stop before they spend: repairing prose
@@ -19,7 +24,13 @@ class AiNpcPassCommands extends AiNpcPassBuilder {
     // AiNpcPassSend asks again on the way out.
     func Instruction() -> String {
         if !this.m_rendered {
-            this.m_vocabulary = AiNpcActionVocabularyFor(this.contactId, this.Recipe());
+            let recipe = this.Recipe();
+            let vocabulary = AiNpcActionVocabularyFor(this.contactId, recipe);
+            // No vocabulary, no instruction: Ready() reads this, and a conduct rubric with no
+            // commands under it would send a request about nothing.
+            if NotEquals(StrLen(vocabulary), 0) {
+                this.m_vocabulary = AiNpcRenderInteractions(this.contactId, recipe) + vocabulary;
+            }
             this.m_rendered = true;
         }
         return this.m_vocabulary;

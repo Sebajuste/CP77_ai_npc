@@ -167,29 +167,19 @@ func AiNpcBuildSystemPromptWith(contactId: String, pendingContext: String,
 
     // Three tags, one recipe key. Rendered with its own tag, like <system_rules>: a composed
     // block knows whether it has anything to say, and AiNpcSection would wrap it a second time.
-    if AiNpcRecipeWants(recipe, "world", "interactions") {
-        prompt += AiNpcGetWorldInteractions(contactId);
-    }
+    prompt += AiNpcRenderInteractions(contactId, recipe);
     if AiNpcRecipeWants(recipe, "world", "background") {
         prompt += AiNpcSection("world_background", AiNpcGetWorldBackground(contactId));
     }
-    // <mechanics> is prose about how the world works, which most characters have nothing to
-    // say about. <commands> below is the vocabulary, rendered from the very table the reply
-    // will be dispatched against -- so what the model is told it may do and what this mod will
-    // honour are one object rather than two computations that have to be kept in agreement.
-    if AiNpcRecipeWants(recipe, "world", "mechanics") {
-        prompt += AiNpcSection("mechanics", AiNpcGetWorldMechanics(contactId));
-    }
-
     // Dropping this block drops the repair pass with it -- AiNpcActionVocabularyFor asks the
     // same recipe -- because a bracket in a reply the model was never taught to write is
     // prose, and repairing prose against an empty rulebook replaces a good reply with a worse
     // one. Dispatch is not affected: IsOffered stays the authority on what may fire.
     //
-    // Dedicated mode removes it for a different reason and to the same effect: the vocabulary
-    // is still rendered, but into the action pass's own request rather than into this one, so
-    // the character is asked for prose and nothing else.
-    if AiNpcRecipeHas(recipe, "commands") && !AiNpcActionsAreDedicated() {
+    // A recipe that drops it is the whole of what "Dedicated" means: the vocabulary is still
+    // rendered, into the action pass's own request rather than into this one, so the character
+    // is asked for prose and nothing else.
+    if AiNpcRecipeHas(recipe, "actions") {
         prompt += AiNpcRenderActionBlock(ctx, AiNpcBuildActionTable(contactId));
     }
     // No <language> section: the language rule and the per-contact register are stated in
