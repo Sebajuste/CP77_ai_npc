@@ -25,6 +25,10 @@ struct Chunk
     std::vector<uint8_t> samples;
     WAVEHDR header{};
     bool prepared = false;
+
+    // A quelle replique ce morceau appartient. C'est par lui qu'on sait ce qui sort du
+    // haut-parleur a cet instant, plutot que par un chronometre lance a cote.
+    uint32_t line = 0;
 };
 
 // One voice, and the state that outlives the call that started it.
@@ -34,6 +38,9 @@ struct Voice
     HWAVEOUT device = nullptr;
     std::vector<std::unique_ptr<Chunk>> chunks;
     std::thread drain;
+    // La replique dont les morceaux arrivent. Ecrite avant de remplir, lue par chaque morceau.
+    uint32_t line = 0;
+
     // Le format de la prise en cours. Une phrase qui arrive au meme format continue la prise
     // ouverte ; un format different est une autre voix, et celle-la remplace.
     Format format{};
@@ -333,6 +340,7 @@ Status Push(const void* aSamples, size_t aBytes)
     auto chunk = std::make_unique<Chunk>();
     chunk->samples.assign(static_cast<const uint8_t*>(aSamples),
                           static_cast<const uint8_t*>(aSamples) + aBytes);
+    chunk->line = voice.line;
     chunk->header.lpData = reinterpret_cast<LPSTR>(chunk->samples.data());
     chunk->header.dwBufferLength = static_cast<DWORD>(chunk->samples.size());
 
@@ -349,6 +357,31 @@ Status Push(const void* aSamples, size_t aBytes)
 
     voice.chunks.push_back(std::move(chunk));
     return Status::Ok;
+}
+
+void SetLine(uint32_t aLine)
+{
+    Voice& voice = TheVoice();
+    std::lock_guard<std::mutex> guard(voice.mutex);
+    voice.line = aLine;
+}
+
+uint32_t PlayingLine()
+{
+    Voice& voice = TheVoice();
+    std::lock_guard<std::mutex> guard(voice.mutex);
+    if (voice.device == nullptr)
+    {
+        return 0;
+    }
+    for (const auto& chunk : voice.chunks)
+    {
+        if ((chunk->header.dwFlags & WHDR_DONE) == 0)
+        {
+            return chunk->line;
+        }
+    }
+    return 0;
 }
 
 void Close()

@@ -75,6 +75,18 @@ Status Open(const Format& aFormat);
 Status Push(const void* aSamples, size_t aBytes);
 void Close();
 
+// Marque les morceaux a venir comme appartenant a cette replique. Zero pour "sans replique",
+// ce qui est le cas d'un bip.
+//
+// Une file qui ne sait pas ce qu'elle joue ne peut pas etre suivie : le sous-titre devrait
+// deviner une duree, et deviner faux est ce qui faisait sauter l'affichage a la derniere phrase
+// pendant que la premiere se jouait encore.
+void SetLine(uint32_t aLine);
+
+// La replique dont le son sort MAINTENANT du haut-parleur : celle du premier morceau que le
+// peripherique n'a pas encore rendu. Zero quand plus rien ne joue.
+uint32_t PlayingLine();
+
 // The same, from a WAV image held in memory: header and samples as a file would have them,
 // but never written down. The whole RIFF walk is here and validates as one -- a caller gets
 // a Status, never a half-parsed header.

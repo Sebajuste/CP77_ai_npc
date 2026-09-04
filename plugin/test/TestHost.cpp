@@ -951,6 +951,58 @@ void TestSpeech()
     ainpc::audio::Stop();
 }
 
+// La file annonce ce qu'elle joue, dans l'ordre.
+//
+// C'est le contrat dont le sous-titre est la vue : trois repliques mises a la suite s'entendent
+// 1, 2, 3, donc `Speaking()` doit les nommer 1, 2, 3. Une surface qui afficherait ce qu'elle
+// vient d'envoyer nommerait la troisieme des le depart.
+//
+// Le vrai chemin, pas une simulation : Speak() met en file, le worker rend, la voie audio
+// estampille, et c'est ce que le jeu execute.
+void TestSpeaking()
+{
+    std::setvbuf(stdout, nullptr, _IONBF, 0);
+    std::printf("Speaking (what the queue says it is playing)\n");
+
+    Check("nothing is being said before anything is queued", ainpc::speech::Speaking().empty());
+
+    const char* lines[3] = {"One.", "Two.", "Three."};
+    for (int i = 0; i < 3; ++i)
+    {
+        ainpc::speech::Speak(lines[i], "", "", "", "");
+    }
+
+    std::vector<std::string> seen;
+    for (int tick = 0; tick < 400; ++tick)
+    {
+        const std::string now = ainpc::speech::Speaking();
+        if (!now.empty() && (seen.empty() || seen.back() != now))
+        {
+            seen.push_back(now);
+        }
+        if (seen.size() == 3 && ainpc::speech::Speaking().empty())
+        {
+            break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(25));
+    }
+    ainpc::speech::Silence();
+
+    std::printf("        announced: ");
+    for (const auto& s : seen)
+    {
+        std::printf("[%s] ", s.c_str());
+    }
+    std::printf("\n");
+
+    Check("three lines are announced", seen.size() == 3);
+    if (seen.size() == 3)
+    {
+        Check("and in the order they will be heard",
+              seen[0] == lines[0] && seen[1] == lines[1] && seen[2] == lines[2]);
+    }
+}
+
 void TestAudio(bool aAudible)
 {
     std::printf("Audio (from memory)\n");
@@ -1372,6 +1424,7 @@ int main(int argc, char** argv)
     TestStreamOptions();
     TestAudio(audible);
     TestSpeech();
+    TestSpeaking();
 
     std::printf("\n%d check(s), %d failure(s)\n", g_checks, g_failures);
     if (g_failures == 0)

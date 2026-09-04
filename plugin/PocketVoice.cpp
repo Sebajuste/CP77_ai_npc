@@ -212,7 +212,7 @@ bool HasCatalogueVoice(const std::wstring& aPluginDirectory, const std::string& 
     {
         return false;
     }
-    return FileExists(ModelsDir(aPluginDirectory) + L"\catalogue\\" + Widen(aVoiceName) + L".kv");
+    return FileExists(ModelsDir(aPluginDirectory) + L"\\catalogue\\" + Widen(aVoiceName) + L".kv");
 }
 
 void CancelCurrent()

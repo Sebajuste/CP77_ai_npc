@@ -48,6 +48,9 @@ struct Line
     // par la meme file pour la meme raison que tout le reste -- un modele qui se charge sur
     // deux fils est un modele charge deux fois.
     bool warmOnly = false;
+
+    // Son rang dans la parole. Zero pour une preparation, qui ne s'entend pas.
+    uint32_t line = 0;
 };
 
 struct Worker
@@ -61,10 +64,40 @@ struct Worker
     // pendant que Rogue chauffe encore doit repondre sur Judy.
     std::map<std::string, std::string> warmth;
 
+    // Le numero de la prochaine replique, et le texte de celles qui peuvent encore s'entendre.
+    // Purgee au fil de la lecture : une conversation entiere n'a pas a rester en memoire pour
+    // qu'une phrase s'affiche.
+    uint32_t nextLine = 1;
+    std::map<uint32_t, std::string> spoken;
+
     std::string result = "nothing said yet";
     bool running = false;
     bool stopping = false;
     std::thread thread;
+
+    // A LA FIN DU PROCESSUS, pour la meme raison que ~Voice, et c'est le meme code de sortie.
+    //
+    // Le fil sort de lui-meme quand la file se vide, mais l'objet std::thread reste JOIGNABLE
+    // tant que personne ne l'a joint, et detruire un std::thread joignable appelle
+    // std::terminate. Shutdown() le fait quand on l'appelle ; rien ne garantit qu'on l'appelle.
+    // Mesure du 2026-09-04 : le banc annoncait 251 controles et zero echec, puis sortait en
+    // 0xC0000409 -- tout etait juste, et le processus mourait quand meme.
+    //
+    // Shutdown() a deja emporte le fil quand il est passe, donc ceci ne joint rien deux fois.
+    ~Worker()
+    {
+        std::thread last;
+        {
+            std::lock_guard<std::mutex> guard(mutex);
+            stopping = true;
+            wake.notify_all();
+            last = std::move(thread);
+        }
+        if (last.joinable())
+        {
+            last.join();
+        }
+    }
 };
 
 Worker& TheWorker()
@@ -208,6 +241,10 @@ void Run()
             pluginDirectory = worker.pluginDirectory;
         }
 
+        // Tout ce qui sera pousse jusqu'a la replique suivante appartient a celle-ci, quel que
+        // soit le moteur qui la produit.
+        audio::SetLine(line.line);
+
         const auto started = std::chrono::steady_clock::now();
         std::vector<uint8_t> samples;
         Engine engine = Engine::Sapi;
@@ -317,10 +354,15 @@ bool Speak(const std::string& aUtf8Text, const std::string& aContactId,
         worker.thread = std::thread(&Run);
     }
 
+    const uint32_t line = worker.nextLine;
+    worker.nextLine += 1;
+    worker.spoken[line] = aUtf8Text;
+
     worker.pending.push_back(
-        Line{aUtf8Text, aContactId, aVoiceFile, aCatalogueVoice, aLanguage, false});
+        Line{aUtf8Text, aContactId, aVoiceFile, aCatalogueVoice, aLanguage, false, line});
     while (worker.pending.size() > kQueueLimit)
     {
+        worker.spoken.erase(worker.pending.front().line);
         worker.pending.pop_front();
     }
     worker.wake.notify_one();
@@ -356,6 +398,28 @@ void Warm(const std::string& aContactId, const std::string& aVoiceFile,
     worker.wake.notify_one();
 }
 
+std::string Speaking()
+{
+    const uint32_t line = audio::PlayingLine();
+    if (line == 0)
+    {
+        return {};
+    }
+
+    Worker& worker = TheWorker();
+    std::lock_guard<std::mutex> guard(worker.mutex);
+
+    // Ce qui est derriere la replique entendue ne se dira plus : personne ne peut remonter la
+    // file. La purge tient donc la table a la taille de ce qui reste a entendre.
+    for (auto it = worker.spoken.begin(); it != worker.spoken.end();)
+    {
+        it = it->first < line ? worker.spoken.erase(it) : std::next(it);
+    }
+
+    const auto found = worker.spoken.find(line);
+    return found == worker.spoken.end() ? std::string{} : found->second;
+}
+
 void Silence()
 {
     // La marque d'abandon d'abord : le worker peut etre au milieu d'une tranche, et la file
@@ -366,6 +430,7 @@ void Silence()
         Worker& worker = TheWorker();
         std::lock_guard<std::mutex> guard(worker.mutex);
         worker.pending.clear();
+        worker.spoken.clear();
     }
 
     audio::Stop();

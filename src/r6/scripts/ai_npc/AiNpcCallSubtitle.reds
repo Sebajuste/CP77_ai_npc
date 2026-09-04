@@ -1,15 +1,23 @@
-// Ce que le personnage dit, ecrit en bas de l'ecran pendant l'appel.
+// Ce que le personnage dit, ecrit en bas de l'ecran pendant qu'on l'entend.
 //
 // On emprunte la voie du jeu plutot que de dessiner : le tableau noir UIGameData porte
 // `ShowDialogLine` (un tableau de `scnDialogLineData`) et `HideDialogLine` (un tableau de
 // `CRUID`), et c'est SubtitlesGameController qui peint -- avec la police, la place et le
 // reglage d'affichage du joueur. Un mod qui redessine perd les trois.
 //
+// LE SOUS-TITRE EST UNE VUE DE LA FILE DE PAROLE, ET C'EST TOUTE L'ARCHITECTURE. Une reponse
+// arrive phrase par phrase ; la file les joue dans l'ordre, donc au moment ou la troisieme est
+// envoyee, c'est la premiere qu'on entend. Afficher ce qu'on vient d'envoyer affiche la
+// mauvaise -- on ne voyait que la derniere phrase pendant que la premiere se jouait. Estimer une
+// duree ne rattrape rien : l'erreur s'ajoute a chaque phrase.
+//
+// Donc rien n'est estime et rien n'est chronometre ici. `AiNpcAudio.Speaking()` rend le texte du
+// morceau que le peripherique n'a pas encore joue -- ce qui sort du haut-parleur, par
+// construction -- et cet ecran affiche ca. Quand la file se tait, la ligne s'en va.
+//
 // LA DUREE N'EFFACE RIEN TOUTE SEULE. Le champ `duration` decrit la ligne, il ne la retire pas :
-// sans un `HideDialogLine` explicite, le sous-titre reste a l'ecran indefiniment -- y compris
-// apres la fin de l'appel. D'ou le minuteur ci-dessous. Le montage est celui d'Audioware
-// (Codeware.reds PropagateSubtitle + Callback.reds HideSubtitleCallback), qui est
-// l'implementation de reference verifiee sur cette machine.
+// sans un `HideDialogLine` explicite, le sous-titre reste a l'ecran indefiniment. Il est donne
+// large et c'est la file qui decide, pas lui.
 //
 // TYPE : `Regular`, le sous-titre du bas. `scnDialogLineType.Holocall` existe aussi -- mesure au
 // compilateur le 2026-09-03, contre le bundle vanilla, en meme temps que Radio, OverHead et
@@ -18,31 +26,33 @@
 // vanilla, que cet appel-ci n'a pas. Regular est celui qu'un mod installe fait deja apparaitre.
 //
 // L'IDENTIFIANT est laisse a sa valeur par defaut : le vanilla ne sait pas construire un CRUID
-// (`CreateCRUID` est un natif Codeware). C'est sans consequence tant qu'une seule ligne a nous
-// est a l'ecran, ce que le remplacement ci-dessous garantit -- et c'est ce qui rend le numero de
-// serie du minuteur indispensable.
+// (`CreateCRUID` est un natif Codeware). Toutes nos lignes portent donc LE MEME, et c'est ce qui
+// oblige a retirer la precedente avant de poser la suivante : posee par-dessus, le controleur la
+// lit comme la ligne deja affichee et garde la premiere. Mesure en jeu le 2026-09-03 -- seul le
+// texte initial restait, alors que la file annoncait bien la suite. NCSH_Speech.reds fait le
+// meme retrait, pour la meme raison, et c'est de la que vient le patron.
 
 module AiNpc
 
-// Combien de temps une replique reste lisible.
+// A quelle cadence on demande a la file ce qu'elle joue.
 //
-// Estimee sur le texte, faute de mieux : la voie parlee ne rend pas la duree de ce qu'elle
-// synthetise, et le sous-titre ne peut donc pas suivre la voix a la milliseconde. Quinze
-// caracteres par seconde est le debit d'une phrase parlee tranquillement, et les deux secondes
-// de tete couvrent le silence entre l'envoi et le premier son.
-func AiNpcSubtitleSeconds(text: String) -> Float {
-    let seconds = 2.0 + Cast<Float>(StrLen(text)) / 15.0;
-    if seconds > 20.0 {
-        return 20.0;
-    }
-    return seconds;
+// C'est le retard maximum entre le premier mot d'une phrase et son apparition. Un dixieme de
+// seconde ne se voit pas ; la question est la lecture d'un entier sous un verrou deja pris.
+func AiNpcSubtitleFollowSeconds() -> Float {
+    return 0.1;
 }
 
-class AiNpcSubtitleHideCallback extends AiNpcSubtitleLaneCallback {
-    public let serial: Int32;
+// Combien de temps le jeu garde la ligne si personne ne la retire.
+//
+// Un filet, pas une horloge : la file retire la ligne des qu'elle passe a la suivante. Ce
+// nombre ne sert que si la voie parlee meurt en cours de replique.
+func AiNpcSubtitleMaxSeconds() -> Float {
+    return 30.0;
+}
 
+class AiNpcSubtitleFollowCallback extends AiNpcSubtitleLaneCallback {
     protected func Run(subtitles: ref<AiNpcCallSubtitles>) -> Void {
-        subtitles.OnExpired(this.serial);
+        subtitles.OnFollowTick();
     }
 }
 
@@ -50,84 +60,88 @@ class AiNpcSubtitleHideCallback extends AiNpcSubtitleLaneCallback {
 //
 // Deliberement : deux repliques empilees seraient deux choses a lire en meme temps, et une
 // reponse arrive ici phrase par phrase. La nouvelle remplace la precedente, ce qui garde l'etat
-// trivial -- une ligne, un minuteur.
+// trivial -- une ligne, et le texte qu'elle porte.
 public class AiNpcCallSubtitles extends ScriptableSystem {
 
     private let m_line: scnDialogLineData;
-    private let m_shown: Bool = false;
-
-    // Un minuteur ne s'annule pas toujours a temps : arme sur la ligne d'avant, il peut echoir
-    // une image apres que la suivante est apparue et l'effacer sans le savoir. Chaque minuteur
-    // porte donc le numero de la ligne qui l'a arme, et un numero perime ne fait rien.
-    private let m_serial: Int32 = 0;
-    private let m_delay: DelayID;
+    private let m_speakerName: String = "";
+    private let m_shown: String = "";
+    private let m_following: Bool = false;
 
     public static func Get() -> ref<AiNpcCallSubtitles> {
         return GameInstance.GetScriptableSystemsContainer(GetGameInstance())
             .Get(NameOf<AiNpcCallSubtitles>()) as AiNpcCallSubtitles;
     }
 
-    // Affiche une replique sous le nom du personnage. Sans effet sur une chaine vide.
-    public func Show(speakerName: String, text: String) -> Void {
-        if Equals(StrLen(text), 0) {
+    // Commence a suivre la parole, sous ce nom. Appelee au decrochage : le nom ne change pas
+    // pendant un appel, et le texte, lui, vient de la file a chaque tour.
+    public func Follow(speakerName: String) -> Void {
+        this.m_speakerName = speakerName;
+        if this.m_following {
+            return;
+        }
+        this.m_following = true;
+        this.Arm();
+    }
+
+    // Arrete de suivre et retire ce qui restait. Idempotent.
+    public func Release() -> Void {
+        this.m_following = false;
+        this.m_speakerName = "";
+        this.Hide();
+    }
+
+    public func OnFollowTick() -> Void {
+        if !this.m_following {
             return;
         }
 
+        let saying = AiNpcAudio.Speaking();
+        if NotEquals(saying, this.m_shown) {
+            AiNpcLog(s"Subtitle: the speaker moved to '\(saying)'.");
+            if Equals(StrLen(saying), 0) {
+                this.Hide();
+            } else {
+                this.Paint(saying);
+            }
+        }
+        this.Arm();
+    }
+
+    private func Arm() -> Void {
+        AiNpcArmTimeout(new AiNpcSubtitleFollowCallback(), AiNpcSubtitleFollowSeconds());
+    }
+
+    private func Paint(text: String) -> Void {
         let board = GameInstance.GetBlackboardSystem(this.GetGameInstance())
             .Get(GetAllBlackboardDefs().UIGameData);
         if !IsDefined(board) {
             return;
         }
 
-        this.Clear();
-        this.m_serial += 1;
-
-        let seconds = AiNpcSubtitleSeconds(text);
+        // La precedente s'en va avant que la suivante arrive : elles partagent un identifiant.
+        this.Hide();
 
         let line: scnDialogLineData;
         line.text = text;
         // Le porteur de la ligne, pas celui qu'on lit : le personnage n'est pas dans le monde
         // pendant un appel, et un sous-titre du bas s'annonce par son nom, pas par son entite.
         line.speaker = GetPlayer(this.GetGameInstance());
-        line.speakerName = speakerName;
-        line.duration = seconds;
+        line.speakerName = this.m_speakerName;
+        line.duration = AiNpcSubtitleMaxSeconds();
         line.isPersistent = false;
         line.type = scnDialogLineType.Regular;
 
         board.SetVariant(GetAllBlackboardDefs().UIGameData.ShowDialogLine, ToVariant([line]), true);
         this.m_line = line;
-        this.m_shown = true;
-
-        let callback = new AiNpcSubtitleHideCallback();
-        callback.serial = this.m_serial;
-        this.m_delay = GameInstance.GetDelaySystem(this.GetGameInstance())
-            .DelayCallback(callback, seconds);
-    }
-
-    // Retire la ligne affichee, s'il y en a une, et desarme son minuteur. Idempotent : appelable
-    // a la fin d'un appel sans rien savoir de l'etat.
-    public func Clear() -> Void {
-        if !this.m_shown {
-            return;
-        }
-        GameInstance.GetDelaySystem(this.GetGameInstance()).CancelCallback(this.m_delay);
-        this.m_delay = GetInvalidDelayID();
-        this.Hide();
-    }
-
-    public func OnExpired(serial: Int32) -> Void {
-        if NotEquals(serial, this.m_serial) {
-            return;
-        }
-        this.m_delay = GetInvalidDelayID();
-        this.Hide();
+        this.m_shown = text;
     }
 
     private func Hide() -> Void {
-        if !this.m_shown {
+        if Equals(StrLen(this.m_shown), 0) {
             return;
         }
-        this.m_shown = false;
+        this.m_shown = "";
 
         let board = GameInstance.GetBlackboardSystem(this.GetGameInstance())
             .Get(GetAllBlackboardDefs().UIGameData);

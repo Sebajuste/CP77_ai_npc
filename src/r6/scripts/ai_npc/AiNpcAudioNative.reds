@@ -54,6 +54,15 @@ public native class AiNpcAudio {
     public static native func Speak(text: String, contactId: String, voiceFile: String,
                                    catalogueVoice: String, voiceOverLocale: String) -> String;
 
+    // Ce que le haut-parleur dit a cet instant, mot pour mot. Vide quand rien ne joue.
+    //
+    // Une reponse arrive phrase par phrase et la file les joue dans l'ordre : au moment ou la
+    // troisieme est envoyee, c'est la premiere qu'on entend. Une surface qui afficherait ce
+    // qu'elle vient d'envoyer afficherait donc la mauvaise, et une duree estimee ne la
+    // rattrape pas -- elle derive a chaque phrase. Demander a la file est le seul moyen d'etre
+    // en phase avec elle.
+    public static native func Speaking() -> String;
+
     // Coupe le son tout de suite : ce qui joue s'arrete, ce qui attendait est jete, et la
     // replique en cours de synthese est abandonnee.
     //

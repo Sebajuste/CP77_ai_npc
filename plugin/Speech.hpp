@@ -64,6 +64,18 @@ bool Speak(const std::string& aUtf8Text, const std::string& aContactId,
 void Warm(const std::string& aContactId, const std::string& aVoiceFile,
           const std::string& aCatalogueVoice, const std::string& aVoiceOverLocale);
 
+// Ce que le haut-parleur est en train de dire, mot pour mot. Vide quand rien ne joue.
+//
+// LE SEUL MOYEN DE FAIRE SUIVRE UN SOUS-TITRE. Une reponse arrive phrase par phrase et la file
+// les joue dans l'ordre, donc au moment ou la troisieme est mise en file, c'est la premiere
+// qu'on entend. Une surface qui affiche ce qu'elle vient d'envoyer affiche donc la mauvaise, et
+// une duree estimee ne la rattrape pas -- elle derive a chaque phrase.
+//
+// La file, elle, sait : chaque morceau porte le numero de sa replique, et le premier morceau que
+// le peripherique n'a pas encore rendu est celui qu'on entend. Le texte revient plutot que le
+// numero pour que l'appelant n'ait aucune comptabilite a tenir : il affiche ce qu'on lui donne.
+std::string Speaking();
+
 // Le silence, tout de suite : ce qui joue s'arrete, ce qui attendait est jete, et la replique
 // en cours de synthese est abandonnee.
 //

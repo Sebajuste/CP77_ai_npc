@@ -682,6 +682,16 @@ void WarmImpl(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, RED4ext::CStr
 
 // Where a character's voice has got to, in one word. Read by the ring: a call is answered when
 // the voice is ready, so the wait the player hears IS the loading.
+void SpeakingImpl(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, RED4ext::CString* aOut, int64_t)
+{
+    ++aFrame->code; // skip ParamEnd
+
+    if (aOut)
+    {
+        *aOut = RED4ext::CString(speech::Speaking().c_str());
+    }
+}
+
 void SilenceImpl(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, RED4ext::CString*, int64_t)
 {
     ++aFrame->code; // skip ParamEnd
@@ -803,6 +813,12 @@ void PostRegisterTypes()
     state->AddParam("String", "contactId");
     state->SetReturnType("String");
     audioClass->RegisterFunction(state);
+
+    auto* speaking = RED4ext::CClassStaticFunction::Create(audioClass, "Speaking", "Speaking",
+                                                          &SpeakingImpl);
+    speaking->flags = {.isNative = true, .isStatic = true, .isPublic = true};
+    speaking->SetReturnType("String");
+    audioClass->RegisterFunction(speaking);
 
     auto* silence = RED4ext::CClassStaticFunction::Create(audioClass, "Silence", "Silence",
                                                          &SilenceImpl);

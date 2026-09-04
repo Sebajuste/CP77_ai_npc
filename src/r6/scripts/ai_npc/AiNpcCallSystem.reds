@@ -213,6 +213,13 @@ public class AiNpcCallSystem extends ScriptableSystem {
             AiNpcCallShowChoices(AiNpcCallWriteLabel(), AiNpcCallHangUpLabel());
             AiNpcArmTimeout(AiNpcCallChoicesCallback.Create(this.m_serial),
                 AiNpcCallChoicesPollSeconds());
+
+            // Lu autant qu'entendu. Le sous-titre suit la file de parole et non les envois :
+            // il n'a besoin que du nom, et prend le texte a la source a chaque tour.
+            let subtitles = AiNpcCallSubtitles.Get();
+            if IsDefined(subtitles) {
+                subtitles.Follow(AiNpcGetCharacterName(contactId));
+            }
         }
 
         // Un appel termine ne parle plus. Ici plutot que sur le seul raccroche du joueur : un
@@ -220,9 +227,9 @@ public class AiNpcCallSystem extends ScriptableSystem {
         // phrase a une ligne fermee.
         if AiNpcCallIsOver(to) {
             AiNpcAudio.Silence();
-            let subtitles = AiNpcCallSubtitles.Get();
-            if IsDefined(subtitles) {
-                subtitles.Clear();
+            let ending = AiNpcCallSubtitles.Get();
+            if IsDefined(ending) {
+                ending.Release();
             }
         }
 
@@ -386,13 +393,6 @@ public class AiNpcCallSystem extends ScriptableSystem {
         let spoken = AiNpcChannelOf(AiNpcChannelId.Call).Clean(text);
         if Equals(StrLen(spoken), 0) {
             return;
-        }
-        // Lu autant qu'entendu : le sous-titre du jeu porte la meme phrase, sous le nom du
-        // personnage. Un joueur qui coupe le son suit la conversation, et une voix synthetique
-        // mal articulee cesse d'etre une devinette.
-        let subtitles = AiNpcCallSubtitles.Get();
-        if IsDefined(subtitles) {
-            subtitles.Show(AiNpcGetCharacterName(this.m_contactId), spoken);
         }
         AiNpcLog(s"Call: '\(this.m_contactId)' says '\(spoken)'. \(AiNpcAudio.Speak(spoken, this.m_contactId, AiNpcVoiceFileFor(this.m_contactId),
                  AiNpcVoiceFallbackFor(this.m_contactId), AiNpcVoiceOverLocale()))");
