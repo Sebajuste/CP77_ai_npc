@@ -15,7 +15,8 @@ same file a month apart produce the same bytes.
       "tone": "nsfw_hard",
       "romanced": true,
       "player": {"gender": "Female", "lifePath": "streetkid"},
-      "quest": {"key": "the_hunt", "name": "The Hunt", "objective": "Trouver Randy"},
+      "quest": {"key": "the_hunt", "name": "The Hunt", "objective": "Trouver Randy",
+                "facts": ["sq030_randy_found"]},
       "now": "2d 07:42",
       "messages": [
         {"from": "V", "text": "Je rentre", "at": "1d 23:10"},
@@ -45,6 +46,8 @@ LANGUAGES = ("English", "Spanish", "French", "German", "Italian",
              "Portuguese", "Russian", "Ukraine")
 
 PLAYER_KEYS = ("gender", "lifePath", "appearance", "description")
+
+QUEST_KEYS = ("key", "name", "objective", "facts")
 
 KEYS = (
     "name", "note", "contact", "language", "tone", "romanced", "postHeist",
@@ -202,12 +205,19 @@ def load(path):
     }
 
     quest = dict(raw.get("quest", {}))
+    unknown = [key for key in quest if key not in QUEST_KEYS]
+    if unknown:
+        raise FixtureError("%s: unknown quest key(s) %s" % (where, ", ".join(unknown)))
     fixture["quest"] = {
         "key": quest.get("key", ""),
         # The journal's own title. In game it is localized like the objective beside it; a
         # fixture states it, since there is no journal to read it out of.
         "name": quest.get("name", ""),
         "objective": quest.get("objective", ""),
+        # The quest facts this save has posed. A sheet dates the stages of its account on them,
+        # so this is what says WHERE INSIDE the quest V is -- the key alone only says which
+        # quest is tracked, which is true from its first second to its last.
+        "facts": list(quest.get("facts", [])),
     }
 
     fixture["messages"] = _messages(raw.get("messages", []), where)

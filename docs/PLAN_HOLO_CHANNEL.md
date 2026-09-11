@@ -435,13 +435,23 @@ n'est pas une garantie ». Numbers are the same shape:
   agreement, *et un*, times against quantities, currency. It is a loop over a token list, no
   recursion, and it is the part that has not been written.
 
-**Neither half exists yet**, and the seam for the first one does not either: `AiNpcSystemRules()`
+**Revised 2026-09-10, by the user: the guarantee does not spell numbers out.** It writes the
+glued unit out in full — `22h30` becomes `22 heures 30` — which is the one form the bench showed
+failing. `AiNpcVoiceFormat`, called from `AiNpcChannelHolo.Clean`, which now takes the language
+of the reply. Unlaunched.
+
+**What follows was written before either half existed**, and the seam for the first one did not either: `AiNpcSystemRules()`
 does not know the channel, and a recipe chooses which blocks render, not which rubrics exist. The
 channel cannot supply the rule itself without breaking its own contract — *« le canal ne
 construit aucune requête »*. The channel id already travels with the request
 (`TriggerPostRequest(contactId, text, this.Id())`), so the seam is on the pass side.
 
-### The voice is lent, not granted — decided 2026-09-01
+### The voice is lent, not granted — decided 2026-09-01, revised 2026-09-10
+
+**Revised by the user on 2026-09-10: no gate is built.** The principle stands — a character's
+voice never says what that character would not say — but it is held by the character sheet and
+the model, and checked in game, not by an engine-side test. The reasoning below for a guarantee
+is kept as the alternative that was set aside.
 
 A character's voice is only used for what stays inside the register the performance was recorded
 for. A reply that leaves it is **not spoken in that voice**: it falls back to the catalogue voice,

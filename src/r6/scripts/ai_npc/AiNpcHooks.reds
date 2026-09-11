@@ -58,21 +58,6 @@ protected cb func OnAllElementsSpawned() -> Bool {
     }
 }
 
-// Called on every refresh of the contact list, far more often than the player moves:
-// gamelog.3.log (2026-03-20) records twenty-two rows in two seconds when the contacts screen
-// comes back. Both lines below are idempotent and cheap, and neither writes anything the mod
-// will mistake for an intent -- selecting the contact from here is how a refresh burst could
-// decide what T would open.
-@wrapMethod(PhoneDialerLogicController)
-private final func RefreshInputHints(contactData: wref<ContactData>) -> Void {
-    wrappedMethod(contactData);
-
-    if contactData != null {
-        GetAiNpcSystem().ReportContactRow(contactData.contactId);
-        AiNpcDecorateContactRow(this.m_contactsList, contactData.contactId);
-    }
-}
-
 // The phone HUD was rebuilt, so the mod's handles into it are stale. The signal the mod had
 // evidence for and was not using: a removed "U - quick chat" wrapper on this method opened
 // with a duplicate guard, which is proof it fires more than once per session.
@@ -117,6 +102,11 @@ public final func Hide() -> Void {
 protected cb func OnAction(action: ListenerAction, consumer: ListenerActionConsumer) -> Bool {
     // Not calling wrappedMethod is the consumption. Reported first, because the answer decides
     // whether the game sees this press at all.
+    let call = AiNpcCallSystem.Get();
+    if IsDefined(call)
+        && call.ReportPhoneAction(ListenerAction.GetName(action), ListenerAction.GetType(action)) {
+        return true;
+    }
     if IsDefined(GetAiNpcSystem())
         && GetAiNpcSystem().ReportPhoneAction(ListenerAction.GetName(action), ListenerAction.GetType(action)) {
         return true;
@@ -146,16 +136,19 @@ public final func SetActive(isActive: Bool) -> Void {
     }
 }
 
-// The call's two prompts are the game's own dialogue choices, so the press arrives at the
-// player rather than at the phone controller -- the phone is put away while a call is up.
+// R on a call is the game's own Choice2, so the press arrives at the player rather than at the
+// phone controller -- the phone is put away while a call is up.
 //
 // Reported before wrappedMethod for the same reason as the phone's handler: the answer decides
 // whether the game sees the press at all.
 @wrapMethod(PlayerPuppet)
 protected cb func OnAction(action: ListenerAction, consumer: ListenerActionConsumer) -> Bool {
+    // Consumed, not just refused: returning true alone left Enter to commit the game's dialogue
+    // choice. Night City Allies stops a native choice the same way.
     let call = AiNpcCallSystem.Get();
     if IsDefined(call)
         && call.ReportAction(ListenerAction.GetName(action), ListenerAction.GetType(action)) {
+        ListenerActionConsumer.Consume(consumer);
         return true;
     }
 
@@ -189,6 +182,105 @@ protected cb func OnCombatStateChanged(newState: Int32) -> Bool {  // newState u
     }
 
     return r;
+}
+
+// F on a contact row. The mod places the call only where the game has no scene for it.
+@wrapMethod(NewHudPhoneGameController)
+public final func CallContact() -> Void {
+    let call = AiNpcCallSystem.Get();
+    if IsDefined(call) && IsDefined(this.m_contactListLogicController) && this.m_PhoneSystem.IsCallingEnabled() {
+        let row = this.m_contactListLogicController.GetSelectedContactData();
+        if IsDefined(row)
+            && call.ReportCallRequested(row.contactId, AiNpcVanillaCallable(this.m_journalMgr, row.hash)) {
+            return;
+        }
+    }
+    wrappedMethod();
+}
+
+// The messages key on a row: the mod's conversation, or one of its characters with none of the
+// game's, opens the mod's chat.
+@wrapMethod(NewHudPhoneGameController)
+public final func ExecuteAction() -> Void {
+    if IsDefined(this.m_contactListLogicController) && IsDefined(GetAiNpcSystem())
+        && GetAiNpcSystem().ReportMessagesAction(this.m_contactListLogicController.GetSelectedContactData()) {
+        return;
+    }
+    wrappedMethod();
+}
+
+// The mod's conversation has no preview in the game's messenger, which would show the
+// contact's vanilla thread under its name.
+@wrapMethod(NewHudPhoneGameController)
+protected cb func OnContactSelectionChanged(evt: ref<ContactSelectionChangedEvent>) -> Bool {
+    if IsDefined(evt.ContactData) && evt.ContactData.ainpcThread {
+        return true;
+    }
+    return wrappedMethod(evt);
+}
+
+@wrapMethod(JournalManager)
+public final func GetContactDataArray(includeUnknown: Bool, includeNonCallable: Bool) -> array<ref<IScriptable>> {
+    let rows = wrappedMethod(includeUnknown, includeNonCallable);
+    AiNpcGraftContactRows(rows);
+    return rows;
+}
+
+// Called by the phone's messages screen alone (ShowSelectedContactMessages).
+@wrapMethod(MessengerUtils)
+public final static func GetMessageDataArrayForContact(journal: ref<JournalManager>, concactHash: Int32,
+                                                       includeUnknown: Bool, skipEmpty: Bool,
+                                                       opt activeDataSync: wref<MessengerContactSyncData>) -> array<ref<IScriptable>> {
+    let rows = wrappedMethod(journal, concactHash, includeUnknown, skipEmpty, activeDataSync);
+    let thread = AiNpcThreadRowFor(journal, concactHash);
+    if IsDefined(thread) {
+        ArrayPush(rows, thread);
+    }
+    return rows;
+}
+
+// Every change of the game's call information, the mod's own calls included.
+@wrapMethod(NewHudPhoneGameController)
+protected cb func OnPhoneCall(value: Variant) -> Bool {
+    let result = wrappedMethod(value);
+    let call = AiNpcCallSystem.Get();
+    if IsDefined(call) {
+        call.ReportPhoneCall(FromVariant<PhoneCallInformation>(value));
+    }
+    return result;
+}
+
+// The dialogue hub's display. While the model has the floor on a call, the choices are not
+// drawn; the blackboard keeps them, so the scene waits on a choice it still has.
+@wrapMethod(dialogWidgetGameController)
+protected func UpdateDialogsData(const data: script_ref<DialogChoiceHubs>) -> Void {
+    let call = AiNpcCallSystem.Get();
+    if IsDefined(call) && call.ReportDialogHubs(Deref(data)) {
+        let hidden: DialogChoiceHubs;
+        wrappedMethod(hidden);
+        return;
+    }
+    wrappedMethod(data);
+}
+
+// Every line the main subtitle controller shows. Measured 2026-09-11: a listener on
+// UIGameData.ShowDialogLine heard nothing during a holocall -- the scene's lines reach the
+// controllers through the native subtitle handler, and both routes end here. The overhead
+// controller is left out: its lines are the street, not the call.
+@wrapMethod(BaseSubtitlesGameController)
+public final func ShowDialogLines(const linesToShow: script_ref<array<scnDialogLineData>>) -> Void {
+    wrappedMethod(linesToShow);
+
+    let call = AiNpcCallSystem.Get();
+    if !IsDefined(call) || !IsDefined(this as SubtitlesGameController) {
+        return;
+    }
+    let lines = Deref(linesToShow);
+    let i = 0;
+    while i < ArraySize(lines) {
+        call.ReportDialogLine(lines[i]);
+        i += 1;
+    }
 }
 
 // The player opened one of the game's own message threads.

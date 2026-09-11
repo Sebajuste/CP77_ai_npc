@@ -15,6 +15,11 @@ func GetAiNpcHttpSystem() -> ref<AiNpcHttpSystem> {
     return GameInstance.GetScriptableSystemsContainer(GetGameInstance()).Get(NameOf<AiNpcHttpSystem>()) as AiNpcHttpSystem;
 }
 
+func AiNpcIsGenerating() -> Bool {
+    let lane = GetAiNpcHttpSystem();
+    return IsDefined(lane) && lane.GetIsGenerating();
+}
+
 public static func AiNpcLog(const text: String) {
     if AiNpcLogging() {
         FTLog(s"[ai_npc]: \(text)");

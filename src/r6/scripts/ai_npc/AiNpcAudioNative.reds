@@ -51,8 +51,9 @@ public native class AiNpcAudio {
     // `voiceOverLocale` is what the game answers for its SPOKEN language, not its written one --
     // the two are installed separately, and it is the spoken archives a reference is cut from.
     // Pass AiNpcVoiceOverLocale(); an empty string means the fallback voice, which is honest.
+    // `rate` is the playback speed AiNpcVoiceRateFor() answers; 1.0 plays the voice as rendered.
     public static native func Speak(text: String, contactId: String, voiceFile: String,
-                                   catalogueVoice: String, voiceOverLocale: String) -> String;
+                                   catalogueVoice: String, voiceOverLocale: String, rate: Float) -> String;
 
     // Ce que le haut-parleur dit a cet instant, mot pour mot. Vide quand rien ne joue.
     //
@@ -73,6 +74,13 @@ public native class AiNpcAudio {
     // Ne refroidit aucune voix : leur preparation a coute sept secondes et ne depend d'aucun
     // appel en particulier.
     public static native func Silence() -> Void;
+
+    // Ouvre la sortie audio pendant que le modele ecrit la reponse. Une sortie qui vient
+    // d'ouvrir avale le debut de ce qu'elle joue en premier : ouverte d'avance, elle avale son
+    // propre silence au lieu du premier mot. A appeler par tout canal parle au moment ou il
+    // demande une reponse ; sans effet sur une sortie deja ouverte, qui se ferme seule apres
+    // 20 s sans parole. Memes arguments que Speak() pour la voix : c'est elle qui fixe le format.
+    public static native func Prime(voiceFile: String, catalogueVoice: String, rate: Float) -> Void;
 
     // Prepares a character's voice without saying anything. Returns at once.
     //

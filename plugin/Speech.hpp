@@ -47,9 +47,14 @@ namespace ainpc::speech
 // dessus, et une reponse streamee arrive ici en plusieurs phrases qui sont une seule prise de
 // parole coupee en morceaux. Une file qui prend du retard sur le joueur cesse de grandir --
 // la borne et le bout qu'elle laisse tomber sont dans Speech.cpp.
-bool Speak(const std::string& aUtf8Text, const std::string& aContactId,
-           const std::string& aVoiceFile, const std::string& aCatalogueVoice,
-           const std::string& aVoiceOverLocale);
+//
+// `aRate` est la vitesse de lecture de la voix neuronale : 1,06 la joue un demi-ton plus haut
+// et six pour cent plus vite. La voix de secours l'ignore.
+//
+// Rend le numero de la replique, celui que son resultat citera ; zero quand rien n'est mis en file.
+uint32_t Speak(const std::string& aUtf8Text, const std::string& aContactId,
+               const std::string& aVoiceFile, const std::string& aCatalogueVoice,
+               const std::string& aVoiceOverLocale, float aRate);
 
 // Prepare la voix d'un personnage sans rien dire, et rend la main aussitot.
 //
@@ -63,6 +68,12 @@ bool Speak(const std::string& aUtf8Text, const std::string& aContactId,
 // modeles est absent.
 void Warm(const std::string& aContactId, const std::string& aVoiceFile,
           const std::string& aCatalogueVoice, const std::string& aVoiceOverLocale);
+
+// Ouvre la sortie au format de la voix qui va parler, avant qu'elle ait quoi que ce soit a dire.
+// Appelee sur le fil de jeu quand une reponse parlee est demandee, quel que soit le canal : la
+// sortie ouverte avale son propre silence au lieu du premier mot. Sans effet sur une sortie deja
+// ouverte. Rend ce qui s'est passe, en mots.
+std::string Prime(const std::string& aVoiceFile, const std::string& aCatalogueVoice, float aRate);
 
 // Ce que le haut-parleur est en train de dire, mot pour mot. Vide quand rien ne joue.
 //

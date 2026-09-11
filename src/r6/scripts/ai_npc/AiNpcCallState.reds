@@ -81,6 +81,17 @@ func AiNpcCallConnects(from: AiNpcCallState, to: AiNpcCallState) -> Bool {
     return Equals(to, AiNpcCallState.Connected) && AiNpcCallMayGo(from, to);
 }
 
+// Qui a placé l'appel. Le jeu place les siens avec leur scène ; le mod n'y greffe que la parole.
+enum AiNpcCallOrigin {
+    Ours = 0,
+    Game = 1,
+}
+
+// Un appel du jeu se rejoint déjà décroché : il ne sonne pas, et ne passe donc pas par la table.
+func AiNpcCallMayJoin(state: AiNpcCallState) -> Bool {
+    return Equals(state, AiNpcCallState.Idle) || AiNpcCallIsOver(state);
+}
+
 // What the state is called, for anything that shows it. Here rather than in the window,
 // because a window that spelled the states itself would drift from the table above.
 func AiNpcCallStateLabel(state: AiNpcCallState) -> String {

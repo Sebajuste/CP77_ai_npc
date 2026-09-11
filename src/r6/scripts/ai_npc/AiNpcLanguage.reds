@@ -414,6 +414,36 @@ func AiNpcResetLabel(language: AiNpcLanguage) -> String {
     }
 }
 
+// R on a call.
+func AiNpcCallReplyLabel(language: AiNpcLanguage) -> String {
+    switch language {
+        case AiNpcLanguage.English:    return "Reply";
+        case AiNpcLanguage.Spanish:    return "Responder";
+        case AiNpcLanguage.French:     return "Répondre";
+        case AiNpcLanguage.German:     return "Antworten";
+        case AiNpcLanguage.Italian:    return "Rispondi";
+        case AiNpcLanguage.Portuguese: return "Responder";
+        case AiNpcLanguage.Russian:    return "Ответить";
+        case AiNpcLanguage.Ukraine:    return "Відповісти";
+        default: return "Reply";
+    }
+}
+
+// Hold T on a call the mod placed.
+func AiNpcCallHangUpLabel(language: AiNpcLanguage) -> String {
+    switch language {
+        case AiNpcLanguage.English:    return "Hang up";
+        case AiNpcLanguage.Spanish:    return "Colgar";
+        case AiNpcLanguage.French:     return "Raccrocher";
+        case AiNpcLanguage.German:     return "Auflegen";
+        case AiNpcLanguage.Italian:    return "Riaggancia";
+        case AiNpcLanguage.Portuguese: return "Desligar";
+        case AiNpcLanguage.Russian:    return "Завершить";
+        case AiNpcLanguage.Ukraine:    return "Завершити";
+        default: return "Hang up";
+    }
+}
+
 // What Z does, in Debug Mode.
 func AiNpcUndoLabel(language: AiNpcLanguage) -> String {
     switch language {

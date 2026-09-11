@@ -39,8 +39,8 @@ wrapper is deliberately sorted after it — see `src\r6\scripts\zzz_ai_npc_phone
 ## Install
 
 **OpenRouter is the supported lane, and the only one meant for playing.** Each player brings
-their own key, the mod intermediates nothing, and at the measured pace it costs cents a month
-(`docs/MODEL_COSTS.md`). The subscription lanes are there so that people writing characters
+their own key, the mod intermediates nothing, and at the measured pace it costs about a dollar a
+month (`docs/MODEL_COSTS.md`). The subscription lanes are there so that people writing characters
 and add-ons can test against a real model without paying per message — playing through them is
 outside what a coding-agent plan is sold for, and either provider may act on the account. The
 reasoning, with the citations, is in [`docs/DISTRIBUTION.md`](docs/DISTRIBUTION.md).
@@ -86,12 +86,14 @@ optional files you can add next to them.
 ### Which model to enter in the setup window
 
 Basis: **38 messages an hour**, measured over 15 real sessions. **2 h/day = 2 280 messages a
-month.** OpenRouter prices read 2026-08-28, cached where the provider discounts a prefix.
-Measurements: [`docs/MODEL_BENCH.md`](docs/MODEL_BENCH.md).
+month.** qwen's row is the real OpenRouter bill of 2026-09-10, for texts. The others are
+list-price estimates read 2026-08-28. Holo calls cost about 45 % more per hour (1.56 $ at
+2 h/day on qwen), see [`docs/MODEL_COSTS.md`](docs/MODEL_COSTS.md). Measurements:
+[`docs/MODEL_BENCH.md`](docs/MODEL_BENCH.md).
 
 | model | 1 000 messages | 2 h/day | messages for 1 $ | reply | defects /54 | Normal tier /24 | pick |
 |---|---:|---:|---:|---:|---:|---:|---|
-| **qwen/qwen3-235b-a22b-2507** | **0.24 $** | **0.54 $** | **4 200** | 2.7 s | **0** | 23 | **default** |
+| **qwen/qwen3-235b-a22b-2507** | **0.46 $** | **1.06 $** | **2 150** | 2.7 s | **0** | 23 | **default** |
 | deepseek/deepseek-v4-flash | 0.26 $ | 0.60 $ | 3 800 | 4.6 s | 1 | 14 | |
 | **meta-llama/llama-4-maverick** | 1.13 $ | 2.57 $ | 890 | **2.0 s** | 1 | **1** | **if you lower the content level** |
 | deepseek/deepseek-chat-v3-0324 | 1.41 $ | 3.21 $ | 710 | 3.7 s | 1 | 4 | fallback |
@@ -157,7 +159,7 @@ will be asked to check when something does not work.
   The shipped default is free and works, but a free model is throttled by whoever serves it:
   measured on 2026-08-28, it answered 46 requests out of 54 with "rate-limited upstream". It is
   a way to try the mod, not a way to play an evening. For that,
-  **`qwen/qwen3-235b-a22b-2507`** (~0.55 $/month at two hours a day) is the cheapest that does
+  **`qwen/qwen3-235b-a22b-2507`** (~1 $/month at two hours a day) is the cheapest that does
   the job: it emits the appointment commands 18 times out of 20 on real recorded conversations,
   with no mechanical defect over 54 replies. What it does not do is respect the Normal
   explicitness tier — leave the mod on its top tier, or pick
@@ -238,7 +240,7 @@ nothing re-applies a preset behind your back. `modelPreset` records which one wr
 | preset | model | what it is |
 |---|---|---|
 | **light** | `google/gemma-4-31b-it:free` | free, and rate-limited by the pool it shares: 46 requests out of 54 came back "busy" on the evening it was measured. A way to try the mod, not a way to play an evening |
-| **normal** | `qwen/qwen3-235b-a22b-2507` | ~0.55 $/month at two hours a day. The appointment commands 18 times out of 20 on real conversations, no mechanical defect over 54 replies |
+| **normal** | `qwen/qwen3-235b-a22b-2507` | ~1 $/month at two hours a day, measured on a real bill. The appointment commands 18 times out of 20 on real conversations, no mechanical defect over 54 replies |
 | **premium** | `meta-llama/llama-4-maverick` | ~2.57 $/month. 20 out of 20 on the same conversations, and the strictest tier adherence measured |
 
 All three put **one model on every kind of work**, which is what the measurements support: the
@@ -586,17 +588,31 @@ billed against the *same* subscription quota as your coding work.
 
 ## Controls
 
-Open the phone (contacts view), then:
+The mod adds no key to the contact list. Open the phone (contacts view), then:
 
 | Key | Action |
 |---|---|
-| `T` | open the AI chat for the hovered contact |
+| `F` | call the hovered contact — the game's own call when it has one for this character, the mod's holo otherwise |
+| the game's messages key | the contact's conversations; the mod's is pinned first. A character with no message from the game opens the mod's chat directly |
+
+In the mod's chat:
+
+| Key | Action |
+|---|---|
 | `Left click` | start typing |
 | `Enter` | send |
 | `Mouse wheel` | scroll history |
 | `Z` | undo last exchange — **Debug Mode only**; without it the key does nothing and the hint is not drawn |
 | `R` | reset the conversation |
 | `C` | close and go back to the contact list |
+
+On a call:
+
+| Key | Action |
+|---|---|
+| `R` | reply. On a call of the game's, only while one of its choices waits — the scene never talks over the character, nor the character over the scene |
+| `Enter` | say the line |
+| hold `T` | hang up — calls the mod placed only; the game's calls end with their scene |
 
 ## Supported contacts
 
@@ -719,8 +735,8 @@ src/r6/scripts/ai_npc/
                           screens, the edges between them, and nothing else may decide one
   AiNpcPhoneRenderer.reds the phone chat's PAINTER: every widget handle in the mod, and the
                           AiNpcChatView it registers while the chat is on screen
-  AiNpcPhoneWidgets.reds  one validated walk of the vanilla contact list, or nothing --
-                          plus the "T" badge grafted onto a row, which is the same walk
+  AiNpcPhoneWidgets.reds  one validated walk of the vanilla phone HUD, or nothing
+  AiNpcMessengerThread.reds  the mod's conversation, grafted into a contact's thread list
   AiNpcHttp.reds          the speaking lane: one request in flight, its failures, its repair
   AiNpcContextData.reds   quest-state -> prompt context lookups
   AiNpcWeather.reds       the sky, as one word for the prompt
@@ -1128,7 +1144,7 @@ in-game phone, quest state feeding what that character says, and `jackie_dead` �
 answers from the far side of their own death. Thank you to their authors for clearing the road.
 
 Some things are kept on purpose, so a player arriving from those mods finds what they expect:
-the **T** key, and the contact identifiers — `jackie`, `jackie_dead`, `panam`,
+the contact identifiers — `jackie`, `jackie_dead`, `panam`,
 `kerry_eurodyne`, `judy`, `songbird`, `river_ward`, `rogue`, `victor_vector`, `takemura`.
 
 **What the licence does not cover.** MIT covers the mod's own code. It does not cover the

@@ -13,7 +13,7 @@
 //
 // CE QUE CA N'EST PAS. Une distribution de voix : rien n'est livre, tout est lu chez le joueur.
 // Et ca ne sert que si le pack de clonage est installe -- sans son encodeur, le moteur ne sait
-// pas quoi faire d'une reference. C'est `AiNpc::voice::Available` qui tranche, pas ce fichier.
+// pas quoi faire d'une reference. C'est `voice::CanClone` qui tranche, pas ce fichier.
 
 #pragma once
 
@@ -21,18 +21,22 @@
 
 namespace ainpc::voicemake
 {
-// La recette est-elle la, et les archives de doublage avec ? Repond non sans rien ouvrir de
+// L'encodeur est-il la, la recette et les codebooks avec ? Repond non sans rien ouvrir de
 // couteux : c'est la question qu'on pose avant de decider si une reference est fabricable.
+//
+// L'encodeur en fait partie parce qu'une reference fabriquee sans lui ne sert a rien : elle
+// serait ecrite, retenue comme palier, et illisible par le moteur.
 bool Possible(const std::wstring& aPluginDirectory);
 
-// Fabrique `<contact>.wav` dans r6\storages\AiNpc\voices\, ou dit pourquoi elle n'a pas pu.
+// Fabrique `aVoiceFile` dans r6\storages\AiNpc\voices\, ou dit pourquoi elle n'a pas pu.
 //
 // Bloquant, de l'ordre de la demi-seconde. Appele depuis le worker de la voie parlee, jamais
 // depuis le fil de jeu. Rend false si le fichier existe deja : refabriquer une reference que
 // le joueur a peut-etre remplacee par la sienne serait la lui reprendre.
 // `aLocale` est ce que le jeu repond pour son DOUBLAGE -- "fr-fr", "en-us" -- et pas pour ses
 // sous-titres : ce sont deux reglages, et ce sont les archives de la voix qu'on ouvre.
-// `aVoiceFile` est le nom du fichier a ecrire ; `aContactId` reste ce que la recette indexe.
-bool Make(const std::wstring& aPluginDirectory, const std::string& aContactId,
-          const std::string& aVoiceFile, const std::string& aLocale, std::string& aWhy);
+// `aVoiceFile` est le fichier a ecrire, et son nom sans extension est ce que la recette indexe :
+// une voix du casting ou une voix derivee, que n'importe quelle fiche peut nommer.
+bool Make(const std::wstring& aPluginDirectory, const std::string& aVoiceFile, const std::string& aLocale,
+          std::string& aWhy);
 } // namespace ainpc::voicemake

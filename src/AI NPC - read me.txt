@@ -18,7 +18,7 @@ OPENROUTER - the supported way to play
 -----------------------------------------------------------------------------------
 
 One account reaches models from every vendor, and you pay only for what you use. On a
-good model that is a few cents a month of normal play. This is the lane the mod is
+good model that is about a dollar a month of normal play. This is the lane the mod is
 built around and the only one supported for playing.
 
   1. Make an account at   https://openrouter.ai
@@ -51,8 +51,8 @@ Read the terms and decide for yourself:
      https://www.anthropic.com/legal/consumer-terms
      https://code.claude.com/docs/en/legal-and-compliance
 
-If you are playing rather than building, use OpenRouter. It costs cents a month and
-nothing about it is at risk.
+If you are playing rather than building, use OpenRouter. It costs about a dollar a
+month and nothing about it is at risk.
 
 The rest of this section is for the developers it is meant for. It runs Claude on the
 machine through your own Claude subscription, so nothing is billed per message. It

@@ -65,14 +65,16 @@ func AiNpcLiveCallSince(contactId: String) -> Int32 {
     return call.ConnectedAt();
 }
 
-// What the two prompts say. Here rather than in the choice file, because the words belong to
-// this lane and the hub is a mechanism.
-func AiNpcCallWriteLabel() -> String {
-    return "Say something";
+// Les deux invites d'un appel du mod. Les mots appartiennent à cette voie, le hub est un
+// mécanisme.
+func AiNpcCallShowOurChoices() -> Void {
+    let language = AiNpcResolveLanguage();
+    AiNpcCallShowChoices(AiNpcCallReplyLabel(language), AiNpcCallHangUpLabel(language));
 }
 
-func AiNpcCallHangUpLabel() -> String {
-    return "Hang up";
+// À quelle cadence on demande si la réponse du modèle est finie, requête et voix comprises.
+func AiNpcCallTurnPollSeconds() -> Float {
+    return 0.5;
 }
 
 
@@ -97,6 +99,12 @@ public class AiNpcCallSystem extends ScriptableSystem {
     // The one line V speaks into. Built on demand and dropped with the call: it holds widgets,
     // so it cannot outlive the HUD that hosts them.
     private let m_input: ref<AiNpcHoloInput>;
+
+    private let m_origin: AiNpcCallOrigin = AiNpcCallOrigin.Ours;
+
+    // Le tour de parole d'un appel du jeu. Sans objet sur un appel du mod.
+    private let m_turn: AiNpcHoloTurn = AiNpcHoloTurn.Scene;
+    private let m_replyHint: ref<AiNpcHoloReplyHint>;
 
     public static func Get() -> ref<AiNpcCallSystem> {
         return GameInstance.GetScriptableSystemsContainer(GetGameInstance())
@@ -140,6 +148,7 @@ public class AiNpcCallSystem extends ScriptableSystem {
         }
 
         this.m_contactId = contactId;
+        this.m_origin = AiNpcCallOrigin.Ours;
         this.Enter(AiNpcCallState.Dialing);
         AiNpcArmTimeout(AiNpcCallTickCallback.Create(this.m_serial, AiNpcCallState.Ringing),
             AiNpcCallDialSeconds());
@@ -205,14 +214,17 @@ public class AiNpcCallSystem extends ScriptableSystem {
 
         if Equals(to, AiNpcCallState.Connected) {
             this.m_connectedAt = AiNpcGetCurrentGameTimeSeconds();
-            AiNpcVanillaRingStop();
-            // Le declic que le jeu joue quand un appel est accepte. Sans lui la tonalite
-            // s'arrete et rien ne dit que quelqu'un a decroche -- ce que le joueur lit comme un
-            // appel qui a rate, pas comme un appel qui commence.
-            AiNpcVanillaCallAnswered();
-            AiNpcCallShowChoices(AiNpcCallWriteLabel(), AiNpcCallHangUpLabel());
-            AiNpcArmTimeout(AiNpcCallChoicesCallback.Create(this.m_serial),
-                AiNpcCallChoicesPollSeconds());
+            // Un appel du jeu a sa scène et ses choix ; seul le nôtre sonne et offre les siens.
+            if Equals(this.m_origin, AiNpcCallOrigin.Ours) {
+                AiNpcVanillaRingStop();
+                // Le declic que le jeu joue quand un appel est accepte. Sans lui la tonalite
+                // s'arrete et rien ne dit que quelqu'un a decroche -- ce que le joueur lit comme
+                // un appel qui a rate, pas comme un appel qui commence.
+                AiNpcVanillaCallAnswered();
+                AiNpcCallShowOurChoices();
+                AiNpcArmTimeout(AiNpcCallChoicesCallback.Create(this.m_serial),
+                    AiNpcCallChoicesPollSeconds());
+            }
 
             // Lu autant qu'entendu. Le sous-titre suit la file de parole et non les envois :
             // il n'a besoin que du nom, et prend le texte a la source a chaque tour.
@@ -231,14 +243,16 @@ public class AiNpcCallSystem extends ScriptableSystem {
             if IsDefined(ending) {
                 ending.Release();
             }
+            this.HideInput();
+            this.EndTurn();
         }
 
-        // Every ending closes the game's call, including the ones nobody answered -- a portrait
-        // left ringing after a missed call is the failure this line exists to prevent.
-        if AiNpcCallIsOver(to) {
+        // Every ending of OUR call closes the game's call, including the ones nobody answered --
+        // a portrait left ringing after a missed call is the failure this line exists to
+        // prevent. A call of the game's is closed by its scene.
+        if AiNpcCallIsOver(to) && Equals(this.m_origin, AiNpcCallOrigin.Ours) {
             AiNpcVanillaRingStop();
             AiNpcCallHideChoices();
-            this.HideInput();
             AiNpcVanillaCallEnd(contactId);
         }
 
@@ -271,28 +285,187 @@ public class AiNpcCallSystem extends ScriptableSystem {
         AiNpcLog(s"Call connected to '\(contactId)'. No written conversation is opened: a call is spoken.");
     }
 
-    // A key, offered by the hook and answered here. True means the call took it, which is what
-    // stops the game from also acting on it.
-    //
-    // Scoped to a live call in every branch: these keys mean something else at every other
-    // moment, and a call that answered them from Idle would eat a dialogue choice in a quest.
+    // A game action, offered by the player's action hook. True means the call took it: the hook
+    // consumes it, and the game never acts on it.
     public func ReportAction(name: CName, kind: gameinputActionType) -> Bool {
-        if NotEquals(kind, gameinputActionType.BUTTON_RELEASED)
+        if AiNpcIsChoiceAction(name) && this.KeepsChoiceInput() {
+            return true;
+        }
+        if !Equals(name, AiNpcCallReplyAction()) || !this.OffersReply() {
+            return false;
+        }
+        if Equals(kind, gameinputActionType.BUTTON_RELEASED) {
+            this.ShowInput();
+        }
+        return true;
+    }
+
+    // Measured in game: Enter in the line committed the game's dialogue choice. While the line
+    // holds the keyboard every choice action is a keystroke, and while the game's choices are
+    // hidden there is nothing on screen for the player to commit.
+    private func KeepsChoiceInput() -> Bool {
+        if IsDefined(this.m_input) && this.m_input.HasKeyboard() {
+            return true;
+        }
+        return Equals(this.m_origin, AiNpcCallOrigin.Game)
+            && Equals(this.m_state, AiNpcCallState.Connected)
+            && AiNpcHoloTurnHidesChoices(this.m_turn);
+    }
+
+    // R means something else at every other moment. On a call of the game's it opens the line
+    // only before a choice that waits: the rest of the time the scene has the floor.
+    private func OffersReply() -> Bool {
+        if NotEquals(this.m_state, AiNpcCallState.Connected) {
+            return false;
+        }
+        return Equals(this.m_origin, AiNpcCallOrigin.Ours) || AiNpcHoloTurnTakesReply(this.m_turn);
+    }
+
+    // The line gave the keyboard back. With no line said, the choice is the player's again.
+    public func ReportTypingEnded() -> Void {
+        if Equals(this.m_origin, AiNpcCallOrigin.Game) && Equals(this.m_state, AiNpcCallState.Connected) {
+            this.ApplyTurn(AiNpcHoloTurnEvent.TypingDropped);
+        }
+    }
+
+    // Hold T, offered by the phone controller's action hook. Only on a call the mod placed: a
+    // call of the game's is hung up by its scene.
+    public func ReportPhoneAction(name: CName, kind: gameinputActionType) -> Bool {
+        if !Equals(name, AiNpcCallHangUpAction())
+                || NotEquals(kind, gameinputActionType.BUTTON_HOLD_COMPLETE)
+                || !AiNpcCallIsLive(this.m_state)
+                || NotEquals(this.m_origin, AiNpcCallOrigin.Ours) {
+            return false;
+        }
+        this.HangUp();
+        return true;
+    }
+
+    // F on a contact row. True when the mod places the call itself.
+    public func ReportCallRequested(contactId: String, vanillaCallable: Bool) -> Bool {
+        let route = AiNpcCallRouteFor(AiNpcIsContactSupported(contactId), vanillaCallable);
+        if NotEquals(route, AiNpcCallRoute.Ours) {
+            return false;
+        }
+        AiNpcLog(s"F on '\(contactId)': \(this.Dial(contactId))");
+        return true;
+    }
+
+    /// A call of the game's ///
+
+    // The game's call information changed. A call the game placed to one of the mod's
+    // characters is joined once picked up, and left when its scene hangs up.
+    public func ReportPhoneCall(info: PhoneCallInformation) -> Void {
+        let contactId = NameToString(info.contactName);
+        switch info.callPhase {
+            case questPhoneCallPhase.StartCall:
+                this.Join(contactId);
+                break;
+            case questPhoneCallPhase.EndCall:
+            case questPhoneCallPhase.Undefined:
+                this.Leave(contactId);
+                break;
+            default:
+                break;
+        }
+    }
+
+    // The game's dialogue hub changed. True when its choices must not be shown.
+    public func ReportDialogHubs(hubs: DialogChoiceHubs) -> Bool {
+        if NotEquals(this.m_origin, AiNpcCallOrigin.Game)
                 || NotEquals(this.m_state, AiNpcCallState.Connected) {
             return false;
         }
+        this.ApplyTurn(AiNpcDialogHubEvent(hubs));
+        return AiNpcHoloTurnHidesChoices(this.m_turn);
+    }
 
-        if Equals(name, AiNpcCallHangUpAction()) {
-            this.HangUp();
-            return true;
+    private func Join(contactId: String) -> Void {
+        if !AiNpcCallMayJoin(this.m_state) || !AiNpcIsContactSupported(contactId) {
+            return;
         }
-
-        if Equals(name, AiNpcCallWriteAction()) {
-            this.ShowInput();
-            return true;
+        if AiNpcCallIsOver(this.m_state) {
+            this.Enter(AiNpcCallState.Idle);
         }
+        this.m_contactId = contactId;
+        this.m_origin = AiNpcCallOrigin.Game;
+        this.m_turn = AiNpcHoloTurn.Scene;
+        AiNpcAudio.Warm(contactId, AiNpcVoiceFileFor(contactId),
+            AiNpcVoiceFallbackFor(contactId), AiNpcVoiceOverLocale());
+        this.Enter(AiNpcCallState.Connected);
+    }
 
-        return false;
+    // The scene hung up: the call is over, with no handover.
+    private func Leave(contactId: String) -> Void {
+        if NotEquals(this.m_origin, AiNpcCallOrigin.Game)
+                || NotEquals(this.m_state, AiNpcCallState.Connected)
+                || NotEquals(this.m_contactId, contactId) {
+            return;
+        }
+        this.Move(AiNpcCallState.Ended);
+    }
+
+    private func ApplyTurn(event: AiNpcHoloTurnEvent) -> Void {
+        let before = this.m_turn;
+        let after = AiNpcHoloTurnAfter(before, event);
+        if Equals(before, after) {
+            return;
+        }
+        this.m_turn = after;
+        AiNpcLog(s"Holo turn: \(before) -> \(after) ('\(this.m_contactId)').");
+        this.ReplyHint().Show(AiNpcHoloTurnTakesReply(after));
+        if NotEquals(AiNpcHoloTurnHidesChoices(before), AiNpcHoloTurnHidesChoices(after)) {
+            AiNpcDialogHubRepaint();
+        }
+        if Equals(after, AiNpcHoloTurn.Model) {
+            AiNpcArmTimeout(AiNpcCallTurnCallback.Create(this.m_serial), AiNpcCallTurnPollSeconds());
+        }
+    }
+
+    // Whatever ends the call gives the game back its choices.
+    private func EndTurn() -> Void {
+        let masked = AiNpcHoloTurnHidesChoices(this.m_turn);
+        this.m_turn = AiNpcHoloTurn.Scene;
+        this.ReplyHint().Hide();
+        if masked {
+            AiNpcDialogHubRepaint();
+        }
+    }
+
+    // A line the game shows on a call of its own: filed in the call's transcript as an ordinary
+    // line, and logged with the turn it landed in -- how often the scene's waiting lines fall
+    // while the player types or the model answers is still being measured.
+    public func ReportDialogLine(line: scnDialogLineData) -> Void {
+        if NotEquals(this.m_origin, AiNpcCallOrigin.Game)
+                || NotEquals(this.m_state, AiNpcCallState.Connected) {
+            return;
+        }
+        let subtitles = AiNpcCallSubtitles.Get();
+        if IsDefined(subtitles) && subtitles.IsShowing(line.text) {
+            return;
+        }
+        let overUs = AiNpcHoloTurnHidesChoices(this.m_turn);
+        let filed = AiNpcFileSceneLine(this.m_contactId, line);
+        AiNpcLog(s"Holo line during \(this.m_turn)\(overUs ? " (over our turn)" : ""): \(line.speakerName): '\(line.text)' [\(line.type), \(line.duration)s], \(filed ? "filed" : "not filed: empty or already in the thread").");
+    }
+
+    private func ReplyHint() -> ref<AiNpcHoloReplyHint> {
+        if !IsDefined(this.m_replyHint) {
+            this.m_replyHint = new AiNpcHoloReplyHint();
+        }
+        return this.m_replyHint;
+    }
+
+    // The model's turn ends when neither the request nor the voice has anything left.
+    public func OnTurnTick(serial: Int32) -> Void {
+        if NotEquals(serial, this.m_serial) || !Equals(this.m_turn, AiNpcHoloTurn.Model) {
+            return;
+        }
+        if AiNpcIsGenerating() || NotEquals(StrLen(AiNpcAudio.Speaking()), 0) {
+            AiNpcArmTimeout(AiNpcCallTurnCallback.Create(this.m_serial), AiNpcCallTurnPollSeconds());
+            return;
+        }
+        this.ApplyTurn(AiNpcHoloTurnEvent.ModelDone);
     }
 
     // Escape, offered by the pause menu's own controller. True means the call took it and the
@@ -336,6 +509,10 @@ public class AiNpcCallSystem extends ScriptableSystem {
         }
         if !this.m_input.Show() {
             AiNpcLog("Call: no input line could be shown.");
+            return;
+        }
+        if Equals(this.m_origin, AiNpcCallOrigin.Game) {
+            this.ApplyTurn(AiNpcHoloTurnEvent.PlayerTyping);
         }
     }
 
@@ -374,11 +551,21 @@ public class AiNpcCallSystem extends ScriptableSystem {
         if NotEquals(this.m_state, AiNpcCallState.Connected) {
             return;
         }
+        if Equals(this.m_origin, AiNpcCallOrigin.Game) {
+            if !AiNpcHoloTurnAcceptsLine(this.m_turn) {
+                AiNpcLog("Call: V's line is refused, the scene has the floor.");
+                return;
+            }
+            this.ApplyTurn(AiNpcHoloTurnEvent.PlayerSpoke);
+        }
         AiNpcLog(s"Call: V said '\(text)' to '\(this.m_contactId)'.");
+        AiNpcAudio.Prime(AiNpcVoiceFileFor(this.m_contactId), AiNpcVoiceFallbackFor(this.m_contactId),
+            AiNpcVoiceRateFor(this.m_contactId));
         AiNpcChannelOf(AiNpcChannelId.Call).SendFrom(this.m_contactId, text);
     }
 
-    // One sentence of a reply that is still being written, from AiNpcStreamDeliver.
+    // One sentence of a reply, from AiNpcStreamDeliver -- the voice's only source, whatever lane
+    // produced the reply.
     //
     // Spoken only on a connected call, and that is the whole of the policy: the written surfaces
     // are read, not heard, and a phone that started talking out loud while the player was texting
@@ -390,12 +577,12 @@ public class AiNpcCallSystem extends ScriptableSystem {
         // Nettoyee par le canal avant d'etre dite, comme la replique complete l'est avant d'etre
         // classee. Les deux chemins passent par la meme fonction pure : n'en nettoyer qu'un
         // prononcerait la didascalie que l'autre a retiree.
-        let spoken = AiNpcChannelOf(AiNpcChannelId.Call).Clean(text);
+        let spoken = AiNpcChannelOf(AiNpcChannelId.Call).Clean(text, AiNpcResolveLanguage());
         if Equals(StrLen(spoken), 0) {
             return;
         }
         AiNpcLog(s"Call: '\(this.m_contactId)' says '\(spoken)'. \(AiNpcAudio.Speak(spoken, this.m_contactId, AiNpcVoiceFileFor(this.m_contactId),
-                 AiNpcVoiceFallbackFor(this.m_contactId), AiNpcVoiceOverLocale()))");
+                 AiNpcVoiceFallbackFor(this.m_contactId), AiNpcVoiceOverLocale(), AiNpcVoiceRateFor(this.m_contactId)))");
     }
 
     // Le personnage decroche quand sa voix est prete, et pas avant.
@@ -436,7 +623,7 @@ public class AiNpcCallSystem extends ScriptableSystem {
             return;
         }
         if !AiNpcCallChoicesShown() {
-            AiNpcCallShowChoices(AiNpcCallWriteLabel(), AiNpcCallHangUpLabel());
+            AiNpcCallShowOurChoices();
         }
         AiNpcArmTimeout(AiNpcCallChoicesCallback.Create(this.m_serial),
             AiNpcCallChoicesPollSeconds());
@@ -499,6 +686,20 @@ class AiNpcCallChoicesCallback extends AiNpcCallLaneCallback {
 
     public static func Create(serial: Int32) -> ref<AiNpcCallChoicesCallback> {
         let self = new AiNpcCallChoicesCallback();
+        self.serial = serial;
+        return self;
+    }
+}
+
+class AiNpcCallTurnCallback extends AiNpcCallLaneCallback {
+    public let serial: Int32;
+
+    protected func Run(call: ref<AiNpcCallSystem>) -> Void {
+        call.OnTurnTick(this.serial);
+    }
+
+    public static func Create(serial: Int32) -> ref<AiNpcCallTurnCallback> {
+        let self = new AiNpcCallTurnCallback();
         self.serial = serial;
         return self;
     }

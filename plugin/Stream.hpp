@@ -80,6 +80,10 @@ private:
     std::string m_buffer;
 };
 
+// A whole reply, cut exactly as a stream of it would have been. What a lane that answers in one
+// block hands the voice, so the voice has one source whatever the lane.
+std::vector<std::string> SentencesOf(const std::string& aText);
+
 // What one OpenRouter chunk carried.
 struct Chunk
 {

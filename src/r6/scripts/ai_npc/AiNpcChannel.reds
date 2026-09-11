@@ -97,8 +97,9 @@ abstract class AiNpcChannel extends IScriptable {
 
     // Passée sur ce qui sera dit ou classé, jamais après. Pure : deux consommateurs l'appellent
     // -- la réplique complète et la phrase que le streaming livre à la voix -- et n'en nettoyer
-    // qu'un prononcerait ce que l'autre a nettoyé.
-    public func Clean(text: String) -> String {
+    // qu'un prononcerait ce que l'autre a nettoyé. `language` est celle dans laquelle la réplique
+    // est écrite.
+    public func Clean(text: String, language: AiNpcLanguage) -> String {
         return text;
     }
 

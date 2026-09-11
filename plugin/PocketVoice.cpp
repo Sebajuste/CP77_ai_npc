@@ -196,6 +196,11 @@ bool Available(const std::wstring& aPluginDirectory)
     return !aPluginDirectory.empty() && FileExists(aPluginDirectory + kSentinel);
 }
 
+bool CanClone(const std::wstring& aPluginDirectory)
+{
+    return !aPluginDirectory.empty() && FileExists(ModelsDir(aPluginDirectory) + L"\\mimi_encoder.onnx");
+}
+
 bool HasVoiceFor(const std::wstring& aPluginDirectory, const std::string& aVoiceFile)
 {
     if (aVoiceFile.empty())
@@ -221,7 +226,8 @@ void CancelCurrent()
 }
 
 bool Render(const std::wstring& aPluginDirectory, const std::string& aVoiceFile,
-            const std::string& aUtf8Text, bool aSilent, std::string& aWhy)
+            const std::string& aUtf8Text, bool aSilent, float aRate,
+            std::chrono::steady_clock::time_point& aFirstSound, std::string& aWhy)
 {
     TheCancel().store(false);
     if (aUtf8Text.empty())
@@ -261,10 +267,7 @@ bool Render(const std::wstring& aPluginDirectory, const std::string& aVoiceFile,
         return false;
     }
 
-    audio::Format format;
-    format.sampleRate = kSampleRate;
-    format.channels = kChannels;
-    format.bitsPerSample = kBits;
+    const audio::Format format = OutputFormat(aRate);
 
     // Ouvert AVANT le premier morceau : ouvrir coute quelques dizaines de millisecondes, et les
     // payer entre la synthese et le son rendrait les 123 ms a moitie.
@@ -291,10 +294,15 @@ bool Render(const std::wstring& aPluginDirectory, const std::string& aVoiceFile,
         pcm.clear();
         AppendPcm(chunk, count, pcm);
         ptt_free_audio(chunk);
+        const bool first = total == 0;
         total += pcm.size();
         if (opened && !pcm.empty())
         {
             audio::Push(pcm.data(), pcm.size());
+            if (first)
+            {
+                aFirstSound = std::chrono::steady_clock::now();
+            }
         }
         if (TheCancel().load())
         {
@@ -320,6 +328,15 @@ bool Render(const std::wstring& aPluginDirectory, const std::string& aVoiceFile,
         return false;
     }
     return true;
+}
+
+audio::Format OutputFormat(float aRate)
+{
+    audio::Format format;
+    format.sampleRate = static_cast<uint32_t>(std::lround(kSampleRate * aRate));
+    format.channels = kChannels;
+    format.bitsPerSample = kBits;
+    return format;
 }
 
 uint32_t SampleRate()

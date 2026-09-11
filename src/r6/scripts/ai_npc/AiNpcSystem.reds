@@ -102,7 +102,7 @@ public class AiNpcSystem extends ScriptableService {
         // as a redraw under a chat that no longer exists.
         this.PhoneState().OnPhoneHidden();
         this.callbackSystem = GameInstance.GetCallbackSystem();
-        this.BindKeys(false);
+        this.ListenKeys(false);
         this.callbackSystem.UnregisterCallback(n"Input/Axis", this, n"OnAxisInput");
         // Rebuilt from scratch every initialisation: a view carries handles into a widget tree
         // that no longer exists once the phone is rebuilt.
@@ -159,22 +159,16 @@ public class AiNpcSystem extends ScriptableService {
         return blackboard.GetBool(GetAllBlackboardDefs().UI_ComDevice.ContactsActive);
     }
 
-    // The whole key binding, in one place, with two shapes. Binding from several places makes
-    // the live set a function of the cursor's history rather than of the current state, and
-    // the symptom is a key that goes dead until the player leaves the phone and comes back.
-    //
-    // So the opening key is bound for the whole session and the handler's guards decide: a
-    // guard can be read, an absent binding cannot. The all-keys shape exists only while the
-    // chat is on screen, which is the only time there is a text field to feed.
-    private func BindKeys(allKeys: Bool) -> Void {
+    // The keyboard, in one place: listened to only while the chat is on screen, which is the
+    // only time there is a text field to feed. Everything else opens through the phone's own
+    // keys.
+    private func ListenKeys(listening: Bool) -> Void {
         if !IsDefined(this.callbackSystem) {
             return;
         }
         this.callbackSystem.UnregisterCallback(n"Input/Key", this, n"OnKeyInput");
-        let handler = this.callbackSystem.RegisterCallback(n"Input/Key", this, n"OnKeyInput", true);
-        if !allKeys {
-            handler.AddTarget(InputTarget.Key(EInputKey.IK_T));
-            handler.AddTarget(InputTarget.Key(EInputKey.IK_G));
+        if listening {
+            this.callbackSystem.RegisterCallback(n"Input/Key", this, n"OnKeyInput", true);
         }
     }
 
@@ -206,12 +200,7 @@ public class AiNpcSystem extends ScriptableService {
             case AiNpcPhoneScreen.ModChat:
                 this.OnChatKey(key);
                 break;
-            case AiNpcPhoneScreen.Contacts:
-                this.OnContactListKey(key);
-                break;
             default:
-                // Away and Messages: the phone is not ours, and T is the game's own key there
-                // -- long press to raise it, short press to jump to an incoming message.
                 break;
         }
     }
@@ -257,52 +246,6 @@ public class AiNpcSystem extends ScriptableService {
             this.PhoneState().OnTypingChanged(true);
             this.m_phoneView.BeginInput();
         }
-    }
-
-    // T ecrit, G appelle -- deux verbes sur la meme ligne, et la ligne est celle que le
-    // composeur designe. Aucun repli sur « le dernier contact » : cela ouvrirait une
-    // conversation que le joueur ne montrait pas.
-    //
-    // Le controle « on est bien sur la liste » vit ici plutot que dans les deux verbes, parce
-    // que c'est un fait sur CES TOUCHES -- une ligne n'existe que sur cet ecran. Toutes les
-    // autres entrees nomment leur contact explicitement.
-    //
-    // R et F appartiennent au jeu sur cet ecran, et G est ce qui reste a portee de la main
-    // gauche. Le choix est celui du joueur, pas une mesure : ce fichier ne sait pas ce que le
-    // jeu lie, il sait seulement ce que le mod prend.
-    private func OnContactListKey(key: String) -> Void {
-        if !Equals(key, "IK_T") && !Equals(key, "IK_G") {
-            return;
-        }
-        if !this.PhoneState().IsOnContacts() {
-            return;
-        }
-
-        let row = this.PhoneState().GetReportedRow();
-        if Equals(key, "IK_T") {
-            this.OpenChat(row, "T");
-            return;
-        }
-        this.PlaceCall(row);
-    }
-
-    // G appelle la ligne designee.
-    //
-    // Le systeme d'appel decide et repond par une phrase, qui va au journal telle quelle : un
-    // refus a trois causes -- deja en ligne, contact inconnu, pas de session -- et les trois se
-    // corrigent differemment. Rien n'est ferme ici : la sonnerie est celle du jeu, et le
-    // telephone se comporte comme pour n'importe quel appel entrant.
-    private func PlaceCall(contactId: String) -> Void {
-        if Equals(StrLen(contactId), 0) {
-            return;
-        }
-        let calls = AiNpcCallSystem.Get();
-        if !IsDefined(calls) {
-            AiNpcLog("G: no call system in this session.");
-            return;
-        }
-        this.PlaySound(n"ui_menu_onpress");
-        AiNpcLog(s"G on '\(contactId)': \(calls.Dial(contactId))");
     }
 
     // Handle scrolling messages
@@ -433,10 +376,14 @@ public class AiNpcSystem extends ScriptableService {
         }
     }
 
-    // Recorded verbatim as the T target and nothing else. Selecting the contact here is what
-    // let a refresh burst decide which conversation T would open.
-    public func ReportContactRow(contactId: String) -> Void {
-        this.PhoneState().OnRowReported(contactId);
+    // The phone's messages key on a row. True when the mod's chat opens instead of the game's
+    // messenger: the mod's own conversation, or a character with none of the game's.
+    public func ReportMessagesAction(row: wref<ContactData>) -> Bool {
+        if !AiNpcOpensModChat(row) {
+            return false;
+        }
+        this.OpenChat(row.contactId, "the phone's messages");
+        return true;
     }
 
     // The phone HUD was rebuilt underneath us, so every widget handle the mod holds is stale.
@@ -562,7 +509,7 @@ public class AiNpcSystem extends ScriptableService {
     // Opening the chat is three things -- borrow the phone, draw the panel, take the keyboard
     // -- and closing it is the same three undone. One door each, both private, with the
     // reasons to refuse in the door rather than in its callers: AiNpcSeed's public API goes
-    // through the same door as the T key, so an external caller cannot reach a state the
+    // through the same door as the phone, so an external caller cannot reach a state the
     // player could not.
 
     // Answers whether the chat is now on screen. Every branch before the transition is a
@@ -580,7 +527,6 @@ public class AiNpcSystem extends ScriptableService {
         // The only gate: is there a phone to draw on? Drawing the chat needs a phone that is
         // out and a tree that can be borrowed, nothing more -- EnterChat hides the game's
         // messenger slot and LeaveChat restores it, so covering a vanilla thread is supported.
-        // Where T is allowed is T's own affair, in OnContactListKey.
         //
         // Asked of the com device blackboard, not of this mod's state: the machine can read
         // Away while the phone is out on the messages tab, where the contacts dialer never
@@ -646,7 +592,7 @@ public class AiNpcSystem extends ScriptableService {
         this.PlaySound(n"ui_menu_map_pin_created");
         // Typing needs every key, and the wheel belongs to the message list. Both are given
         // back in HideModChat, whatever closes the chat.
-        this.BindKeys(true);
+        this.ListenKeys(true);
         this.callbackSystem.UnregisterCallback(n"Input/Axis", this, n"OnAxisInput");
         this.callbackSystem.RegisterCallback(n"Input/Axis", this, n"OnAxisInput", true);
     }
@@ -674,11 +620,11 @@ public class AiNpcSystem extends ScriptableService {
         // The single point where the input goes back to its resting shape: every close path
         // reaches here through CloseChat, so none can leave the all-keys binding on. Typing
         // was a screen, and the screen just changed.
-        this.BindKeys(false);
+        this.ListenKeys(false);
         this.callbackSystem.UnregisterCallback(n"Input/Axis", this, n"OnAxisInput");
     }
 
-    // The public door, for the API in AiNpcSeed.reds. Same door as T, same refusals.
+    // The public door, for the API in AiNpcSeed.reds. Same door as the phone, same refusals.
     public func OpenChatFor(contactId: String, reason: String) -> Bool {
         return this.OpenChat(contactId, reason);
     }

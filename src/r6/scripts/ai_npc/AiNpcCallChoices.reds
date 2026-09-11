@@ -25,15 +25,24 @@
 
 module AiNpc
 
-// Choice1 and Choice2 are the game's own dialogue-choice actions, declared in
-// r6\config\inputUserMappings.xml (Choice1 through Choice4). Using them means the prompt shows
-// the key the player has bound for dialogue, whatever that is.
-func AiNpcCallWriteAction() -> CName {
-    return n"Choice1";
+// Actions nommées de r6\config\inputUserMappings.xml : l'invite montre la touche que le joueur
+// a liée. Choice2 (R) et non Choice1 (F), qui sélectionne les choix de dialogue du jeu.
+// PhoneReject est le maintien de T, le raccrocher du jeu ; il arrive au contrôleur du
+// téléphone, pas au joueur.
+func AiNpcCallReplyAction() -> CName {
+    return n"Choice2";
 }
 
 func AiNpcCallHangUpAction() -> CName {
-    return n"Choice2";
+    return n"PhoneReject";
+}
+
+// Les actions de choix du jeu. F et Entrée valident (Choice1, ChoiceApply -- DialogConfirm lie
+// les deux touches), R et les autres prennent un choix secondaire. Une lettre tapée dans la
+// ligne de saisie les déclenche aussi.
+func AiNpcIsChoiceAction(name: CName) -> Bool {
+    return Equals(name, n"Choice1") || Equals(name, n"Choice2") || Equals(name, n"Choice3")
+        || Equals(name, n"Choice4") || Equals(name, n"ChoiceApply");
 }
 
 func AiNpcCallInteractionBlackboard() -> ref<IBlackboard> {
@@ -75,7 +84,7 @@ func AiNpcCallChoicesShown() -> Bool {
 }
 
 func AiNpcCallOwnsChoice(choice: InteractionChoiceData) -> Bool {
-    return Equals(choice.inputAction, AiNpcCallWriteAction())
+    return Equals(choice.inputAction, AiNpcCallReplyAction())
         || Equals(choice.inputAction, AiNpcCallHangUpAction());
 }
 
@@ -96,7 +105,7 @@ func AiNpcCallWithoutOurs(choices: array<InteractionChoiceData>) -> array<Intera
 
 // Pose nos deux lignes dans le hub, en gardant celles des autres. Idempotent : appelee a
 // chaque reaffirmation, elle remplace les notres au lieu de les empiler.
-func AiNpcCallShowChoices(writeLabel: String, hangUpLabel: String) -> Void {
+func AiNpcCallShowChoices(replyLabel: String, hangUpLabel: String) -> Void {
     let board = AiNpcCallInteractionBlackboard();
     if !IsDefined(board) {
         return;
@@ -108,7 +117,7 @@ func AiNpcCallShowChoices(writeLabel: String, hangUpLabel: String) -> Void {
 
     hub.choices = others;
     hub.active = true;
-    ArrayPush(hub.choices, AiNpcCallChoice(AiNpcCallWriteAction(), writeLabel));
+    ArrayPush(hub.choices, AiNpcCallChoice(AiNpcCallReplyAction(), replyLabel));
     ArrayPush(hub.choices, AiNpcCallChoice(AiNpcCallHangUpAction(), hangUpLabel));
 
     let visuals: VisualizersInfo;

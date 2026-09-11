@@ -21,8 +21,15 @@ internal sealed class RecipeLine
 
 internal sealed class RecipeVoice
 {
-    [JsonPropertyName("contactId")] public string ContactId { get; set; }
+    // Le nom du fichier de reference sans extension, celui qu'une fiche nomme dans `clone`.
+    [JsonPropertyName("voice")] public string Voice { get; set; }
     [JsonPropertyName("language")] public string Language { get; set; }
+
+    // Le facteur de relecture de la reference. Absent, 1 : la voix telle que le jeu la joue.
+    [JsonPropertyName("shift")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public double? Shift { get; set; }
+
     [JsonPropertyName("seconds")] public double Seconds { get; set; }
     [JsonPropertyName("lines")] public List<RecipeLine> Lines { get; set; } = new();
 }
@@ -55,9 +62,10 @@ internal sealed class Recipe
         PeakCeiling = recipe.PeakCeiling,
     };
 
-    public static RecipeVoice VoiceOf(string contactId, string language, VoiceReference reference) => new()
+    public static RecipeVoice VoiceOf(CastVoice voice, string language, VoiceReference reference) => new()
     {
-        ContactId = contactId,
+        Voice = voice.Name,
+        Shift = voice.Shift == 1.0 ? null : voice.Shift,
         Language = language,
         Seconds = Math.Round(reference.Clip.Seconds, 2),
         Lines = reference.Kept.Select(k => new RecipeLine
@@ -81,7 +89,7 @@ internal sealed class Recipe
         merged.AddRange(Voices);
         merged = merged
             .OrderBy(v => v.Language, StringComparer.Ordinal)
-            .ThenBy(v => CastOrder(v.ContactId))
+            .ThenBy(v => CastOrder(v.Voice))
             .ToList();
 
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(file)));
@@ -90,12 +98,12 @@ internal sealed class Recipe
         File.WriteAllText(file, json + "\n", new UTF8Encoding(false));
     }
 
-    private static string Key(RecipeVoice voice) => voice.Language + "/" + voice.ContactId;
+    private static string Key(RecipeVoice voice) => voice.Language + "/" + voice.Voice;
 
-    private static int CastOrder(string contactId)
+    private static int CastOrder(string name)
     {
         var index = Array.FindIndex(VoiceCast.All,
-            c => string.Equals(c.ContactId, contactId, StringComparison.OrdinalIgnoreCase));
+            c => string.Equals(c.Name, name, StringComparison.OrdinalIgnoreCase));
         return index < 0 ? int.MaxValue : index;
     }
 }

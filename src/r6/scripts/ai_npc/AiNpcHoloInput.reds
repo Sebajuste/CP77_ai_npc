@@ -70,7 +70,7 @@ func AiNpcHoloInputHost() -> ref<inkCompoundWidget> {
 // what was typed lives in the field, and whether a call is up lives in AiNpcCallSystem.
 class AiNpcHoloInput extends IScriptable {
 
-    private let m_field: ref<AiNpcTerminalField>;
+    private let m_field: ref<AiNpcHoloField>;
 
     // Escape reaches this line twice: once as a key, which the field answers by giving the
     // keyboard back, and once as the pause action, which the game answers by opening its menu.
@@ -97,7 +97,7 @@ class AiNpcHoloInput extends IScriptable {
             return false;
         }
 
-        this.m_field = new AiNpcTerminalField();
+        this.m_field = new AiNpcHoloField();
         this.m_field.Setup(AiNpcHoloInputPlaceholder(), AiNpcHoloInputLines());
         // La couleur du texte en cours de frappe, la meme sur les trois surfaces. L'accent
         // corail est reserve a ce qui demande une lecture -- une ligne dans laquelle on tape
@@ -163,14 +163,16 @@ class AiNpcHoloInput extends IScriptable {
         // spoken sentence, not a thread: the player says it and goes back to walking, and a
         // line that kept the keyboard after Enter left them unable to move. What to do with an
         // empty line is the call's, and it says nothing.
+        // The line is reported before the keyboard is given back: the call has to hear it while
+        // the player is still typing, or the release reads as a line given up.
         let text = this.m_field.GetText();
         this.m_field.Clear();
-        this.m_field.ReleaseKeyboard();
 
         let call = AiNpcCallSystem.Get();
         if IsDefined(call) {
             call.ReportSpoken(text);
         }
+        this.m_field.ReleaseKeyboard();
         return true;
     }
 

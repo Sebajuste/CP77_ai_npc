@@ -49,13 +49,6 @@ public class AiNpcPhoneStateMachine {
     // the keypress, the dialer reports its screen once it has finished spawning.
     private let m_tabSwitchPending: Bool = false;
 
-    // The last contact row the dialer reported, verbatim -- not the hovered one.
-    // RefreshInputHints is a list-refresh callback, and gamelog.3.log (2026-03-20) shows it
-    // replayed over 22 contacts in two seconds when the contacts screen comes back. It is the
-    // hovered row whenever the player has moved the selection, and the last populated one
-    // before that.
-    private let m_reportedRow: String = "";
-
     // The screen the chat was drawn over, and the one closing gives back. The chat covers
     // another screen, so "where does closing land?" has an answer only the open knows. Storing
     // it at the open lets the chat be opened from anywhere without the close guessing.
@@ -63,19 +56,6 @@ public class AiNpcPhoneStateMachine {
 
     public func GetScreen() -> AiNpcPhoneScreen {
         return this.m_screen;
-    }
-
-    // Whether the contact list is the screen underneath -- it is up, or our chat is over it.
-    //
-    // The T key's precondition and nothing else's: T means "open the row I am pointing at", and
-    // there are only rows to point at here. It was the chat's gate too until 2026-08-26, when
-    // two routes to the same reply button on the same contact differed only by which tab the
-    // phone had last reported. The surface's own question now lives in OpenChat.
-    //
-    // A field read rather than a walk of every ink layer, and true across the chat, so T stays
-    // inert while it is up.
-    public func IsOnContacts() -> Bool {
-        return Equals(this.m_screen, AiNpcPhoneScreen.Contacts) || this.IsChatOpen();
     }
 
     // Derived, never stored: the accessor that replaced AiNpcSystem.chatOpen, so there is no
@@ -87,10 +67,6 @@ public class AiNpcPhoneStateMachine {
 
     public func IsTyping() -> Bool {
         return Equals(this.m_screen, AiNpcPhoneScreen.ModChatTyping);
-    }
-
-    public func GetReportedRow() -> String {
-        return this.m_reportedRow;
     }
 
     // Which tab they land on is not known yet and is not asked: the screen that follows says.
@@ -129,26 +105,12 @@ public class AiNpcPhoneStateMachine {
         }
 
         this.m_tabSwitchPending = false;
-
-        // The reported row belongs to the contact list, so it dies with it.
-        if NotEquals(screen, AiNpcPhoneScreen.Contacts) {
-            this.m_reportedRow = "";
-        }
-
         this.m_screen = screen;
         return edge;
     }
 
-    // Accepted unconditionally: gating it on the screen would make T's availability depend on
-    // whether the dialer reports its rows before or after its screen, an ordering inside the
-    // game's controller this mod cannot see. T is gated once, at the press.
-    public func OnRowReported(contactId: String) -> Void {
-        this.m_reportedRow = contactId;
-    }
-
     // The game's own messenger took the screen.
     public func OnThreadOpened() -> Void {
-        this.m_reportedRow = "";
         this.m_screen = AiNpcPhoneScreen.Messages;
     }
 
@@ -195,7 +157,6 @@ public class AiNpcPhoneStateMachine {
     public func OnPhoneHidden() -> Void {
         this.m_screen = AiNpcPhoneScreen.Away;
         this.m_tabSwitchPending = false;
-        this.m_reportedRow = "";
         // The screen a future chat would give back is a screen of THIS trip through the phone.
         this.m_returnScreen = AiNpcPhoneScreen.Contacts;
     }

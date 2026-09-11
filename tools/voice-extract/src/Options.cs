@@ -69,7 +69,7 @@ internal sealed class Options
         }
         if (options.Characters.Count == 0)
         {
-            options.Characters.AddRange(VoiceCast.All.Select(c => c.ContactId));
+            options.Characters.AddRange(VoiceCast.All.Select(c => c.Name));
         }
         return options;
     }

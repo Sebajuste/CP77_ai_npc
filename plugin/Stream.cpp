@@ -249,6 +249,19 @@ std::string SentenceSplitter::Finish()
     return left;
 }
 
+std::vector<std::string> SentencesOf(const std::string& aText)
+{
+    SentenceSplitter splitter;
+    std::vector<std::string> sentences;
+    splitter.Feed(aText, sentences);
+    const std::string last = splitter.Finish();
+    if (!last.empty())
+    {
+        sentences.push_back(last);
+    }
+    return sentences;
+}
+
 /// The chunks ///
 
 Chunk ReadChunk(const std::string& aPayload)

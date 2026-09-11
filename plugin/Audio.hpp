@@ -11,7 +11,8 @@
 //
 //   - no ducking against game audio, and no game volume slider;
 //   - it keeps playing while the game is paused or alt-tabbed;
-//   - it goes to the system default device, which is not necessarily the game's.
+//   - it goes to the output the game plays on (ProcessOutput.hpp), and to the system default
+//     only when that cannot be found.
 //
 // No RED4ext dependency, on purpose: that is what lets plugin\test\run.ps1 build and run it
 // outside the game.
@@ -65,15 +66,38 @@ Status Play(const void* aSamples, size_t aBytes, const Format& aFormat);
 // « Une voix a la fois » ne bouge pas -- c'est la meme voix, elle arrive en plusieurs fois.
 // Open() coupe ce qui jouait, exactement comme un second Play().
 //
-//   Open(format)          ouvre le peripherique et coupe la prise precedente
+//   Open(format)          ouvre une replique ; poursuit la sortie ouverte au meme format,
+//                         coupe celle d'un autre format
 //   Push(bytes)           met un morceau a la file ; il joue apres ceux deja ecrits
-//   Close()               plus rien ne viendra ; le peripherique se ferme une fois vide
+//   Close()               la replique est finie
 //
-// Push() apres Close(), ou sans Open(), rend NoDevice : une file fermee ne se rouvre pas, et
+// LA SORTIE SURVIT A SES REPLIQUES. Une sortie qui vient d'ouvrir avale le debut de son premier
+// tampon, donc elle reste ouverte, nourrie de silence, et ne se ferme qu'apres 20 s sans servir.
+// Une replique attend au plus 100 ms de silence deja en file.
+//
+// Push() apres Close(), ou sans Open(), rend NoDevice : une replique fermee ne se rouvre pas, et
 // une voix qui reprendrait apres sa fin serait un morceau joue hors de son tour.
 Status Open(const Format& aFormat);
 Status Push(const void* aSamples, size_t aBytes);
 void Close();
+
+// Ouvre la sortie d'avance, sans replique, pour que la parole a venir trouve un flux en marche.
+// Appelee quand une reponse est demandee, pendant que le modele ecrit. Une sortie deja ouverte,
+// a n'importe quel format, est seulement prolongee : amorcer ne coupe personne. `aOpened` dit
+// si elle a du s'ouvrir.
+Status Prime(const Format& aFormat, bool& aOpened);
+
+// Ce que la sortie a fait depuis la derniere lecture, remis a zero par elle.
+//
+//   openings   repliques qui ont du ouvrir la sortie -- chacune a perdu son debut
+//   gaps       fois ou une replique ouverte a vide la file avant son morceau suivant : la
+//              synthese n'a pas suivi la lecture, et un silence s'est glisse dans la phrase
+struct Counters
+{
+    uint32_t openings = 0;
+    uint32_t gaps = 0;
+};
+Counters TakeCounters();
 
 // Marque les morceaux a venir comme appartenant a cette replique. Zero pour "sans replique",
 // ce qui est le cas d'un bip.
@@ -104,19 +128,17 @@ Sound Tone(double aSeconds, double aHertz, double aAmplitude);
 
 // Which output the last Play() actually went to, as Windows names it.
 //
-// "It played, and I heard nothing" is the answer that costs the most time, and it has one
-// ordinary cause: WAVE_MAPPER picks the system default, which is not necessarily the device
-// the listener is wearing. Naming it turns that hour into a glance. Empty before the first
-// play, or when the device could not be named.
+// "It played, and I heard nothing" is the answer that costs the most time. The name says
+// whether the sound followed the game or fell back to the system default. Empty before the
+// first play.
 std::string DeviceName();
 
-// Every output Windows can see, in its own order. The sound goes to whichever of these is
-// the system default, and a listener wearing a different one hears nothing while every check
-// passes.
+// Every output Windows can see, in its own order.
 std::vector<std::string> Outputs();
 
-// Silence now. Safe to call when nothing is playing.
+// Silence now, and the output closes. Safe to call when nothing is playing.
 void Stop();
 
+// Reste-t-il de la parole a entendre ? Le silence de la sortie ouverte ne compte pas.
 bool IsPlaying();
 }

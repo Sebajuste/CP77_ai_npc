@@ -111,6 +111,9 @@ bool ParseChatBody(const std::string& aBody, ChatRequest& aRequest, std::string&
 std::string MakeChatResponse(const std::string& aText, bool aHaveUsage, long long aPromptTokens,
                              long long aCompletionTokens, long long aCachedTokens);
 
+// The reply text a success shape carries, or empty when the body is not one.
+std::string ChatResponseText(const std::string& aBody);
+
 // The failure shape, which is an OpenAI error body and nothing more exotic.
 ChatReply Failure(int aStatus, const std::string& aMessage);
 

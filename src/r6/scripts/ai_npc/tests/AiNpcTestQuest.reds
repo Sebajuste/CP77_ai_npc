@@ -20,7 +20,7 @@ func AiNpcTestQuestLine(contactId: String, questKey: String, objective: String) 
     if !IsDefined(sheet) {
         return "";
     }
-    return AiNpcQuestBlock("", AiNpcQuestTextIn(sheet.questContexts, questKey), objective);
+    return AiNpcQuestBlock("", AiNpcQuestTextIn(sheet.questContexts, questKey, null), objective);
 }
 
 func AiNpcTestQuestContext(t: ref<AiNpcTestRunner>) -> Void {
@@ -275,11 +275,11 @@ func AiNpcTestRomanceFacts(t: ref<AiNpcTestRunner>) -> Void {
 func AiNpcTestQuestSheets(t: ref<AiNpcTestRunner>) -> Void {
     let panam = AiNpcSheetPanam();
     t.Check("quests/panam has a line for her own quest",
-        NotEquals(StrLen(AiNpcQuestTextIn(panam.questContexts, "riders_on_the_storm")), 0));
+        NotEquals(StrLen(AiNpcQuestTextIn(panam.questContexts, "riders_on_the_storm", null)), 0));
     t.EqString("quests/she has none for someone else's",
-        AiNpcQuestTextIn(panam.questContexts, "both_sides_now"), "");
+        AiNpcQuestTextIn(panam.questContexts, "both_sides_now", null), "");
     t.EqString("quests/an unknown key says nothing",
-        AiNpcQuestTextIn(panam.questContexts, "no_such_quest"), "");
+        AiNpcQuestTextIn(panam.questContexts, "no_such_quest", null), "");
 
     // An entry carries the ACCOUNT and nothing else. The heading, the labels and the live
     // objective are written by AiNpcQuestBlock, so an entry that spelled any of them itself
@@ -317,6 +317,71 @@ func AiNpcTestQuestSheets(t: ref<AiNpcTestRunner>) -> Void {
         AiNpcQuestBlock("", "You are waiting.", ""), "WHERE THINGS STAND: You are waiting.");
     t.EqString("quests/nothing to say, no block at all",
         AiNpcQuestBlock("Ghost Town", "", "stealing a tank"), "");
+}
+
+/// Stages of one quest ///
+
+// A quest is tracked from its first second, so an account written for its end was mounted at
+// its beginning: Takemura named Oda's refusal and Hanako's parade before V had walked to the
+// meeting. A sheet dates its stages, and the save says which one is true.
+//
+// The gate is stubbed rather than read: what is asserted is the selection, and the quests
+// system does not exist while the self-tests run.
+class AiNpcTestFactGate extends AiNpcFactGate {
+    let posed: array<String>;
+
+    public func IsSet(fact: String) -> Bool {
+        return ArrayContains(this.posed, fact);
+    }
+}
+
+func AiNpcTestPosed(posed: array<String>) -> ref<AiNpcFactGate> {
+    let gate = new AiNpcTestFactGate();
+    gate.posed = posed;
+    return gate;
+}
+
+func AiNpcTestQuestStages(t: ref<AiNpcTestRunner>) -> Void {
+    let entries: array<ref<AiNpcQuestLine>>;
+    ArrayPush(entries, AiNpcQuest("q", "arranged"));
+    ArrayPush(entries, AiNpcQuestStage("q", "met", "refused"));
+    ArrayPush(entries, AiNpcQuestStage("q", "paid", "route bought"));
+    ArrayPush(entries, AiNpcQuest("other", "someone else's quest"));
+
+    let none: array<String>;
+    t.EqString("stages/nothing posed yet, the quest opens on its first account",
+        AiNpcQuestTextIn(entries, "q", AiNpcTestPosed(none)), "arranged");
+    t.EqString("stages/a posed fact moves the account on",
+        AiNpcQuestTextIn(entries, "q", AiNpcTestPosed(["met"])), "refused");
+    t.EqString("stages/the last posed stage wins",
+        AiNpcQuestTextIn(entries, "q", AiNpcTestPosed(["met", "paid"])), "route bought");
+    // Order of declaration decides, not order of posing: a save loaded out of sequence still
+    // reads as the story does.
+    t.EqString("stages/a late fact alone still wins",
+        AiNpcQuestTextIn(entries, "q", AiNpcTestPosed(["paid"])), "route bought");
+    t.EqString("stages/no gate reads no save",
+        AiNpcQuestTextIn(entries, "q", null), "arranged");
+    t.EqString("stages/another quest is untouched",
+        AiNpcQuestTextIn(entries, "other", AiNpcTestPosed(["met", "paid"])), "someone else's quest");
+
+    // An outcome the game writes as an absence -- Oda spared is q112_oda_dead never posed --
+    // holds a stage back, and the stage before it is what stays true.
+    let held: array<ref<AiNpcQuestLine>>;
+    ArrayPush(held, AiNpcQuest("q", "opening"));
+    let late = AiNpcQuestStage("q", "closed", "he died");
+    late.unlessFact = "spared";
+    ArrayPush(held, late);
+    t.EqString("stages/held back by an absence, the account before it stands",
+        AiNpcQuestTextIn(held, "q", AiNpcTestPosed(["closed", "spared"])), "opening");
+    t.EqString("stages/not held back, it speaks",
+        AiNpcQuestTextIn(held, "q", AiNpcTestPosed(["closed"])), "he died");
+
+    // A dated stage is never the fallback: a quest whose opening account nobody wrote says
+    // nothing until its moment comes, rather than saying its end from the first second.
+    let dated: array<ref<AiNpcQuestLine>>;
+    ArrayPush(dated, AiNpcQuestStage("q", "met", "refused"));
+    t.EqString("stages/a dated stage does not speak before its fact",
+        AiNpcQuestTextIn(dated, "q", AiNpcTestPosed(none)), "");
 }
 
 /// Commands a sheet may declare ///

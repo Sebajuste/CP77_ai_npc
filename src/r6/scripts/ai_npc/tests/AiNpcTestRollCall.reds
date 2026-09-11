@@ -56,6 +56,7 @@ func AiNpcRunAllTests() -> ref<AiNpcTestRunner> {
     AiNpcTestContactHash(t);
     AiNpcTestRomanceFacts(t);
     AiNpcTestQuestSheets(t);
+    AiNpcTestQuestStages(t);
     AiNpcTestSheetActions(t);
     AiNpcTestVariantFields(t);
     AiNpcTestLanguageFromLocale(t);
@@ -102,8 +103,13 @@ func AiNpcRunAllTests() -> ref<AiNpcTestRunner> {
     AiNpcTestChannelAccepts(t);
     AiNpcTestChannelJournal(t);
     AiNpcTestChannelClean(t);
+    AiNpcTestVoiceFormatFrench(t);
+    AiNpcTestVoiceFormatLanguages(t);
     AiNpcTestCallTransitions(t);
     AiNpcTestCallOpensOnce(t);
+    AiNpcTestCallRoute(t);
+    AiNpcTestHoloTurn(t);
+    AiNpcTestSceneLines(t);
     AiNpcTestPhoneState(t);
     AiNpcTestPhoneOpenIntent(t);
     AiNpcTestPhoneForbidden(t);

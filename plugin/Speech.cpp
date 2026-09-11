@@ -51,6 +51,12 @@ struct Line
 
     // Son rang dans la parole. Zero pour une preparation, qui ne s'entend pas.
     uint32_t line = 0;
+
+    // L'instant que « speak: queued » horodate dans le log : tout ce que la file mesure en part.
+    std::chrono::steady_clock::time_point queuedAt{};
+
+    // La vitesse de lecture que la fiche declare.
+    float rate = 1.0f;
 };
 
 struct Worker
@@ -120,6 +126,44 @@ enum class Engine
     Sapi,
 };
 
+audio::Format SapiFormat()
+{
+    audio::Format format;
+    format.sampleRate = sapi::SampleRate();
+    format.channels = sapi::Channels();
+    format.bitsPerSample = sapi::BitsPerSample();
+    return format;
+}
+
+// Le palier neuronal de ce contact, vide quand seule la voix de Windows peut parler.
+//
+// Les paliers, du plus proche du personnage au plus modeste, par personnage : un joueur aura
+// Judy clonee, Rogue au catalogue et un contact tiers sur la voix de Windows, dans la meme
+// partie. Une reference presente ne suffit pas a retenir le premier : elle survit au pack qui
+// l'a fabriquee, et le pack libre ne sait pas la lire.
+//
+// `aRate` recoit la vitesse a jouer. Elle derive une voix de catalogue ; un clone se derive dans
+// la recette de sa reference, et le relire le deriverait deux fois.
+std::string NeuralTier(const std::wstring& aPluginDirectory, const std::string& aVoiceFile,
+                       const std::string& aCatalogueVoice, float aSheetRate, float& aRate)
+{
+    aRate = 1.0f;
+    if (!voice::Available(aPluginDirectory))
+    {
+        return {};
+    }
+    if (voice::CanClone(aPluginDirectory) && voice::HasVoiceFor(aPluginDirectory, aVoiceFile))
+    {
+        return aVoiceFile;
+    }
+    if (voice::HasCatalogueVoice(aPluginDirectory, aCatalogueVoice))
+    {
+        aRate = aSheetRate;
+        return aCatalogueVoice;
+    }
+    return {};
+}
+
 // Rend une replique, du meilleur moteur disponible POUR CE CONTACT vers le plus modeste.
 //
 // La voie neuronale est essayee d'abord et son echec n'est pas fatal : un modele qui refuse de
@@ -127,8 +171,8 @@ enum class Engine
 // `aWhy` est la raison du repli, pas une erreur -- elle est journalisee telle quelle, parce que
 // « ca parle avec la voix de Windows » sans explication est la question qui coute le plus de
 // temps a quelqu'un qui vient d'installer le pack.
-bool RenderBest(const std::wstring& aPluginDirectory, const Line& aLine,
-                std::vector<uint8_t>& aSamples, Engine& aEngine, std::string& aWhy)
+bool RenderBest(const std::wstring& aPluginDirectory, const Line& aLine, std::vector<uint8_t>& aSamples,
+                Engine& aEngine, std::chrono::steady_clock::time_point& aFirstSound, std::string& aWhy)
 {
     // Le pack de clonage installe est ce qui autorise une reference, et sa premiere consequence
     // est ici : si ce personnage n'en a pas encore, on la fabrique maintenant, depuis les
@@ -138,7 +182,7 @@ bool RenderBest(const std::wstring& aPluginDirectory, const Line& aLine,
         !voice::HasVoiceFor(aPluginDirectory, aLine.voiceFile) && voicemake::Possible(aPluginDirectory))
     {
         std::string made;
-        if (voicemake::Make(aPluginDirectory, aLine.contactId, aLine.voiceFile, aLine.language, made))
+        if (voicemake::Make(aPluginDirectory, aLine.voiceFile, aLine.language, made))
         {
             aWhy = "made a reference for " + aLine.contactId + " (" + made + "); ";
         }
@@ -148,35 +192,21 @@ bool RenderBest(const std::wstring& aPluginDirectory, const Line& aLine,
         }
     }
 
-    // Les paliers, du plus proche du personnage au plus modeste. Chacun est essaye seulement
-    // s'il est reellement disponible, et par personnage : un joueur aura Judy clonee, Rogue au
-    // catalogue et un contact tiers sur la voix de Windows, dans la meme partie.
-    if (voice::Available(aPluginDirectory))
+    float rate = 1.0f;
+    const std::string tier = NeuralTier(aPluginDirectory, aLine.voiceFile, aLine.catalogueVoice, aLine.rate, rate);
+    if (!tier.empty())
     {
-        std::string tier;
-        if (voice::HasVoiceFor(aPluginDirectory, aLine.voiceFile))
+        // La voie neuronale JOUE ELLE-MEME, morceau par morceau : c'est ce qui fait sortir le
+        // premier son en ~123 ms au lieu d'attendre la fin de la synthese. Elle ne rend donc
+        // aucun tampon, et il n'y a rien a remettre au chemin audio apres elle.
+        std::string neural;
+        if (voice::Render(aPluginDirectory, tier, aLine.text, false, rate, aFirstSound, neural))
         {
-            tier = aLine.voiceFile;
+            aEngine = Engine::Pocket;
+            return true;
         }
-        else if (voice::HasCatalogueVoice(aPluginDirectory, aLine.catalogueVoice))
-        {
-            tier = aLine.catalogueVoice;
-        }
-
-        if (!tier.empty())
-        {
-            // La voie neuronale JOUE ELLE-MEME, morceau par morceau : c'est ce qui fait sortir
-            // le premier son en ~123 ms au lieu d'attendre la fin de la synthese. Elle ne rend
-            // donc aucun tampon, et il n'y a rien a remettre au chemin audio apres elle.
-            std::string neural;
-            if (voice::Render(aPluginDirectory, tier, aLine.text, false, neural))
-            {
-                aEngine = Engine::Pocket;
-                return true;
-            }
-            aSamples.clear();
-            aWhy += "neural voice fell back: " + neural + "; ";
-        }
+        aSamples.clear();
+        aWhy += "neural voice fell back: " + neural + "; ";
     }
 
     aEngine = Engine::Sapi;
@@ -196,16 +226,13 @@ bool WarmVoice(const std::wstring& aPluginDirectory, const Line& aLine, std::str
     if (!voice::HasVoiceFor(aPluginDirectory, aLine.voiceFile) && voicemake::Possible(aPluginDirectory))
     {
         std::string made;
-        if (!voicemake::Make(aPluginDirectory, aLine.contactId, aLine.voiceFile, aLine.language, made))
+        if (!voicemake::Make(aPluginDirectory, aLine.voiceFile, aLine.language, made))
         {
             aWhy = made;
         }
     }
-    const std::string tier = voice::HasVoiceFor(aPluginDirectory, aLine.voiceFile)
-                                 ? aLine.voiceFile
-                                 : (voice::HasCatalogueVoice(aPluginDirectory, aLine.catalogueVoice)
-                                        ? aLine.catalogueVoice
-                                        : std::string());
+    float rate = 1.0f;
+    const std::string tier = NeuralTier(aPluginDirectory, aLine.voiceFile, aLine.catalogueVoice, 1.0f, rate);
     if (tier.empty())
     {
         return false;
@@ -214,7 +241,8 @@ bool WarmVoice(const std::wstring& aPluginDirectory, const Line& aLine, std::str
     // chemin traverse, pas ce qu'il rend. Un prechauffage qui parlerait ferait dire « Oui. » a
     // un personnage pendant que son telephone sonne.
     std::string neural;
-    if (!voice::Render(aPluginDirectory, tier, "Oui.", true, neural))
+    std::chrono::steady_clock::time_point unheard{};
+    if (!voice::Render(aPluginDirectory, tier, "Oui.", true, rate, unheard, neural))
     {
         aWhy = neural;
         return false;
@@ -269,7 +297,8 @@ void Run()
             continue;
         }
 
-        if (!RenderBest(pluginDirectory, line, samples, engine, why))
+        std::chrono::steady_clock::time_point firstSound{};
+        if (!RenderBest(pluginDirectory, line, samples, engine, firstSound, why))
         {
             SetResult("no voice: " + why);
             continue;
@@ -291,24 +320,31 @@ void Run()
             }
             else
             {
-                audio::Format format;
-                format.sampleRate = sapi::SampleRate();
-                format.channels = sapi::Channels();
-                format.bitsPerSample = sapi::BitsPerSample();
-                status = audio::Play(samples.data(), samples.size(), format);
+                // En file comme la voie neuronale : Play() couperait la phrase precedente.
+                status = audio::Open(SapiFormat());
+                if (status == audio::Status::Ok)
+                {
+                    status = audio::Push(samples.data(), samples.size());
+                    audio::Close();
+                }
             }
+            firstSound = std::chrono::steady_clock::now();
         }
+        const audio::Counters output = audio::TakeCounters();
 
-        // Le nombre dont depend la voie parlee : ce que le joueur attend entre une replique
-        // remise et le premier son. Le nom du moteur l'accompagne, parce que trois secondes de
-        // la voix du personnage et trois secondes de celle de Windows ne veulent pas dire la
-        // meme chose.
-        const auto milliseconds =
-            std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - started)
-                .count();
+        // Le nombre dont depend la voie parlee : ce que le joueur attend entre une phrase remise
+        // et le premier son, attente derriere la phrase precedente comprise. Le nom du moteur
+        // l'accompagne, parce que la voix du personnage et celle de Windows ne se comparent pas.
+        const auto sinceQueued = [&line](std::chrono::steady_clock::time_point aThen)
+        { return std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(aThen - line.queuedAt).count()); };
         SetResult(std::string(engine == Engine::Pocket ? "pocket" : "sapi") + " -- " +
-                  std::string(audio::Describe(status)) + " -- " + std::to_string(samples.size()) +
-                  " bytes in " + std::to_string(milliseconds) + " ms" + (why.empty() ? "" : " -- " + why));
+                  std::string(audio::Describe(status)) + " -- line " + std::to_string(line.line) +
+                  ": first sound " + sinceQueued(firstSound) + " ms after it was queued, " +
+                  sinceQueued(started) + " of them behind the previous line; done after " +
+                  sinceQueued(std::chrono::steady_clock::now()) + " ms; " +
+                  (output.openings > 0 ? "it had to open the output" : "the output was already open") +
+                  ", " + std::to_string(output.gaps) + " gap(s) inside the line" +
+                  (why.empty() ? "" : " -- " + why));
     }
 }
 } // namespace
@@ -333,20 +369,20 @@ uint16_t BitsPerSample()
     return sapi::BitsPerSample();
 }
 
-bool Speak(const std::string& aUtf8Text, const std::string& aContactId,
-           const std::string& aVoiceFile, const std::string& aCatalogueVoice,
-           const std::string& aLanguage)
+uint32_t Speak(const std::string& aUtf8Text, const std::string& aContactId,
+               const std::string& aVoiceFile, const std::string& aCatalogueVoice,
+               const std::string& aLanguage, float aRate)
 {
     if (aUtf8Text.empty())
     {
-        return false;
+        return 0;
     }
 
     Worker& worker = TheWorker();
     std::lock_guard<std::mutex> guard(worker.mutex);
     if (worker.stopping)
     {
-        return false;
+        return 0;
     }
     if (!worker.running)
     {
@@ -359,14 +395,15 @@ bool Speak(const std::string& aUtf8Text, const std::string& aContactId,
     worker.spoken[line] = aUtf8Text;
 
     worker.pending.push_back(
-        Line{aUtf8Text, aContactId, aVoiceFile, aCatalogueVoice, aLanguage, false, line});
+        Line{aUtf8Text, aContactId, aVoiceFile, aCatalogueVoice, aLanguage, false, line,
+             std::chrono::steady_clock::now(), aRate});
     while (worker.pending.size() > kQueueLimit)
     {
         worker.spoken.erase(worker.pending.front().line);
         worker.pending.pop_front();
     }
     worker.wake.notify_one();
-    return true;
+    return line;
 }
 
 void Warm(const std::string& aContactId, const std::string& aVoiceFile,
@@ -396,6 +433,26 @@ void Warm(const std::string& aContactId, const std::string& aVoiceFile,
     worker.pending.push_front(
         Line{"", aContactId, aVoiceFile, aCatalogueVoice, aVoiceOverLocale, true});
     worker.wake.notify_one();
+}
+
+std::string Prime(const std::string& aVoiceFile, const std::string& aCatalogueVoice, float aRate)
+{
+    std::wstring pluginDirectory;
+    {
+        Worker& worker = TheWorker();
+        std::lock_guard<std::mutex> guard(worker.mutex);
+        pluginDirectory = worker.pluginDirectory;
+    }
+
+    float rate = 1.0f;
+    const bool neural = !NeuralTier(pluginDirectory, aVoiceFile, aCatalogueVoice, aRate, rate).empty();
+    bool opened = false;
+    const audio::Status status = audio::Prime(neural ? voice::OutputFormat(rate) : SapiFormat(), opened);
+    if (status != audio::Status::Ok)
+    {
+        return std::string("the output could not be primed: ") + audio::Describe(status);
+    }
+    return opened ? "the output was opened ahead of the reply" : "the output was already open";
 }
 
 std::string Speaking()

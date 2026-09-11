@@ -84,6 +84,10 @@ public class AiNpcCallSubtitles extends ScriptableSystem {
         this.Arm();
     }
 
+    public func IsShowing(text: String) -> Bool {
+        return NotEquals(StrLen(text), 0) && Equals(this.m_shown, text);
+    }
+
     // Arrete de suivre et retire ce qui restait. Idempotent.
     public func Release() -> Void {
         this.m_following = false;

@@ -18,6 +18,7 @@ variable: the same fixture and the same corpus give the same bytes on any day.
 import re
 
 from guard import guard_of, node_of, satisfied
+from queststage import quest_account
 from resolve import evaluate, Env, resolve
 from template import expand, gendered_word
 from transcript import clock_label
@@ -475,7 +476,8 @@ class Sections(object):
         key = self.fixture["quest"]["key"]
         if not key:
             return ""
-        account = self.character.sheet.get("questContexts", {}).get(key, "")
+        account = quest_account(self.character.sheet.get("questContexts", {}), key,
+                                self.fixture["quest"]["facts"])
         if not account:
             return ""
 
@@ -498,7 +500,8 @@ class Sections(object):
         """
         key = self.fixture["quest"]["key"]
         if key:
-            quest_intent = self.character.sheet.get("questIntents", {}).get(key, "")
+            quest_intent = quest_account(self.character.sheet.get("questIntents", {}), key,
+                                         self.fixture["quest"]["facts"])
             if quest_intent:
                 return quest_intent
         return self.character.field("intent")

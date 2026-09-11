@@ -28,7 +28,7 @@ internal static class RecipeExtractor
             {
                 continue;
             }
-            if (options.Characters.Count > 0 && !options.Characters.Contains(voice.ContactId))
+            if (options.Characters.Count > 0 && !options.Characters.Contains(voice.Voice))
             {
                 continue;
             }
@@ -49,7 +49,7 @@ internal static class RecipeExtractor
             }
             if (missing > 0)
             {
-                Console.WriteLine($"{voice.ContactId} : {missing} replique(s) absente(s) de cette installation");
+                Console.WriteLine($"{voice.Voice} : {missing} replique(s) absente(s) de cette installation");
             }
             if (lines.Count == 0)
             {
@@ -57,14 +57,14 @@ internal static class RecipeExtractor
             }
 
             var clip = ClipBuilder.Assemble(lines, settings);
-            var file = Path.Combine(options.Out, voice.ContactId + ".wav");
-            WavWriter.Write(file, clip);
-            Console.WriteLine($"{voice.ContactId} : {clip.Seconds:F1} s, {lines.Count} repliques, "
+            var file = Path.Combine(options.Out, voice.Voice + ".wav");
+            WavWriter.Write(file, clip, voice.Shift ?? 1.0);
+            Console.WriteLine($"{voice.Voice} : {clip.Seconds:F1} s, {lines.Count} repliques, "
                               + $"RMS {clip.Rms:F3}");
 
             if (options.Against is not null)
             {
-                mismatched += Compare(options.Against, voice.ContactId, file) ? 0 : 1;
+                mismatched += Compare(options.Against, voice.Voice, file) ? 0 : 1;
             }
         }
 
@@ -78,12 +78,12 @@ internal static class RecipeExtractor
         return mismatched == 0 ? 0 : 1;
     }
 
-    private static bool Compare(string directory, string contactId, string produced)
+    private static bool Compare(string directory, string name, string produced)
     {
-        var expected = Path.Combine(directory, contactId + ".wav");
+        var expected = Path.Combine(directory, name + ".wav");
         if (!File.Exists(expected))
         {
-            Console.WriteLine($"    pas de reference a comparer pour {contactId}");
+            Console.WriteLine($"    pas de reference a comparer pour {name}");
             return true;
         }
         var same = File.ReadAllBytes(expected).AsSpan().SequenceEqual(File.ReadAllBytes(produced));

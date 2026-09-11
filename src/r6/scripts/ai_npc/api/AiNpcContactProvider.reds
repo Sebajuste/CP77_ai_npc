@@ -112,6 +112,13 @@ public class AiNpcContactProvider extends IScriptable {
         return "";
     }
 
+    // Which voice says this character's lines on a call. Null is no opinion: a character ai_npc
+    // ships keeps its own; anybody else gets `<contactId>.wav` when the player has one, and the
+    // system voice otherwise.
+    public func GetVoice() -> ref<AiNpcVoiceDef> {
+        return null;
+    }
+
     // Whole sections replaced, for what GetSpeechStyle cannot bend. Null keeps every section
     // resolving from prompts.json or the built-in text.
     public func GetPromptOverrides() -> ref<AiNpcPromptOverrides> {

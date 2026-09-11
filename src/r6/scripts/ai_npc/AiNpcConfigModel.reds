@@ -29,30 +29,6 @@ public class AiNpcCharacterVariant {
     public let intent: String;
 }
 
-// Quelle voix dit les repliques de ce personnage, par palier.
-//
-// Deux entrees parce qu'il y a deux paliers et qu'ils ne se remplacent pas : le clone est la
-// voix du jeu, le catalogue est une voix libre qui ne lui ressemble pas. Un joueur qui a le
-// pack de clonage entend le premier ; tous les autres entendent le second ; personne n'entend
-// le synthetiseur de Windows sauf quand ni l'un ni l'autre n'est disponible.
-//
-// C'est une donnee de personnage et pas un reglage : « la voix de Judy » ne se choisit pas dans
-// un menu, elle est un fait sur elle. Elle vit donc dans la fiche, avec le reste.
-public class AiNpcVoiceDef {
-    // Le fichier de reference, dans r6\storages\AiNpcoices\. Vide, c'est `<contactId>.wav`,
-    // qui est ce que la recette d'extraction produit -- le nommer sert a partager une reference
-    // entre deux contacts, ou a en designer une que le joueur a deposee lui-meme.
-    public let clone: String;
-
-    // La voix du catalogue de PocketTTS, par son nom. Vide, ce personnage n'a pas de repli et
-    // tombe sur la voix du systeme.
-    //
-    // Vingt-six voix existent, dont trois inutilisables ; l'attribution est celle qui a ete
-    // corrigee a l'oreille dans tools	ts-laballback-voices.json, et c'est cette table qui
-    // se deverse ici, fiche par fiche.
-    public let fallback: String;
-}
-
 public class AiNpcCharacterDef {
     public let contactId: String;
     public let displayName: String;
@@ -175,6 +151,20 @@ public class AiNpcLocalizedLine {
 public class AiNpcQuestLine {
     public let questKey: String;
     public let text: String;
+
+    // WHEN this account becomes true, and the reason a quest may carry several entries. A
+    // quest is tracked from its first second to its last, so one account for the whole of it
+    // is mounted at the first message: Takemura told V what Oda had refused and where Hanako
+    // would be before V had walked to the meeting.
+    //
+    // Empty is the account the quest opens on. A later stage names the fact the game poses when
+    // its own moment arrives, and stages are declared in the order they happen -- the last one
+    // whose fact is posed wins.
+    public let sinceFact: String;
+
+    // See AiNpcArcBeat.unlessFact: an outcome this game writes as an absence. A stage held back
+    // by one loses to the stage before it, which is the account that stayed true.
+    public let unlessFact: String;
 }
 
 /// Constructors ///
@@ -185,6 +175,13 @@ func AiNpcQuest(questKey: String, text: String) -> ref<AiNpcQuestLine> {
     let entry = new AiNpcQuestLine();
     entry.questKey = questKey;
     entry.text = text;
+    return entry;
+}
+
+// The same, from the moment the game poses `sinceFact`. Declared after the stage it replaces.
+func AiNpcQuestStage(questKey: String, sinceFact: String, text: String) -> ref<AiNpcQuestLine> {
+    let entry = AiNpcQuest(questKey, text);
+    entry.sinceFact = sinceFact;
     return entry;
 }
 
@@ -231,16 +228,37 @@ func AiNpcVariantField(variant: ref<AiNpcCharacterVariant>, field: String) -> St
 }
 
 // The text this character has for one quest, or "".
-func AiNpcQuestTextIn(entries: array<ref<AiNpcQuestLine>>, questKey: String) -> String {
+// The account that is true right now: the LAST stage of this quest whose fact the save has
+// posed, or the ungated one it opens on. Later stages are declared after earlier ones, so the
+// walk goes forward and keeps overwriting -- an order that reads like the quest itself.
+//
+// A null gate reads no save and answers the opening account, which is what a prompt built
+// offline has to be given.
+func AiNpcQuestTextIn(entries: array<ref<AiNpcQuestLine>>, questKey: String,
+                      facts: ref<AiNpcFactGate>) -> String {
+    let text = "";
     let i = 0;
     let count = ArraySize(entries);
     while i < count {
-        if Equals(entries[i].questKey, questKey) {
-            return entries[i].text;
+        if Equals(entries[i].questKey, questKey) && AiNpcQuestStageHolds(entries[i], facts) {
+            text = entries[i].text;
         }
         i += 1;
     }
-    return "";
+    return text;
+}
+
+func AiNpcQuestStageHolds(entry: ref<AiNpcQuestLine>, facts: ref<AiNpcFactGate>) -> Bool {
+    if Equals(StrLen(entry.sinceFact), 0) && Equals(StrLen(entry.unlessFact), 0) {
+        return true;
+    }
+    if !IsDefined(facts) {
+        return false;
+    }
+    if NotEquals(StrLen(entry.sinceFact), 0) && !facts.IsSet(entry.sinceFact) {
+        return false;
+    }
+    return Equals(StrLen(entry.unlessFact), 0) || !facts.IsSet(entry.unlessFact);
 }
 
 // The line written for this language, or the one written for none. "" when the table is empty,

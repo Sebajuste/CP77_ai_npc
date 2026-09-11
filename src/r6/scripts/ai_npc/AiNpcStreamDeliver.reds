@@ -1,16 +1,12 @@
-// Where a sentence goes while the rest of the reply is still being written.
+// Where the sentences of a reply go: to the voice, and nowhere else. It is the voice's only
+// source, whatever the lane. The streaming lane delivers them while the model is still writing,
+// hiding the synthesis inside a delay the player is already paying; a lane that answers in one
+// block delivers them, cut the same way, when it has answered.
 //
-// A cloned voice synthesises at about 1.4x real time, so a four-second reply costs three seconds
-// of silence before the character starts speaking -- which is the single most reported complaint
-// against the comparable Skyrim mods. The answer is to hand the voice the first sentence while
-// the model is still writing the second, hiding the synthesis inside a delay the player is
-// already paying.
-//
-// THIS IS A SIDE CHANNEL AND IT CHANGES NOTHING ELSE. The reply itself still arrives once,
-// whole, at AiNpcCliDeliver, and everything downstream of it -- the commands, the repair pass,
-// the memory service, the thread, the surfaces -- keeps working on a whole text. Nothing here
-// writes anything down. A build where this file did not exist would lose the voice and keep the
-// mod.
+// IT CHANGES NOTHING ELSE. The reply itself still arrives once, whole, at AiNpcCliDeliver, and
+// everything downstream of it -- the commands, the repair pass, the memory service, the thread,
+// the surfaces -- keeps working on a whole text. Nothing here writes anything down. A build where
+// this file did not exist would lose the voice and keep the mod.
 //
 // It is a plain redscript global, like AiNpcCliDeliver and for the same reason: a declared
 // native class the plugin failed to register stops the GAME from starting, and the head of

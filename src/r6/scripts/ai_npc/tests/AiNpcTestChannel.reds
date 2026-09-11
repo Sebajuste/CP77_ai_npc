@@ -133,19 +133,25 @@ func AiNpcTestChannelJournal(t: ref<AiNpcTestRunner>) -> Void {
 func AiNpcTestChannelClean(t: ref<AiNpcTestRunner>) -> Void {
     let holo = AiNpcChannelOf(AiNpcChannelId.Call);
     let text = AiNpcChannelOf(AiNpcChannelId.Text);
+    let fr = AiNpcLanguage.French;
 
     t.EqString("channel/asterisks are cut",
-        holo.Clean("Salut *elle sourit* ca va ?"), "Salut ca va ?");
+        holo.Clean("Salut *elle sourit* ca va ?", fr), "Salut ca va ?");
     t.EqString("channel/brackets are cut",
-        holo.Clean("Salut [rires] ca va ?"), "Salut ca va ?");
+        holo.Clean("Salut [rires] ca va ?", fr), "Salut ca va ?");
     t.EqString("channel/a stage direction at the end takes its space with it",
-        holo.Clean("Ca va *elle raccroche*"), "Ca va");
+        holo.Clean("Ca va *elle raccroche*", fr), "Ca va");
     t.EqString("channel/an unclosed marker is kept rather than eaten",
-        holo.Clean("2 * 3 font 6"), "2 * 3 font 6");
+        holo.Clean("2 * 3 font 6", fr), "2 * 3 font 6");
     t.EqString("channel/a clean line is untouched",
-        holo.Clean("T'as qu'a passer, j'suis a l'atelier."), "T'as qu'a passer, j'suis a l'atelier.");
+        holo.Clean("T'as qu'a passer, j'suis a l'atelier.", fr), "T'as qu'a passer, j'suis a l'atelier.");
+    t.EqString("channel/a call says the hour",
+        holo.Clean("Rejoins-moi a 22h *elle sourit*", fr), "Rejoins-moi a 22 heures");
 
-    // Le canal ecrit ne nettoie rien : le joueur SAUTE une didascalie, il ne l'entend pas.
+    // Le canal ecrit ne nettoie rien : le joueur SAUTE une didascalie, il ne l'entend pas, et
+    // « 22h » se lit mieux qu'il ne se dit.
     t.EqString("channel/the written channel keeps what was written",
-        text.Clean("Salut *elle sourit* ca va ?"), "Salut *elle sourit* ca va ?");
+        text.Clean("Salut *elle sourit* ca va ?", fr), "Salut *elle sourit* ca va ?");
+    t.EqString("channel/the written channel keeps the written hour",
+        text.Clean("a 22h", fr), "a 22h");
 }

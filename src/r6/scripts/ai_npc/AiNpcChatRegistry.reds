@@ -3,7 +3,7 @@
 // A session registers itself and gets first refusal on the reply, answering whether it
 // rendered it; with nothing registered the lane falls through to an SMS notification. A
 // terminal cannot reuse AiNpcSystem.chatOpen instead: that flag also binds EVERY key to the
-// phone chat (BindKeys(true)), so "c" would close the conversation and "r" reset it while
+// phone chat (ListenKeys(true)), so "c" would close the conversation and "r" reset it while
 // the player was typing.
 //
 // Sessions register, not surfaces: what varies between a phone and a terminal is the

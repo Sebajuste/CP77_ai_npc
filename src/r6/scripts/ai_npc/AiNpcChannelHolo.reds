@@ -49,8 +49,8 @@ class AiNpcChannelHolo extends AiNpcChannel {
     // Les emoji ne sont PAS retirés ici, et c'est délibéré : la règle FORM du prompt les interdit
     // déjà pour toutes les surfaces, faute de pouvoir les afficher. Écrire un second filtre
     // approximatif contre eux coûterait plus qu'il ne rapporte.
-    public func Clean(text: String) -> String {
-        return AiNpcStripNarration(text);
+    public func Clean(text: String, language: AiNpcLanguage) -> String {
+        return AiNpcVoiceFormat(AiNpcStripNarration(text), language);
     }
 }
 

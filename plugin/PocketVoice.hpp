@@ -18,6 +18,9 @@
 
 #pragma once
 
+#include "Audio.hpp"
+
+#include <chrono>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -28,9 +31,19 @@ namespace ainpc::voice
 // le pack sans relancer le jeu doit pouvoir l'entendre.
 bool Available(const std::wstring& aPluginDirectory);
 
-// Ce fichier de reference existe-t-il ? C'est ce qui decide, PAR PERSONNAGE, si le moteur peut
-// parler de sa voix -- un joueur aura Judy et pas Rogue, et la voie doit etre juste dans cet
-// etat plutot que de traiter les voix clonees comme un seul interrupteur.
+// Le pack installe sait-il faire une voix a partir d'un son ? C'est la presence de l'encodeur
+// Mimi, la moitie que le pack libre n'a pas, et elle ne se deduit pas d'Available() : les deux
+// packs portent la meme sentinelle.
+//
+// Se demande AVANT de retenir une reference, parce que les references vivent dans
+// r6\storages\, que Vortex ne gere pas : elles survivent a la desinstallation du pack de
+// clonage. Sans cette question, un joueur revenu au pack libre choisit un palier que le moteur
+// ne sait pas lire et retombe sur la voix de Windows, alors que le catalogue etait la.
+bool CanClone(const std::wstring& aPluginDirectory);
+
+// Ce fichier de reference existe-t-il ? Avec CanClone(), c'est ce qui decide, PAR PERSONNAGE,
+// si le moteur peut parler de sa voix -- un joueur aura Judy et pas Rogue, et la voie doit etre
+// juste dans cet etat plutot que de traiter les voix clonees comme un seul interrupteur.
 bool HasVoiceFor(const std::wstring& aPluginDirectory, const std::string& aVoiceFile);
 
 // Cette voix de catalogue est-elle livree avec les modeles ? C'est le palier qui parle quand
@@ -58,8 +71,16 @@ bool HasCatalogueVoice(const std::wstring& aPluginDirectory, const std::string& 
 // `aWhy` n'est rempli qu'en cas d'echec.
 // `aSilent` rend tout sans rien jouer : c'est le prechauffage, qui traverse le meme chemin et
 // jette ce qu'il produit.
+// `aFirstSound` recoit l'instant ou le premier morceau est remis au peripherique ; sa propre
+// latence de sortie, quelques dizaines de millisecondes, n'y est pas.
+// `aRate` ouvre la sortie a `kSampleRate * aRate` : les memes echantillons, lus plus vite ou
+// plus lentement, donc hauteur et debit ensemble et aucun traitement.
 bool Render(const std::wstring& aPluginDirectory, const std::string& aVoiceFile,
-            const std::string& aUtf8Text, bool aSilent, std::string& aWhy);
+            const std::string& aUtf8Text, bool aSilent, float aRate,
+            std::chrono::steady_clock::time_point& aFirstSound, std::string& aWhy);
+
+// Le format auquel Render() ouvre la sortie pour cette vitesse de lecture.
+audio::Format OutputFormat(float aRate);
 
 // Le format que Render() ecrit. Celui de Mimi, pas un choix : 24 kHz mono.
 uint32_t SampleRate();

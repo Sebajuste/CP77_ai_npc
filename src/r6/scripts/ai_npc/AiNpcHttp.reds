@@ -491,7 +491,7 @@ public class AiNpcHttpSystem extends ScriptableSystem {
     // nettoyage passe sur les phrases que le streaming remet a la voix -- voir
     // AiNpcStreamDeliver -- parce que n'en nettoyer qu'un prononcerait ce que l'autre a retire.
     let channel = AiNpcChannelOf(this.m_generation.Channel());
-    processedText = channel.Clean(processedText);
+    processedText = channel.Clean(processedText, AiNpcResolveLanguage());
     channel.Deliver(contactId, processedText);
 
     // After the delivery and BEFORE the history write, which is not an accident: the ask this

@@ -23,20 +23,7 @@ public static func AiNpcIsPostHeist(game: GameInstance) -> Bool {
 // base game restricts who can romance whom, a mod can lift that, and the fact is correct
 // either way.
 func AiNpcRomanceFactIsSet(factName: String) -> Bool {
-    if Equals(StrLen(factName), 0) {
-        return false;
-    }
-
-    let fact = StringToName(factName);
-    if !IsNameValid(fact) {
-        return false;
-    }
-
-    let questsSystem = GameInstance.GetQuestsSystem(GetGameInstance());
-    if !IsDefined(questsSystem) {
-        return false;
-    }
-    return questsSystem.GetFact(fact) > 0;
+    return AiNpcFactIsSet(factName);
 }
 
 /// How an arc ended ///

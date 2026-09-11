@@ -4,6 +4,7 @@
 #include "VoiceMake.hpp"
 
 #include "Json.hpp"
+#include "PocketVoice.hpp"
 #include "VoiceArchive.hpp"
 
 #include <algorithm>
@@ -358,7 +359,7 @@ uint64_t HashFromHex(const std::string& aHex)
 // ailleurs parlerait avec l'accent de la mauvaise -- entendu le 2026-08-31, sur une premiere
 // serie tiree par erreur de l'archive anglaise. L'anglais n'est le repli que si la recette
 // ignore la sienne.
-const json::Value* VoiceFor(const json::Value& aRecipe, const std::string& aContactId,
+const json::Value* VoiceFor(const json::Value& aRecipe, const std::string& aName,
                             const std::string& aWanted, std::string& aLanguage)
 {
     const json::Value* voices = aRecipe.Find("voices");
@@ -369,7 +370,7 @@ const json::Value* VoiceFor(const json::Value& aRecipe, const std::string& aCont
     const json::Value* fallback = nullptr;
     for (const json::Value& voice : voices->items)
     {
-        if (voice.StringAt("contactId") != aContactId)
+        if (voice.StringAt("voice") != aName)
         {
             continue;
         }
@@ -387,16 +388,31 @@ const json::Value* VoiceFor(const json::Value& aRecipe, const std::string& aCont
     }
     return fallback;
 }
+
+// Le nom de la voix est celui du fichier de reference sans son extension : `judy.wav` pour le
+// casting, `civ_mid_f_21_enus_25.wav` pour une voix que n'importe quelle fiche peut nommer.
+std::string VoiceNameOf(const std::string& aVoiceFile)
+{
+    const size_t dot = aVoiceFile.find_last_of('.');
+    return dot == std::string::npos ? aVoiceFile : aVoiceFile.substr(0, dot);
+}
+
+// Le facteur de relecture d'une voix derivee ; 1 quand la recette n'en dit rien.
+double ShiftOf(const json::Value& aVoice)
+{
+    const json::Value* shift = aVoice.Find("shift");
+    return shift != nullptr && shift->kind == json::Kind::Number && shift->number > 0.0 ? shift->number : 1.0;
+}
 } // namespace
 
 bool Possible(const std::wstring& aPluginDirectory)
 {
-    return !aPluginDirectory.empty() && FileExists(RecipePath(aPluginDirectory)) &&
-           FileExists(CodebooksPath(aPluginDirectory));
+    return !aPluginDirectory.empty() && voice::CanClone(aPluginDirectory) &&
+           FileExists(RecipePath(aPluginDirectory)) && FileExists(CodebooksPath(aPluginDirectory));
 }
 
-bool Make(const std::wstring& aPluginDirectory, const std::string& aContactId,
-          const std::string& aVoiceFile, const std::string& aLanguage, std::string& aWhy)
+bool Make(const std::wstring& aPluginDirectory, const std::string& aVoiceFile, const std::string& aLanguage,
+          std::string& aWhy)
 {
     const std::wstring voicesDir = VoicesDir(aPluginDirectory);
     if (voicesDir.empty())
@@ -436,17 +452,18 @@ bool Make(const std::wstring& aPluginDirectory, const std::string& aContactId,
         return false;
     }
 
+    const std::string name = VoiceNameOf(aVoiceFile);
     std::string language;
-    const json::Value* voice = VoiceFor(recipe, aContactId, wanted, language);
+    const json::Value* voice = VoiceFor(recipe, name, wanted, language);
     if (voice == nullptr)
     {
-        aWhy = "the recipe has no lines for " + aContactId;
+        aWhy = "the recipe has no voice named " + name;
         return false;
     }
     const json::Value* lines = voice->Find("lines");
     if (lines == nullptr || !lines->IsArray() || lines->items.empty())
     {
-        aWhy = "the recipe lists no lines for " + aContactId;
+        aWhy = "the recipe lists no lines for " + name;
         return false;
     }
 
@@ -506,8 +523,12 @@ bool Make(const std::wstring& aPluginDirectory, const std::string& aContactId,
     }
     Level(assembled, settings);
 
+    // Une voix derivee annonce une autre frequence que celle de ses echantillons : relue plus vite,
+    // hauteur et formants montent ensemble. Rien d'autre ne change, et c'est ce que le banc a
+    // fait entendre.
+    const int announced = static_cast<int>(std::lround(settings.sampleRate * ShiftOf(*voice)));
     CreateDirectoryW(Parent(target).c_str(), nullptr);
-    if (!WriteWav(target, assembled, settings.sampleRate))
+    if (!WriteWav(target, assembled, announced))
     {
         aWhy = "the reference could not be written to r6\\storages";
         return false;

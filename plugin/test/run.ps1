@@ -25,6 +25,7 @@ $outDir = Join-Path $root "plugin\build\test"
 # correctness is a launch checklist rather than a fixture.
 $sources = @(
     "plugin\Audio.cpp",
+    "plugin\ProcessOutput.cpp",
     "plugin\Speech.cpp",
     "plugin\SapiVoice.cpp",
     "plugin\PocketVoice.cpp",

@@ -75,6 +75,22 @@ std::string MakeChatResponse(const std::string& aText, bool aHaveUsage, long lon
     return out;
 }
 
+std::string ChatResponseText(const std::string& aBody)
+{
+    json::Value root;
+    if (!json::Parse(aBody, root) || !root.IsObject())
+    {
+        return {};
+    }
+    const json::Value* choices = root.Find("choices");
+    if (choices == nullptr || !choices->IsArray() || choices->items.empty())
+    {
+        return {};
+    }
+    const json::Value* message = choices->items.front().Find("message");
+    return message != nullptr ? message->StringAt("content") : std::string{};
+}
+
 ChatReply Failure(int aStatus, const std::string& aMessage)
 {
     ChatReply reply;

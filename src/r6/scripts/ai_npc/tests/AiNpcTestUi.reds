@@ -27,6 +27,8 @@ func AiNpcTestUiLabels(t: ref<AiNpcTestRunner>) -> Void {
         t.Check(s"labels/\(name) back", NotEquals(StrLen(AiNpcBackLabel(lang)), 0));
         t.Check(s"labels/\(name) reset", NotEquals(StrLen(AiNpcResetLabel(lang)), 0));
         t.Check(s"labels/\(name) undo", NotEquals(StrLen(AiNpcUndoLabel(lang)), 0));
+        t.Check(s"labels/\(name) call reply", NotEquals(StrLen(AiNpcCallReplyLabel(lang)), 0));
+        t.Check(s"labels/\(name) call hang up", NotEquals(StrLen(AiNpcCallHangUpLabel(lang)), 0));
         i += 1;
     }
 
@@ -356,29 +358,6 @@ func AiNpcTestPhoneState(t: ref<AiNpcTestRunner>) -> Void {
     m10.OnChatClosed();
     t.EqBool("phone/putting it away forgets the screen to return to",
         Equals(m10.GetScreen(), AiNpcPhoneScreen.Contacts), true);
-
-    // T is refused everywhere but the contact list, and that is now a property of the state
-    // rather than of two hooks blanking a field.
-    let m6 = new AiNpcPhoneStateMachine();
-    t.EqBool("phone/T is dead with the phone away", m6.IsOnContacts(), false);
-    m6.OnScreenShown(AiNpcPhoneScreen.Contacts);
-    t.EqBool("phone/T is live on the contact list", m6.IsOnContacts(), true);
-    m6.OnScreenShown(AiNpcPhoneScreen.Messages);
-    t.EqBool("phone/T is dead on the messages tab", m6.IsOnContacts(), false);
-
-    // Regression: the T target used to be a field that only two unrelated hooks ever cleared,
-    // so a row reported on the contact list stayed live over the game's own messenger and T
-    // opened the mod's chat on top of it. Leaving the contact list now takes it.
-    let m7 = new AiNpcPhoneStateMachine();
-    m7.OnScreenShown(AiNpcPhoneScreen.Contacts);
-    m7.OnRowReported("panam");
-    t.EqString("phone/the reported row is the T target", m7.GetReportedRow(), "panam");
-    m7.OnThreadOpened();
-    t.EqString("phone/opening a vanilla thread drops the T target", m7.GetReportedRow(), "");
-    m7.OnScreenShown(AiNpcPhoneScreen.Contacts);
-    m7.OnRowReported("judy");
-    m7.OnScreenShown(AiNpcPhoneScreen.Messages);
-    t.EqString("phone/leaving the contact list drops the T target", m7.GetReportedRow(), "");
 }
 
 /// Pending context: one waiting line per contact ///
@@ -684,7 +663,6 @@ func AiNpcTestPhoneForbidden(t: ref<AiNpcTestRunner>) -> Void {
     t.EqBool("phone/typing is reachable from the chat", m.IsTyping(), true);
     // The one that was four fields: typing IS a chat, so these cannot come apart.
     t.EqBool("forbidden/typing implies the chat is open", m.IsChatOpen(), true);
-    t.EqBool("phone/and the chat still counts as the contact list", m.IsOnContacts(), true);
 
     // Closing from the typing screen closes both, in one transition. Regression: every close
     // path had to remember to clear isTyping as well, and skipping it stranded the player with
@@ -702,7 +680,6 @@ func AiNpcTestPhoneForbidden(t: ref<AiNpcTestRunner>) -> Void {
     m2.OnPhoneHidden();
     t.EqBool("forbidden/no chat survives the phone going away", m2.IsChatOpen(), false);
     t.EqBool("forbidden/no typing survives it either", m2.IsTyping(), false);
-    t.EqString("phone/and the T target goes with it", m2.GetReportedRow(), "");
 
     // A redraw underneath the chat is swallowed while typing too -- the screen must not fall
     // back to ModChat and drop the keyboard mid-sentence.

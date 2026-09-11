@@ -36,8 +36,8 @@ internal sealed class Manifest
         }
         merged.AddRange(Voices);
 
-        var order = VoiceCast.All.Select((c, i) => (c.ContactId, i))
-            .ToDictionary(x => x.ContactId, x => x.i, StringComparer.OrdinalIgnoreCase);
+        var order = VoiceCast.All.Select((c, i) => (c.Name, i))
+            .ToDictionary(x => x.Name, x => x.i, StringComparer.OrdinalIgnoreCase);
         merged = merged.OrderBy(v => order.TryGetValue(v.ContactId, out var i) ? i : int.MaxValue).ToList();
 
         var json = JsonSerializer.Serialize(new Manifest { Voices = merged },

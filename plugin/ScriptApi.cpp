@@ -22,11 +22,11 @@
 // that never replied -- which is why the function is looked up once and its absence logged
 // loudly rather than passed over.
 //
-// The streaming lane adds a SECOND plain global, AiNpcStreamDeliver, and no second native class.
-// It carries finished sentences to the voice while the reply is still being written, and it is a
-// side channel: the reply itself still arrives once, whole, through AiNpcCliDeliver, and nothing
-// downstream of it learns that anything was streamed. A build whose scripts do not declare it
-// loses the sentences and keeps the replies.
+// A SECOND plain global, AiNpcStreamDeliver, carries every reply to the voice as sentences, and
+// it is the voice's only source. The streaming lane emits them while the reply is being written;
+// a lane that answers in one block emits them when it has answered, cut the same way. The reply
+// itself still arrives once, whole, through AiNpcCliDeliver, for everything that is not the voice.
+// A build whose scripts do not declare it loses the voice and keeps the replies.
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -43,6 +43,7 @@
 #include "Registry.hpp"
 #include "SettingsFile.hpp"
 #include "Speech.hpp"
+#include "Stream.hpp"
 #include "Transport.hpp"
 
 #include <atomic>
@@ -71,7 +72,7 @@ struct Job
 enum class Kind
 {
     Answer,   // the whole reply, once
-    Sentence  // one finished sentence of a reply still being written
+    Sentence  // one sentence of a reply, for the voice
 };
 
 struct Delivery
@@ -177,10 +178,16 @@ void Finish(int aRequestId, const Outcome& aOutcome)
     g_ready.push_back(std::move(delivery));
 }
 
-// One sentence, on its way to the voice while the rest of the reply is still being written.
-// Queued exactly like a reply, because it crosses the same boundary and needs the same thread.
+// One sentence of a reply, on its way to the voice. Queued exactly like a reply, because it
+// crosses the same boundary and needs the same thread.
 void Emit(int aRequestId, const std::string& aText, bool aLast)
 {
+    // Logged as it happens: the timestamp is the measurement. The end-of-stream line comes later.
+    char message[120];
+    std::snprintf(message, sizeof(message), "request %d: a sentence is ready for the voice%s", aRequestId,
+                  aLast ? " (the last)" : "");
+    Log(message);
+
     Delivery delivery;
     delivery.kind = Kind::Sentence;
     delivery.requestId = aRequestId;
@@ -338,6 +345,20 @@ ChatReply RunCli(const Job& aJob)
     return reply;
 }
 
+// A reply that arrived in one block, handed to the voice as the stream would have handed it:
+// its sentences, then the end. The end is announced on failure too, as the stream announces it.
+void EmitWhole(int aRequestId, const ChatReply& aReply)
+{
+    if (aReply.status == 200)
+    {
+        for (const std::string& sentence : stream::SentencesOf(ChatResponseText(aReply.body)))
+        {
+            Emit(aRequestId, sentence, false);
+        }
+    }
+    Emit(aRequestId, "", true);
+}
+
 // Which lane, and nothing else. The CLI lanes date their own answers from the machine clock
 // because they never touched a server that could have dated one; the streaming lane is given a
 // Date header and uses it.
@@ -347,7 +368,9 @@ Outcome Run(const Job& aJob)
     {
         return RunStream(aJob);
     }
-    return {RunCli(aJob), HttpDateNow()};
+    Outcome outcome{RunCli(aJob), HttpDateNow()};
+    EmitWhole(aJob.requestId, outcome.reply);
+    return outcome;
 }
 
 void Worker()
@@ -619,8 +642,8 @@ void BeepImpl(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, RED4ext::CStr
 //
 // The answer describes the PREVIOUS line, not this one -- the current one has not been spoken
 // yet by the time this returns, and inventing a result for it would be the one thing a
-// measurement must not do. What comes back therefore reads as "ok -- 41216 bytes in 380 ms",
-// and 380 ms is the number the voice lane is judged on.
+// measurement must not do. The number the voice lane is judged on is its "first sound", counted
+// from this call, whose own log line carries the timestamp that ties it to the sentence.
 void SpeakImpl(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, RED4ext::CString* aOut, int64_t)
 {
     RED4ext::CString text;
@@ -633,12 +656,15 @@ void SpeakImpl(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, RED4ext::CSt
     RED4ext::GetParameter(aFrame, &voiceFile);
     RED4ext::GetParameter(aFrame, &catalogueVoice);
     RED4ext::GetParameter(aFrame, &voiceOverLocale);
+    float rate = 1.0f;
+    RED4ext::GetParameter(aFrame, &rate);
     ++aFrame->code; // skip ParamEnd
 
-    const bool queued = speech::Speak(text.c_str(), contactId.c_str(), voiceFile.c_str(),
-                                      catalogueVoice.c_str(), voiceOverLocale.c_str());
-    const std::string answer = queued ? ("queued; previous: " + speech::LastResult())
-                                      : std::string("nothing to say");
+    const uint32_t line = speech::Speak(text.c_str(), contactId.c_str(), voiceFile.c_str(),
+                                        catalogueVoice.c_str(), voiceOverLocale.c_str(), rate);
+    const std::string answer =
+        line != 0 ? ("queued line " + std::to_string(line) + "; previous: " + speech::LastResult())
+                  : std::string("nothing to say");
 
     char message[400];
     std::snprintf(message, sizeof(message), "speak: %s", answer.c_str());
@@ -690,6 +716,20 @@ void SpeakingImpl(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, RED4ext::
     {
         *aOut = RED4ext::CString(speech::Speaking().c_str());
     }
+}
+
+void PrimeImpl(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, RED4ext::CString*, int64_t)
+{
+    RED4ext::CString voiceFile;
+    RED4ext::CString catalogueVoice;
+    RED4ext::GetParameter(aFrame, &voiceFile);
+    RED4ext::GetParameter(aFrame, &catalogueVoice);
+    float rate = 1.0f;
+    RED4ext::GetParameter(aFrame, &rate);
+    ++aFrame->code; // skip ParamEnd
+
+    const std::string answer = speech::Prime(voiceFile.c_str(), catalogueVoice.c_str(), rate);
+    Log(("prime: " + answer).c_str());
 }
 
 void SilenceImpl(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, RED4ext::CString*, int64_t)
@@ -825,6 +865,13 @@ void PostRegisterTypes()
     silence->flags = {.isNative = true, .isStatic = true, .isPublic = true};
     audioClass->RegisterFunction(silence);
 
+    auto* prime = RED4ext::CClassStaticFunction::Create(audioClass, "Prime", "Prime", &PrimeImpl);
+    prime->flags = {.isNative = true, .isStatic = true, .isPublic = true};
+    prime->AddParam("String", "voiceFile");
+    prime->AddParam("String", "catalogueVoice");
+    prime->AddParam("Float", "rate");
+    audioClass->RegisterFunction(prime);
+
     auto* speak = RED4ext::CClassStaticFunction::Create(audioClass, "Speak", "Speak", &SpeakImpl);
     speak->flags = {.isNative = true, .isStatic = true, .isPublic = true};
     speak->AddParam("String", "text");
@@ -838,6 +885,8 @@ void PostRegisterTypes()
     // La langue du DOUBLAGE, pas celle des sous-titres : c'est dans ces archives qu'une
     // reference se fabrique. Le jeu repond aux deux separement.
     speak->AddParam("String", "voiceOverLocale");
+    // La vitesse de lecture de la voix neuronale ; hauteur et debit bougent ensemble.
+    speak->AddParam("Float", "rate");
     speak->SetReturnType("String");
     audioClass->RegisterFunction(speak);
 

@@ -58,6 +58,16 @@ func AiNpcVanillaPhone() -> ref<PhoneSystem> {
     return GameInstance.GetScriptableSystemsContainer(GetGameInstance()).Get(n"PhoneSystem") as PhoneSystem;
 }
 
+// Le jeu a-t-il une scène d'appel pour ce contact. Lu dans le journal et non sur la ligne de
+// contact, que le mod rend appelable pour ses personnages.
+func AiNpcVanillaCallable(journal: ref<JournalManager>, contactHash: Int32) -> Bool {
+    if !IsDefined(journal) {
+        return false;
+    }
+    let entry = journal.GetEntry(Cast<Uint32>(contactHash)) as JournalContact;
+    return IsDefined(entry) && entry.IsCallable(journal);
+}
+
 // Ring. `video` is the difference between the two sequences: false is the portrait and the
 // ringtone, true is the character.
 //

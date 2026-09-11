@@ -24,7 +24,6 @@ quelles, sans les completer jusqu'a 1000.
 """
 import argparse
 import glob
-import io
 import os
 import re
 import struct
@@ -89,17 +88,23 @@ def read_voice(path):
     return [(caches[i], offsets[i]) for i in sorted(caches)]
 
 
-def wanted_voices(root):
-    """Les voix que les fiches nomment, lues dans les sources plutot que redites ici.
+# Ecartees a la mesure du 2026-09-01 (tools\tts-lab\assign-fallback.py) : `marius` ne rend
+# presque rien, `stuart_bell` est tres bas, `lola` etire une phrase sur 11 s.
+UNUSABLE = ("marius", "stuart_bell", "lola")
 
-    Une voix ajoutee a une fiche entre donc dans le pack sans qu'on y pense, et une voix qui
-    n'est nommee nulle part n'y entre pas -- 26 Mo par voix, et vingt-six voix existent.
+
+def shipped_voices(directories):
+    """Tout le catalogue, moins les voix inutilisables.
+
+    Pas seulement celles que le casting d'ai_npc nomme : GetVoice() laisse n'importe quel mod
+    nommer une voix du catalogue, et une voix absente du pack fait parler son personnage avec
+    la voix de Windows, sans rien signaler.
     """
     names = set()
-    for path in glob.glob(os.path.join(root, "src", "r6", "scripts", "ai_npc", "cast", "*.reds")):
-        text = io.open(path, encoding="utf-8").read()
-        names.update(re.findall(r'c\.voice\.fallback\s*=\s*"([^"]+)"', text))
-    return sorted(names)
+    for directory in directories:
+        for path in glob.glob(os.path.join(directory, "*.safetensors")):
+            names.add(os.path.splitext(os.path.basename(path))[0])
+    return sorted(names - set(UNUSABLE))
 
 
 def main():
@@ -109,11 +114,6 @@ def main():
     parser.add_argument("voices", nargs="*", help="par defaut, celles que les fiches nomment")
     args = parser.parse_args()
 
-    root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    names = args.voices or wanted_voices(root)
-    if not names:
-        raise SystemExit("aucune voix de catalogue nommee dans les fiches ; rien a convertir")
-
     pattern = os.path.join(
         os.path.expanduser("~"), ".cache", "huggingface", "hub",
         "models--kyutai--pocket-tts-without-voice-cloning", "snapshots", "*",
@@ -122,6 +122,8 @@ def main():
     if not directories:
         raise SystemExit("les voix de %s ne sont pas dans le cache Hugging Face ; "
                          "lancer export-models.py d'abord" % args.language)
+
+    names = args.voices or shipped_voices(directories)
 
     target = os.path.join(args.out, "catalogue")
     os.makedirs(target, exist_ok=True)

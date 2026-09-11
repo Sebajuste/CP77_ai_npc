@@ -395,15 +395,23 @@ public class AiNpcConfigService extends ScriptableService {
             this.AddIssue("error", fileName, s"\(def.contactId) has a \"voice\" that is not an object; ignored.");
             return;
         }
-        this.ReportUnknownKeys(raw, ["clone", "fallback"], fileName, s"\(def.contactId).voice.");
+        this.ReportUnknownKeys(raw, ["clone", "fallback", "rate"], fileName, s"\(def.contactId).voice.");
 
         let voice = new AiNpcVoiceDef();
         if IsDefined(def.voice) {
             voice.clone = def.voice.clone;
             voice.fallback = def.voice.fallback;
+            voice.rate = def.voice.rate;
         }
         if raw.HasKey("clone") { voice.clone = raw.GetKeyString("clone"); }
         if raw.HasKey("fallback") { voice.fallback = raw.GetKeyString("fallback"); }
+        if raw.HasKey("rate") {
+            voice.rate = Cast<Float>(raw.GetKeyDouble("rate"));
+            if voice.rate < 0.8 || voice.rate > 1.25 {
+                this.AddIssue("warning", fileName,
+                    s"\(def.contactId).voice.rate is \(voice.rate); it is held between 0.8 and 1.25.");
+            }
+        }
 
         if Equals(StrLen(voice.clone), 0) && Equals(StrLen(voice.fallback), 0) {
             this.AddIssue("warning", fileName,
@@ -695,16 +703,57 @@ public class AiNpcConfigService extends ScriptableService {
         let i = 0;
         let count = ArraySize(keys);
         while i < count {
-            let text = this.ReadCharacterString(raw, keys[i], def, fileName);
-            if Equals(StrLen(text), 0) {
-                this.AddIssue("warning", fileName,
-                    s"\(def.contactId): \(key).\(keys[i]) is empty; nothing will be said about that quest.");
+            let stages = AiNpcJsonArrayAt(raw, keys[i]);
+            if IsDefined(stages) {
+                this.ReadQuestStages(stages, keys[i], key, def, fileName, lines);
             } else {
-                ArrayPush(lines, AiNpcQuest(keys[i], text));
+                let text = this.ReadCharacterString(raw, keys[i], def, fileName);
+                if Equals(StrLen(text), 0) {
+                    this.AddIssue("warning", fileName,
+                        s"\(def.contactId): \(key).\(keys[i]) is empty; nothing will be said about that quest.");
+                } else {
+                    ArrayPush(lines, AiNpcQuest(keys[i], text));
+                }
             }
             i += 1;
         }
         return lines;
+    }
+
+    // The dated form: a list of stages instead of one text, in the order they happen. Each
+    // carries the quest fact from which it becomes true -- an absent one is the account the
+    // quest opens on, and there is no reason to write two of those.
+    //
+    // A stage whose fact is missing is dropped rather than promoted to the opening account: a
+    // late paragraph mounted from the first second is exactly the defect this form exists to
+    // remove.
+    private func ReadQuestStages(stages: ref<JsonArray>, questKey: String, key: String,
+                                 def: ref<AiNpcCharacterDef>, fileName: String,
+                                 out lines: array<ref<AiNpcQuestLine>>) -> Void {
+        let opening = false;
+        let i: Uint32 = 0u;
+        while i < stages.GetSize() {
+            let raw = AiNpcJsonItemObject(stages, i);
+            if IsDefined(raw) {
+                let text = this.ReadCharacterString(raw, "text", def, fileName);
+                let since = raw.GetKeyString("sinceFact");
+                if Equals(StrLen(text), 0) {
+                    this.AddIssue("warning", fileName,
+                        s"\(def.contactId): a stage of \(key).\(questKey) has no \"text\"; dropped.");
+                } else {
+                    if Equals(StrLen(since), 0) && opening {
+                        this.AddIssue("error", fileName,
+                            s"\(def.contactId): \(key).\(questKey) declares a second stage with no \"sinceFact\"; only the last would ever be read. Dropped.");
+                    } else {
+                        let entry = AiNpcQuestStage(questKey, since, text);
+                        entry.unlessFact = raw.GetKeyString("unlessFact");
+                        ArrayPush(lines, entry);
+                        opening = opening || Equals(StrLen(since), 0);
+                    }
+                }
+            }
+            i += 1u;
+        }
     }
 
     // Later files override earlier ones, per the documented load order.

@@ -19,6 +19,7 @@ import io
 import os
 import re
 
+from queststage import quest_stages
 from redsvalue import Reader, RedsParseError, function_body, tokenize
 
 # The fields a sheet may set, and what an unset one means. Mirrors AiNpcCharacterDef in
@@ -272,7 +273,15 @@ class CastReader(object):
         if name == "AiNpcQuest":
             if len(args) != 2:
                 reader.fail("AiNpcQuest takes a key and a text")
-            return {"questKey": args[0], "text": args[1]}
+            return {"questKey": args[0], "sinceFact": "", "unlessFact": "", "text": args[1]}
+
+        # The same account, from the moment the game poses a fact. A quest is tracked from its
+        # first second, so a sheet that writes one account for the whole of it hands the model
+        # the end of the story at the beginning -- see AiNpcQuestLine.sinceFact.
+        if name == "AiNpcQuestStage":
+            if len(args) != 3:
+                reader.fail("AiNpcQuestStage takes a key, a fact and a text")
+            return {"questKey": args[0], "sinceFact": args[1], "unlessFact": "", "text": args[2]}
 
         if name == "AiNpcAction":
             if len(args) != 3:
@@ -326,12 +335,10 @@ def normalise(sheet):
         {field: variant.get(field, "") for field in VARIANT_FIELDS}
         for variant in sheet.get("variants", [])
     ]
-    out["questContexts"] = {
-        quest["questKey"]: quest["text"] for quest in sheet.get("questContexts", [])
-    }
-    out["questIntents"] = {
-        quest["questKey"]: quest["text"] for quest in sheet.get("questIntents", [])
-    }
+    # Keyed by quest, and every value is a LIST of stages in the order they happen: what a
+    # character says about a quest changes inside it, and the save says which stage is true.
+    out["questContexts"] = quest_stages(sheet.get("questContexts", []))
+    out["questIntents"] = quest_stages(sheet.get("questIntents", []))
     out["actions"] = list(sheet.get("actions", []))
     # Keyed by language name, "" for the line every unlisted language falls back to. Not part
     # of any prompt either: a contact that carries one answers it instead of being generated.

@@ -217,15 +217,16 @@ réponses, 7 sur 24 mot pour mot.
 
 ## 7. Ce que ce plan n'inclut pas
 
-**La garantie sur les nombres.** La moitié « demande » entre dans `<channel>` ; la moitié
-« garantie » — l'expansion en toutes lettres des chiffres que le modèle a écrits quand même —
-reste à écrire dans `Clean`. Boucle sur une liste de jetons, sans récursion.
+**La garantie sur les nombres — écrite le 2026-09-10, jamais lancée.** Décision de l'utilisateur :
+pas d'expansion en toutes lettres, seulement l'heure collée. `AiNpcVoiceFormat` rend « 22h30 »
+« 22 heures 30 », par langue (`Uhr`, `horas`, `ore`, `часа`…), appelée par
+`AiNpcChannelHolo.Clean`, qui reçoit maintenant la langue de la réplique. Le banc disait que
+l'espace et le mot suffisent ; les chiffres restent.
 
 **La porte vocale.** `PLAN_HOLO_CHANNEL.md` § 6, décidée et non écrite.
 
-**Le premier son en 120 ms.** `PocketVoice::Render` accumule toute la réplique parce que
-`audio::Play` remplace ce qui joue. Étape 5 du brief du moteur, seul morceau du plan d'origine
-encore ouvert.
+**Le premier son en 120 ms.** Bâti le 2026-09-02 (`MEASURE_VOICE_ENGINE.md`, étape 5) : la
+voie audio enchaîne `Open`/`Push`/`Close`, et `PocketVoice::Render` pousse chaque morceau.
 
 ---
 

@@ -75,6 +75,10 @@ public class AiNpcDefContactProvider extends AiNpcContactProvider {
         return this.m_def.spokenStyle;
     }
 
+    public func GetVoice() -> ref<AiNpcVoiceDef> {
+        return this.m_def.voice;
+    }
+
     // What this character wants of V when the journal says nothing. The quest half is
     // GetQuestIntent below, and the two are composed by the caller -- see AiNpcIntentFor,
     // which owns the cascade for a script provider exactly as it does for a sheet.
@@ -87,7 +91,7 @@ public class AiNpcDefContactProvider extends AiNpcContactProvider {
     }
 
     public func GetQuestIntent(questKey: String) -> String {
-        return AiNpcQuestTextIn(this.m_def.questIntents, questKey);
+        return AiNpcQuestTextIn(this.m_def.questIntents, questKey, AiNpcSaveFacts());
     }
 
     /// Identity ///
@@ -148,8 +152,11 @@ public class AiNpcDefContactProvider extends AiNpcContactProvider {
     // What this character has to say about the quest V is tracking, or "". The account alone:
     // the title and the live objective are read from the journal and written around it by
     // AiNpcQuestBlock -- see AiNpcContextData.reds.
+    //
+    // The save decides WHICH account: a sheet may date its stages, and a quest is tracked long
+    // before its story has happened.
     public func GetQuestContext(questKey: String) -> String {
-        return AiNpcQuestTextIn(this.m_def.questContexts, questKey);
+        return AiNpcQuestTextIn(this.m_def.questContexts, questKey, AiNpcSaveFacts());
     }
 
     /// Variants ///

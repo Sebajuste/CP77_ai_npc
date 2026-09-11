@@ -160,7 +160,7 @@
 
                         <plugin name="I am here to play">
                             <description>
-AI NPC answers you through OpenRouter: one account, one key, and you pay only for what you use. On a good model that is cents a month.
+AI NPC answers you through OpenRouter: one account, one key, and you pay only for what you use. On a good model that is about a dollar a month.
 
 The only lane supported for playing. The next page sets it up.
 
@@ -218,7 +218,7 @@ Here to play? Take the option above.
                             <description>
 The right answer if you are not writing an add on. This switches your install to OpenRouter, the supported lane, and the next page sets it up.
 
-One account at openrouter.ai, a key from openrouter.ai/keys, cents a month on a good model, and nothing about your account at risk.
+One account at openrouter.ai, a key from openrouter.ai/keys, about a dollar a month on a good model, and nothing about your account at risk.
                             </description>
                             <conditionFlags>
                                 <flag name="PROVIDER">OpenRouter</flag>
@@ -304,7 +304,7 @@ If the Setup tab says Claude was not found, paste the full path to claude.exe in
 
                         <plugin name="Create your key, and paste it in the CET overlay">
                             <description>
-1. Make an account at openrouter.ai and put a few dollars of credit on it. Normal play costs cents a month on a good model.
+1. Make an account at openrouter.ai and put a few dollars of credit on it. Normal play costs about a dollar a month on a good model.
 
 2. Create a key at openrouter.ai/keys and copy it.
 
@@ -331,11 +331,12 @@ Everything here is repeated in "AI NPC - read me.txt", which lands in your Cyber
                     the first message goes out before anybody has opened that menu, and a first
                     message that answers 429 reads as a broken install.
 
-                    Three answers because there are three prices, and the middle one is five
-                    times cheaper than the top one, a gap wide enough that picking for the
-                    player would be picking their budget. The numbers come from
-                    docs\MODEL_BENCH.md and are stated per month, at two hours of play a day,
-                    because that is the unit a player can weigh.
+                    Three answers because there are three prices, and the middle one is two and
+                    a half times cheaper than the top one, a gap wide enough that picking for
+                    the player would be picking their budget. qwen's figure is the 2026-09-10
+                    bill (docs\MODEL_COSTS.md), Maverick's the docs\MODEL_BENCH.md estimate.
+                    Both are stated per month, at two hours of play a day, because that is the
+                    unit a player can weigh.
                 -->
                 <group name="Which model should it start on?" type="SelectExactlyOne">
                     <plugins order="Explicit">
@@ -358,9 +359,9 @@ This choice also starts with "Characters may write first" off: a message a chara
                             </typeDescriptor>
                         </plugin>
 
-                        <plugin name="~0.55 $/month, ~2 300 messages -- qwen/qwen3-235b-a22b-2507">
+                        <plugin name="~1 $/month, ~2 300 messages -- qwen/qwen3-235b-a22b-2507">
                             <description>
-The cheapest model that does the whole job. About 0.55 $/month for two hours of play a day, on your own OpenRouter credit, which works out at roughly 2 300 messages. One dollar of credit buys about 4 200 of them.
+The cheapest model that does the whole job. About 1 $/month for two hours of texting a day, on your own OpenRouter credit, which works out at roughly 2 300 messages. Mostly holo calls: about 1.60 $. One dollar of credit buys about 2 000 messages. These figures come from a real bill.
 
 It gets the gameplay actions right nine times out of ten, it never garbled a reply in testing, and it answers in under three seconds.
 
@@ -380,7 +381,7 @@ The same job with nothing held back. About 2.56 $/month for the same two hours a
 
 It gets the gameplay actions right every time, it is the fastest of the three, and it is the only one that respects the content level you set: on the middle level it stayed clean almost always, where the line above went explicit almost always.
 
-Five times the price of the line above, and what you buy is the content level. Pick this if you intend to use it.
+Two and a half times the price of the line above, and what you buy is the content level. Pick this if you intend to use it.
                             </description>
                             <conditionFlags>
                                 <flag name="OPENROUTER_MODEL">Tiers</flag>

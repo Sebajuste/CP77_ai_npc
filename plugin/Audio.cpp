@@ -3,7 +3,9 @@
 #include <mmsystem.h>
 
 #include "Audio.hpp"
+#include "ProcessOutput.hpp"
 
+#include <chrono>
 #include <cmath>
 #include <cstring>
 #include <memory>
@@ -29,11 +31,29 @@ struct Chunk
     // A quelle replique ce morceau appartient. C'est par lui qu'on sait ce qui sort du
     // haut-parleur a cet instant, plutot que par un chronometre lance a cote.
     uint32_t line = 0;
+
+    // Du silence ecrit par la sortie elle-meme pour ne jamais tomber a vide.
+    bool filler = false;
 };
+
+// Une sortie qui vient d'ouvrir avale le debut de son premier tampon : 150 ms de bip n'ont pas
+// ete entendus (2026-08-31). Elle reste donc ouverte et nourrie de silence tant que la voix a
+// servi recemment, et la parole arrive sur un flux deja en marche.
+constexpr std::chrono::seconds kLinger{20};
+
+// Le silence d'avance que la sortie garde en file. Borne aussi ce qu'une replique attend
+// derriere lui.
+constexpr uint32_t kFillerMilliseconds = 50;
+constexpr uint32_t kFillerAhead = 2;
 
 // One voice, and the state that outlives the call that started it.
 struct Voice
 {
+    // Ouvrir, amorcer et arreter se suivent sous ce verrou : le fil de jeu amorce pendant que le
+    // worker ouvre, et deux ouvertures croisees laisseraient un fil de vidange joignable ecrase.
+    // Le fil de vidange ne le prend jamais.
+    std::mutex lifecycle;
+
     std::mutex mutex;
     HWAVEOUT device = nullptr;
     std::vector<std::unique_ptr<Chunk>> chunks;
@@ -44,11 +64,19 @@ struct Voice
     // Le format de la prise en cours. Une phrase qui arrive au meme format continue la prise
     // ouverte ; un format different est une autre voix, et celle-la remplace.
     Format format{};
-    bool playing = false;
-    // Plus aucun morceau ne viendra. C'est ce qui autorise le fil de vidange a fermer : sans
-    // cette marque il fermerait entre deux morceaux d'une meme phrase.
+    // La replique en cours est finie. La sortie, elle, reste ouverte jusqu'a kLinger.
     bool closed = false;
+    // Stop() : le fil de vidange ferme sans attendre kLinger.
+    bool stopping = false;
     std::string device_name;
+
+    // Le dernier instant ou la voix a servi : parole en file, amorce ou ouverture.
+    std::chrono::steady_clock::time_point lastUse{};
+
+    // La replique ouverte a deja pousse un morceau ; avant, une file vide n'est pas un trou.
+    bool lineHeard = false;
+    bool starving = false;
+    Counters counters{};
 
     // A LA FIN DU PROCESSUS, et c'est le fil de vidange qui l'exige.
     //
@@ -63,7 +91,7 @@ struct Voice
         {
             waveOutReset(device);
         }
-        closed = true;
+        stopping = true;
         if (drain.joinable())
         {
             drain.join();
@@ -95,21 +123,96 @@ void Release(Voice& aVoice)
     waveOutClose(aVoice.device);
     aVoice.device = nullptr;
     aVoice.chunks.clear();
-    aVoice.playing = false;
     aVoice.closed = false;
+    aVoice.stopping = false;
+    aVoice.lineHeard = false;
+    aVoice.starving = false;
 }
 
-// Tout ce qui a ete ecrit a-t-il ete rendu ? Sous le verrou de l'appelant.
-bool AllDone(const Voice& aVoice)
+bool Done(const Chunk& aChunk)
+{
+    return (aChunk.header.dwFlags & WHDR_DONE) != 0;
+}
+
+// Reste-t-il de la parole a entendre ? Sous le verrou de l'appelant.
+bool SpeechPending(const Voice& aVoice)
 {
     for (const auto& chunk : aVoice.chunks)
     {
-        if ((chunk->header.dwFlags & WHDR_DONE) == 0)
+        if (!chunk->filler && !Done(*chunk))
         {
-            return false;
+            return true;
         }
     }
-    return true;
+    return false;
+}
+
+size_t PendingBytes(const Voice& aVoice)
+{
+    size_t bytes = 0;
+    for (const auto& chunk : aVoice.chunks)
+    {
+        if (!Done(*chunk))
+        {
+            bytes += chunk->samples.size();
+        }
+    }
+    return bytes;
+}
+
+// Rend la memoire des morceaux joues. Une sortie ouverte pour tout un appel ne peut pas les
+// garder jusqu'a sa fermeture. waveOut les rend dans l'ordre d'ecriture.
+void Recycle(Voice& aVoice)
+{
+    auto played = aVoice.chunks.begin();
+    while (played != aVoice.chunks.end() && Done(**played))
+    {
+        waveOutUnprepareHeader(aVoice.device, &(*played)->header, sizeof(WAVEHDR));
+        ++played;
+    }
+    aVoice.chunks.erase(aVoice.chunks.begin(), played);
+}
+
+// Sous le verrou de l'appelant, sur une sortie ouverte.
+Status Write(Voice& aVoice, std::unique_ptr<Chunk> aChunk)
+{
+    aChunk->header.lpData = reinterpret_cast<LPSTR>(aChunk->samples.data());
+    aChunk->header.dwBufferLength = static_cast<DWORD>(aChunk->samples.size());
+
+    if (waveOutPrepareHeader(aVoice.device, &aChunk->header, sizeof(WAVEHDR)) != MMSYSERR_NOERROR)
+    {
+        return Status::WriteFailed;
+    }
+    aChunk->prepared = true;
+    if (waveOutWrite(aVoice.device, &aChunk->header, sizeof(WAVEHDR)) != MMSYSERR_NOERROR)
+    {
+        waveOutUnprepareHeader(aVoice.device, &aChunk->header, sizeof(WAVEHDR));
+        return Status::WriteFailed;
+    }
+    aVoice.chunks.push_back(std::move(aChunk));
+    return Status::Ok;
+}
+
+// Garde kFillerAhead morceaux de silence d'avance quand la parole n'en fournit pas assez.
+void TopUp(Voice& aVoice)
+{
+    const uint32_t blockAlign = aVoice.format.channels * (aVoice.format.bitsPerSample / 8u);
+    const size_t fillerBytes = static_cast<size_t>(aVoice.format.sampleRate) * kFillerMilliseconds / 1000u * blockAlign;
+    // Le silence du PCM 8 bits est au milieu de l'echelle, pas a zero.
+    const uint8_t zero = aVoice.format.bitsPerSample == 8 ? 0x80 : 0x00;
+
+    while (PendingBytes(aVoice) < fillerBytes * kFillerAhead)
+    {
+        auto chunk = std::make_unique<Chunk>();
+        chunk->samples.assign(fillerBytes, zero);
+        chunk->filler = true;
+        // Un trou au milieu d'une replique lui appartient encore : le sous-titre ne clignote pas.
+        chunk->line = aVoice.closed ? 0 : aVoice.line;
+        if (Write(aVoice, std::move(chunk)) != Status::Ok)
+        {
+            return;
+        }
+    }
 }
 
 // Joins the previous voice before starting a new one. Called with the lock NOT held: the
@@ -124,11 +227,9 @@ void StopAndJoin()
         {
             waveOutReset(voice.device);
         }
-        // FERMEE, et pas seulement reinitialisee. Le fil de vidange ne sort que sur « close et
-        // tout rendu » : sans cette ligne, un Stop() au milieu d'une prise le laisserait tourner
-        // pour toujours et le join ci-dessous ne reviendrait jamais. Un reset veut dire qu'il ne
-        // viendra plus rien, ce qui est exactement ce que `closed` affirme.
-        voice.closed = true;
+        // Sans cette marque le fil de vidange attendrait kLinger avant de sortir, et le join
+        // ci-dessous avec lui.
+        voice.stopping = true;
         previous = std::move(voice.drain);
     }
     if (previous.joinable())
@@ -190,7 +291,7 @@ std::string Utf8(const wchar_t* aText)
 // nothing. That case is reported as what it is instead of being dressed up, and the number of
 // outputs goes with it either way, since "one output" and "four outputs" turn the same
 // silence into two different problems.
-std::string NameOfOutput(HWAVEOUT aHandle)
+std::string NameOfOutput(HWAVEOUT aHandle, bool aFollowsProcess)
 {
     const UINT count = waveOutGetNumDevs();
     std::string named = "the Windows default output, which the mapper would not name";
@@ -203,7 +304,94 @@ std::string NameOfOutput(HWAVEOUT aHandle)
         named = Utf8(caps.szPname);
     }
 
-    return named + " (" + std::to_string(count) + " output(s) on this machine)";
+    const std::string origin = aFollowsProcess
+                                   ? "the game's own output, "
+                                   : "the game's output not found, so ";
+    return origin + named + " (" + std::to_string(count) + " output(s) on this machine)";
+}
+
+void Drain()
+{
+    Voice& self = TheVoice();
+    for (;;)
+    {
+        {
+            std::lock_guard<std::mutex> guard(self.mutex);
+            if (self.device == nullptr)
+            {
+                return;
+            }
+            Recycle(self);
+
+            const auto now = std::chrono::steady_clock::now();
+            const bool speaking = SpeechPending(self);
+            if (speaking)
+            {
+                self.lastUse = now;
+            }
+            else if (!self.closed && self.lineHeard && !self.starving)
+            {
+                self.starving = true;
+                self.counters.gaps += 1;
+            }
+
+            if (self.stopping || (self.closed && !speaking && now - self.lastUse >= kLinger))
+            {
+                waveOutReset(self.device);
+                Release(self);
+                return;
+            }
+            TopUp(self);
+        }
+        Sleep(10);
+    }
+}
+
+// Sous le verrou de l'appelant, une fois tout ce qui precedait joint et rendu.
+Status OpenDevice(Voice& aVoice, const Format& aFormat, bool aLineOpen)
+{
+    // Asked at every opening, not once: the player can move the game to another output mid-session.
+    const std::optional<unsigned> processOutput = ProcessOutput();
+    const UINT target = processOutput ? *processOutput : WAVE_MAPPER;
+
+    WAVEFORMATEX wave{};
+    wave.wFormatTag = WAVE_FORMAT_PCM;
+    wave.nChannels = aFormat.channels;
+    wave.nSamplesPerSec = aFormat.sampleRate;
+    wave.wBitsPerSample = aFormat.bitsPerSample;
+    wave.nBlockAlign = static_cast<WORD>(aFormat.channels * (aFormat.bitsPerSample / 8));
+    wave.nAvgBytesPerSec = aFormat.sampleRate * wave.nBlockAlign;
+
+    if (waveOutOpen(&aVoice.device, target, &wave, 0, 0, CALLBACK_NULL) != MMSYSERR_NOERROR)
+    {
+        aVoice.device = nullptr;
+        return Status::NoDevice;
+    }
+
+    aVoice.device_name = NameOfOutput(aVoice.device, processOutput.has_value());
+    aVoice.format = aFormat;
+    aVoice.closed = !aLineOpen;
+    aVoice.stopping = false;
+    aVoice.lineHeard = false;
+    aVoice.starving = false;
+    aVoice.lastUse = std::chrono::steady_clock::now();
+
+    // Le silence part tout de suite : c'est lui que l'ouverture avale, pas la parole.
+    TopUp(aVoice);
+    aVoice.drain = std::thread(&Drain);
+    return Status::Ok;
+}
+
+bool SameFormat(const Format& aLeft, const Format& aRight)
+{
+    return aLeft.sampleRate == aRight.sampleRate && aLeft.channels == aRight.channels &&
+           aLeft.bitsPerSample == aRight.bitsPerSample;
+}
+
+bool Supported(const Format& aFormat)
+{
+    return aFormat.channels != 0 && aFormat.sampleRate != 0 &&
+           (aFormat.bitsPerSample == 8 || aFormat.bitsPerSample == 16);
 }
 }
 
@@ -243,29 +431,24 @@ Sound Tone(double aSeconds, double aHertz, double aAmplitude)
 
 Status Open(const Format& aFormat)
 {
-    if (aFormat.channels == 0 || aFormat.sampleRate == 0 ||
-        (aFormat.bitsPerSample != 8 && aFormat.bitsPerSample != 16))
+    if (!Supported(aFormat))
     {
         return Status::UnsupportedFormat;
     }
 
     Voice& voice = TheVoice();
+    std::lock_guard<std::mutex> lifecycle(voice.lifecycle);
     {
-        // UNE REPLIQUE N'EST PAS UNE SUITE DE REPLIQUES. Le moteur rend phrase par phrase et la
-        // file les recoit une par une ; chaque phrase ouvrait sa propre prise, et l'ouverture
-        // commence par arreter ce qui joue. La deuxieme phrase coupait donc la premiere au
-        // milieu d'un mot -- mesure en jeu le 2026-09-02, sur une reponse de deux phrases.
-        //
-        // Une prise encore vivante se poursuit : les morceaux de la phrase suivante se rangent
-        // derriere ceux qui restent. `closed` retombe a faux avant que le fil de vidange ne
-        // relise la marque, et il la relit sous ce meme verrou.
+        // UNE REPLIQUE N'EST PAS UNE SUITE DE REPLIQUES. La deuxieme phrase d'une reponse coupait
+        // la premiere au milieu d'un mot quand chaque phrase ouvrait sa propre prise (2026-09-02).
+        // Une sortie ouverte au meme format se poursuit : la phrase se range derriere ce qui reste.
         std::lock_guard<std::mutex> guard(voice.mutex);
-        if (voice.device != nullptr && voice.format.sampleRate == aFormat.sampleRate &&
-            voice.format.channels == aFormat.channels &&
-            voice.format.bitsPerSample == aFormat.bitsPerSample)
+        if (voice.device != nullptr && !voice.stopping && SameFormat(voice.format, aFormat))
         {
             voice.closed = false;
-            voice.playing = true;
+            voice.lineHeard = false;
+            voice.starving = false;
+            voice.lastUse = std::chrono::steady_clock::now();
             return Status::Ok;
         }
     }
@@ -273,52 +456,42 @@ Status Open(const Format& aFormat)
     StopAndJoin();
 
     std::lock_guard<std::mutex> guard(voice.mutex);
-
-    WAVEFORMATEX wave{};
-    wave.wFormatTag = WAVE_FORMAT_PCM;
-    wave.nChannels = aFormat.channels;
-    wave.nSamplesPerSec = aFormat.sampleRate;
-    wave.wBitsPerSample = aFormat.bitsPerSample;
-    wave.nBlockAlign = static_cast<WORD>(aFormat.channels * (aFormat.bitsPerSample / 8));
-    wave.nAvgBytesPerSec = aFormat.sampleRate * wave.nBlockAlign;
-
-    if (waveOutOpen(&voice.device, WAVE_MAPPER, &wave, 0, 0, CALLBACK_NULL) != MMSYSERR_NOERROR)
+    const Status opened = OpenDevice(voice, aFormat, true);
+    if (opened == Status::Ok)
     {
-        voice.device = nullptr;
-        return Status::NoDevice;
+        voice.counters.openings += 1;
+    }
+    return opened;
+}
+
+Status Prime(const Format& aFormat, bool& aOpened)
+{
+    aOpened = false;
+    if (!Supported(aFormat))
+    {
+        return Status::UnsupportedFormat;
     }
 
-    voice.device_name = NameOfOutput(voice.device);
-    voice.format = aFormat;
-    voice.playing = true;
-    voice.closed = false;
-
-    // Le peripherique possede chaque morceau jusqu'a WHDR_DONE. Attendre est ce que l'appelant
-    // ne doit pas faire, donc cela se passe ici, sur un fil dont c'est tout le travail : rendre
-    // la memoire au fur et a mesure, et fermer quand la prise est finie et vide.
-    voice.drain = std::thread(
-        []()
+    Voice& voice = TheVoice();
+    std::lock_guard<std::mutex> lifecycle(voice.lifecycle);
+    {
+        // Une sortie deja ouverte, a n'importe quel format, garde ce qu'elle joue : amorcer ne
+        // coupe personne.
+        std::lock_guard<std::mutex> guard(voice.mutex);
+        if (voice.device != nullptr && !voice.stopping)
         {
-            Voice& self = TheVoice();
-            for (;;)
-            {
-                {
-                    std::lock_guard<std::mutex> guard(self.mutex);
-                    if (self.device == nullptr)
-                    {
-                        return;
-                    }
-                    if (self.closed && AllDone(self))
-                    {
-                        Release(self);
-                        return;
-                    }
-                }
-                Sleep(10);
-            }
-        });
+            voice.lastUse = std::chrono::steady_clock::now();
+            return Status::Ok;
+        }
+    }
 
-    return Status::Ok;
+    // Joint le fil de vidange d'une sortie fermee par kLinger, que personne n'a encore joint.
+    StopAndJoin();
+
+    std::lock_guard<std::mutex> guard(voice.mutex);
+    const Status opened = OpenDevice(voice, aFormat, false);
+    aOpened = opened == Status::Ok;
+    return opened;
 }
 
 Status Push(const void* aSamples, size_t aBytes)
@@ -330,9 +503,9 @@ Status Push(const void* aSamples, size_t aBytes)
 
     Voice& voice = TheVoice();
     std::lock_guard<std::mutex> guard(voice.mutex);
-    // Une file fermee ne se rouvre pas : un morceau ecrit apres la fin de sa prise jouerait
-    // hors de son tour, ou derriere la suivante.
-    if (voice.device == nullptr || voice.closed)
+    // Une replique fermee ne se rouvre pas : un morceau ecrit apres sa fin jouerait hors de son
+    // tour, ou derriere la suivante.
+    if (voice.device == nullptr || voice.closed || voice.stopping)
     {
         return Status::NoDevice;
     }
@@ -341,22 +514,23 @@ Status Push(const void* aSamples, size_t aBytes)
     chunk->samples.assign(static_cast<const uint8_t*>(aSamples),
                           static_cast<const uint8_t*>(aSamples) + aBytes);
     chunk->line = voice.line;
-    chunk->header.lpData = reinterpret_cast<LPSTR>(chunk->samples.data());
-    chunk->header.dwBufferLength = static_cast<DWORD>(chunk->samples.size());
-
-    if (waveOutPrepareHeader(voice.device, &chunk->header, sizeof(WAVEHDR)) != MMSYSERR_NOERROR)
+    const Status written = Write(voice, std::move(chunk));
+    if (written == Status::Ok)
     {
-        return Status::WriteFailed;
+        voice.lineHeard = true;
+        voice.starving = false;
+        voice.lastUse = std::chrono::steady_clock::now();
     }
-    chunk->prepared = true;
-    if (waveOutWrite(voice.device, &chunk->header, sizeof(WAVEHDR)) != MMSYSERR_NOERROR)
-    {
-        waveOutUnprepareHeader(voice.device, &chunk->header, sizeof(WAVEHDR));
-        return Status::WriteFailed;
-    }
+    return written;
+}
 
-    voice.chunks.push_back(std::move(chunk));
-    return Status::Ok;
+Counters TakeCounters()
+{
+    Voice& voice = TheVoice();
+    std::lock_guard<std::mutex> guard(voice.mutex);
+    const Counters taken = voice.counters;
+    voice.counters = Counters{};
+    return taken;
 }
 
 void SetLine(uint32_t aLine)
@@ -476,6 +650,8 @@ Status PlayWav(const void* aImage, size_t aBytes)
 
 void Stop()
 {
+    Voice& voice = TheVoice();
+    std::lock_guard<std::mutex> lifecycle(voice.lifecycle);
     StopAndJoin();
 }
 
@@ -512,6 +688,6 @@ bool IsPlaying()
 {
     Voice& voice = TheVoice();
     std::lock_guard<std::mutex> guard(voice.mutex);
-    return voice.playing;
+    return voice.device != nullptr && SpeechPending(voice);
 }
 }

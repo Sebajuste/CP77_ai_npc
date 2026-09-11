@@ -20,6 +20,8 @@
 // Build and run: powershell -File plugin\test\run.ps1
 
 #include "../Audio.hpp"
+#include "../PocketVoice.hpp"
+#include "../ProcessOutput.hpp"
 #include "../Speech.hpp"
 #include "../ClaudeCli.hpp"
 #include "../CodexCli.hpp"
@@ -28,12 +30,16 @@
 #include "../Registry.hpp"
 #include "../Stream.hpp"
 #include "../Transport.hpp"
+#include "../VoiceMake.hpp"
 
 #include <chrono>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <filesystem>
+#include <fstream>
+#include <optional>
 #include <string>
 #include <thread>
 #include <vector>
@@ -72,23 +78,6 @@ bool Contains(const std::wstring& aHaystack, const wchar_t* aNeedle)
 bool Contains(const std::string& aHaystack, const char* aNeedle)
 {
     return aHaystack.find(aNeedle) != std::string::npos;
-}
-
-// The reply text out of an OpenAI-shaped response, so the assertions read what the mod would.
-std::string ReplyText(const std::string& aBody)
-{
-    ainpc::json::Value root;
-    if (!ainpc::json::Parse(aBody, root))
-    {
-        return "<not json>";
-    }
-    const ainpc::json::Value* choices = root.Find("choices");
-    if (!choices || !choices->IsArray() || choices->items.empty())
-    {
-        return "<no choices>";
-    }
-    const ainpc::json::Value* message = choices->items[0].Find("message");
-    return message ? message->StringAt("content", "<no content>") : "<no message>";
 }
 
 std::string ErrorMessage(const std::string& aBody)
@@ -143,7 +132,7 @@ void TestResponseShape()
     std::printf("response shape\n");
 
     const std::string withUsage = ainpc::MakeChatResponse("OK", true, 4504, 312, 4000);
-    EqualString("the text survives", ReplyText(withUsage), "OK");
+    EqualString("the text survives", ainpc::ChatResponseText(withUsage), "OK");
     Check("usage is carried", Contains(withUsage, "\"prompt_tokens\":4504"));
     Check("the total is the sum", Contains(withUsage, "\"total_tokens\":4816"));
     Check("the cached half is reported", Contains(withUsage, "\"cached_tokens\":4000"));
@@ -159,7 +148,7 @@ void TestResponseShape()
     EqualString("a failure carries its sentence", ErrorMessage(failure.body), "not signed in");
 
     const std::string quoted = ainpc::MakeChatResponse("say \"hi\"\nplease", true, 1, 1, 0);
-    EqualString("quotes and newlines survive", ReplyText(quoted), "say \"hi\"\nplease");
+    EqualString("quotes and newlines survive", ainpc::ChatResponseText(quoted), "say \"hi\"\nplease");
 }
 
 /// The Claude backend ///
@@ -224,7 +213,7 @@ void TestClaudeReplies()
         result.out = R"({"result":"Yeah, I'm around.","is_error":false})";
         const ainpc::ChatReply reply = claude.Interpret(result);
         Check("a normal reply is a 200", reply.status == 200);
-        EqualString("its text comes through", ReplyText(reply.body), "Yeah, I'm around.");
+        EqualString("its text comes through", ainpc::ChatResponseText(reply.body), "Yeah, I'm around.");
         Check("no usage reported means none written", !Contains(reply.body, "usage"));
     }
 
@@ -247,7 +236,7 @@ void TestClaudeReplies()
         result.started = true;
         result.out = R"({"result":"T'es o\u00f9 ?"})";
         const ainpc::ChatReply reply = claude.Interpret(result);
-        EqualString("an escaped accent is decoded to UTF-8", ReplyText(reply.body), "T'es o\xC3\xB9 ?");
+        EqualString("an escaped accent is decoded to UTF-8", ainpc::ChatResponseText(reply.body), "T'es o\xC3\xB9 ?");
     }
 
     // The executable was never started.
@@ -502,7 +491,7 @@ void TestCodexReplies()
                      "\"cached_input_tokens\":24448,\"output_tokens\":122,\"reasoning_output_tokens\":0}}\n";
         const ainpc::ChatReply reply = codex.Interpret(result);
         Check("a normal reply is a 200", reply.status == 200);
-        EqualString("its text comes through", ReplyText(reply.body), "Yeah, I'm around.");
+        EqualString("its text comes through", ainpc::ChatResponseText(reply.body), "Yeah, I'm around.");
         Check("the reasoning item is not the reply", !Contains(reply.body, "thinking"));
 
         // ── THE ONE PLACE THE TWO LANES COUNT DIFFERENTLY ────────────────────
@@ -525,7 +514,7 @@ void TestCodexReplies()
         result.out = "{\"type\":\"item.completed\",\"item\":{\"type\":\"agent_message\",\"text\":\"one moment\"}}\n"
                      "{\"type\":\"item.completed\",\"item\":{\"type\":\"agent_message\",\"text\":\"here you go\"}}\n"
                      "{\"type\":\"turn.completed\"}\n";
-        EqualString("the last agent message wins", ReplyText(codex.Interpret(result).body), "here you go");
+        EqualString("the last agent message wins", ainpc::ChatResponseText(codex.Interpret(result).body), "here you go");
     }
 
     // Windows line endings, and a line of noise the CLI printed into its own stream. Neither
@@ -537,7 +526,7 @@ void TestCodexReplies()
                      "{\"type\":\"item.completed\",\"item\":{\"type\":\"agent_message\",\"text\":\"T'es o\\u00f9 ?\"}}\r\n";
         const ainpc::ChatReply reply = codex.Interpret(result);
         Check("a CRLF stream still parses", reply.status == 200);
-        EqualString("an escaped accent is decoded to UTF-8", ReplyText(reply.body), "T'es o\xC3\xB9 ?");
+        EqualString("an escaped accent is decoded to UTF-8", ainpc::ChatResponseText(reply.body), "T'es o\xC3\xB9 ?");
     }
 
     // No usage block means no usage block, not a row of zeroes.
@@ -951,6 +940,58 @@ void TestSpeech()
     ainpc::audio::Stop();
 }
 
+// Quel palier un pack installe autorise, sur trois dossiers fabriques ici.
+//
+// Le cas qui compte est le troisieme : une reference `.wav` survit au pack qui l'a fabriquee,
+// parce qu'elle vit dans r6\storages\, que Vortex ne gere pas. Un joueur revenu au pack libre
+// la garde donc, et si sa seule presence suffisait a retenir le palier clone, le moteur --
+// prive d'encodeur -- echouerait et le personnage parlerait avec la voix de Windows, alors que
+// le catalogue etait la. C'est `CanClone` qui l'interdit, et c'est ce que ceci fige.
+void TestVoicePacks()
+{
+    std::printf("Voice packs (which tier a pack allows)\n");
+
+    namespace fs = std::filesystem;
+    const fs::path root = fs::temp_directory_path() / "ai_npc_packs";
+    std::error_code ignored;
+    fs::remove_all(root, ignored);
+
+    // Le layout reel : la DLL remonte trois dossiers depuis le sien pour trouver r6\storages\.
+    const fs::path plugin = root / "red4ext" / "plugins" / "ai_npc";
+    const fs::path models = plugin / "models";
+    const fs::path voices = root / "r6" / "storages" / "AiNpc" / "voices";
+    fs::create_directories(models / "catalogue");
+    fs::create_directories(voices);
+
+    const auto touch = [](const fs::path& aPath) { std::ofstream(aPath, std::ios::binary) << "x"; };
+    const std::wstring dir = plugin.wstring();
+
+    Check("no pack, no engine", !ainpc::voice::Available(dir));
+
+    // Le pack libre : la sentinelle et le catalogue, pas d'encodeur.
+    touch(models / "bos_before_voice.bin");
+    touch(models / "catalogue" / "eve.kv");
+    touch(plugin / "voices-recipe.json");
+    Check("the free pack loads the engine", ainpc::voice::Available(dir));
+    Check("and offers its catalogue", ainpc::voice::HasCatalogueVoice(dir, "eve"));
+    Check("but clones nothing", !ainpc::voice::CanClone(dir));
+    Check("so no reference is worth making", !ainpc::voicemake::Possible(dir));
+
+    // Le retour en arriere : la reference et les codebooks laisses par le pack de clonage.
+    touch(voices / "judy.wav");
+    touch(models / "packed_codebooks_aoTuV_603.bin");
+    Check("a leftover reference is still on disk", ainpc::voice::HasVoiceFor(dir, "judy.wav"));
+    Check("and the free pack still refuses to read it", !ainpc::voice::CanClone(dir));
+    Check("leftover codebooks do not make one either", !ainpc::voicemake::Possible(dir));
+
+    // Le pack de clonage, qui est le libre plus l'encodeur.
+    touch(models / "mimi_encoder.onnx");
+    Check("the cloning pack clones", ainpc::voice::CanClone(dir));
+    Check("and can make what it lacks", ainpc::voicemake::Possible(dir));
+
+    fs::remove_all(root, ignored);
+}
+
 // La file annonce ce qu'elle joue, dans l'ordre.
 //
 // C'est le contrat dont le sous-titre est la vue : trois repliques mises a la suite s'entendent
@@ -969,7 +1010,7 @@ void TestSpeaking()
     const char* lines[3] = {"One.", "Two.", "Three."};
     for (int i = 0; i < 3; ++i)
     {
-        ainpc::speech::Speak(lines[i], "", "", "", "");
+        ainpc::speech::Speak(lines[i], "", "", "", "", 1.0f);
     }
 
     std::vector<std::string> seen;
@@ -1030,6 +1071,13 @@ void TestAudio(bool aAudible)
           ainpc::audio::Play(silence.data(), silence.size(), format) == Status::UnsupportedFormat);
     format.bitsPerSample = 16;
 
+    // Une voix derivee ouvre la sortie a une frequence que personne n'annonce : 24000 x 1,06.
+    format.sampleRate = 25440;
+    Check("a voice played faster opens at its own rate",
+          ainpc::audio::Play(silence.data(), silence.size(), format) == Status::Ok);
+    WaitUntilSilent(3000);
+    format.sampleRate = 22050;
+
     const Status status = ainpc::audio::Play(silence.data(), silence.size(), format);
     Check("the device takes a PCM buffer", status == Status::Ok);
     if (status != Status::Ok)
@@ -1037,6 +1085,14 @@ void TestAudio(bool aAudible)
         std::printf("        device said: %s\n", ainpc::audio::Describe(status));
     }
     Check("it reports playing", ainpc::audio::IsPlaying());
+
+    // The walk the game's process makes in game, made by the process that is playing here.
+    const std::optional<unsigned> own = ainpc::audio::ProcessOutput();
+    Check("the output this process plays on is found while it plays", own.has_value());
+    if (own && *own < outputs.size())
+    {
+        std::printf("        this process plays on: [%u] %s\n", *own, outputs[*own].c_str());
+    }
 
     const int waited = WaitUntilSilent(3000);
     Check("it hands the buffer back once it is done", !ainpc::audio::IsPlaying());
@@ -1116,7 +1172,7 @@ void TestAudio(bool aAudible)
     std::this_thread::sleep_for(std::chrono::milliseconds(settle));
     Check("the whole queue is still playing, not just one chunk", ainpc::audio::IsPlaying());
 
-    Check("the queue drains and the device closes", WaitUntilSilent(8000) < 8000);
+    Check("the queue drains", WaitUntilSilent(8000) < 8000);
     Check("a chunk after Close is refused",
           ainpc::audio::Push(piece.data(), piece.size()) == Status::NoDevice);
     Check("a chunk with no stream is refused",
@@ -1126,6 +1182,41 @@ void TestAudio(bool aAudible)
     ainpc::audio::Push(piece.data(), piece.size());
     ainpc::audio::Stop();
     Check("Stop() cuts a stream mid-flight", !ainpc::audio::IsPlaying());
+
+    // Une sortie qui vient d'ouvrir avale le debut de sa premiere replique : la suivante doit
+    // trouver la sortie ouverte, meme apres un silence.
+    ainpc::audio::TakeCounters();
+    ainpc::audio::Open(format);
+    ainpc::audio::Push(piece.data(), piece.size());
+    ainpc::audio::Close();
+    WaitUntilSilent(3000);
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+    ainpc::audio::Open(format);
+    ainpc::audio::Push(piece.data(), piece.size());
+    ainpc::audio::Close();
+    Check("a line after a pause plays on the output still open",
+          ainpc::audio::TakeCounters().openings == 1);
+    ainpc::audio::Stop();
+
+    bool opened = false;
+    Check("priming opens an idle output", ainpc::audio::Prime(format, opened) == Status::Ok && opened);
+    Check("the line after priming finds it open",
+          ainpc::audio::Open(format) == Status::Ok && ainpc::audio::TakeCounters().openings == 0);
+
+    // Un morceau, une file videe, puis le suivant : la synthese n'a pas suivi la lecture.
+    ainpc::audio::Push(piece.data(), piece.size());
+    WaitUntilSilent(3000);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    ainpc::audio::Push(piece.data(), piece.size());
+    ainpc::audio::Close();
+    Check("a line that runs dry reports its gap", ainpc::audio::TakeCounters().gaps == 1);
+
+    ainpc::audio::Format other = format;
+    other.sampleRate = 25440;
+    bool reopened = true;
+    ainpc::audio::Prime(other, reopened);
+    Check("priming never replaces an open output", !reopened);
+    ainpc::audio::Stop();
 }
 
 /// The streaming lane ///
@@ -1281,6 +1372,35 @@ void TestSentenceSplitter()
     }
 }
 
+// A lane that answers in one block hands the voice what a stream of the same reply would have.
+void TestWholeReplySentences()
+{
+    std::printf("A reply in one block\n");
+    const std::string text = "Salut V, t'es en pleine forme ? Passe me voir avant ce soir, sans faute";
+
+    ainpc::stream::SentenceSplitter splitter;
+    std::vector<std::string> streamed;
+    for (char c : text)
+    {
+        splitter.Feed(std::string(1, c), streamed);
+    }
+    const std::string rest = splitter.Finish();
+    if (!rest.empty())
+    {
+        streamed.push_back(rest);
+    }
+
+    const std::vector<std::string> whole = ainpc::stream::SentencesOf(text);
+    Check("it is cut into its sentences", whole.size() == 2);
+    Check("exactly as a stream of it is", whole == streamed);
+    Check("an empty reply says nothing", ainpc::stream::SentencesOf("").empty());
+
+    const std::string body = ainpc::MakeChatResponse(text, false, 0, 0, 0);
+    EqualString("the text of a success shape reads back", ainpc::ChatResponseText(body), text);
+    EqualString("a failure shape carries no text",
+                ainpc::ChatResponseText(ainpc::Failure(401, "signed out").body), "");
+}
+
 void TestStreamAssembly()
 {
     std::printf("stream assembly\n");
@@ -1319,7 +1439,7 @@ void TestStreamAssembly()
     Check("no error was reported", assembler.Error().empty());
 
     const std::string response = assembler.Response();
-    EqualString("the reply reassembles whole", ReplyText(response),
+    EqualString("the reply reassembles whole", ainpc::ChatResponseText(response),
                 "Je suis devant le Afterlife. Tu arrives quand ?");
     Check("the usage block survived finish_reason", Contains(response, "\"prompt_tokens\":4504"));
     Check("and so did the completion count", Contains(response, "\"completion_tokens\":312"));
@@ -1419,11 +1539,13 @@ int main(int argc, char** argv)
     TestScrub();
     TestSseReader();
     TestSentenceSplitter();
+    TestWholeReplySentences();
     TestStreamAssembly();
     TestStreamFailures();
     TestStreamOptions();
     TestAudio(audible);
     TestSpeech();
+    TestVoicePacks();
     TestSpeaking();
 
     std::printf("\n%d check(s), %d failure(s)\n", g_checks, g_failures);

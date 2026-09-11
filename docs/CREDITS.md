@@ -32,8 +32,8 @@ working first. Thank you to their authors for clearing the road:
   the best ideas in this corner of Cyberpunk modding.
 
 **Deliberate compatibility.** Some things are kept on purpose, so that anyone arriving from
-those mods finds what they already know: **T** opens the chat from the phone, and the
-contacts carry the same identifiers — `jackie`, `jackie_dead`, `panam`, `kerry_eurodyne`,
+those mods finds what they already know: the contacts carry the same identifiers —
+`jackie`, `jackie_dead`, `panam`, `kerry_eurodyne`,
 `judy`, `songbird`, `river_ward`, `rogue`, `victor_vector`, `takemura`.
 
 **On the early drafts.** The first working version of the engine was built against prompt
@@ -147,8 +147,7 @@ wonder what the remainder was, and there is no remainder to wonder about.
 > the best ideas anyone has had in this corner of Cyberpunk modding.
 >
 > Some things are kept deliberately, so that anyone arriving from those mods finds what they
-> already know: **T** still opens the chat from the phone, and the characters carry the same
-> contact names.
+> already know: the characters carry the same contact names.
 >
 > Built on RED4ext, redscript, Codeware, RedData, RedFileSystem, RedHttpClient and Mod
 > Settings — thank you to WopsS, jac3km4, psiberx and rayshader. Cyber Engine Tweaks is

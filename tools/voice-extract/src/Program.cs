@@ -61,8 +61,8 @@ foreach (var contactId in options.Characters)
                               + $"RMS {m.Rms:F3}  {m.Verdict}");
         }
     }
-    var file = contactId + ".wav";
-    WavWriter.Write(Path.Combine(options.Out, file), reference.Clip);
+    var file = character.Name + ".wav";
+    WavWriter.Write(Path.Combine(options.Out, file), reference.Clip, character.Shift);
     if (options.Raw)
     {
         var index = 0;
@@ -74,7 +74,7 @@ foreach (var contactId in options.Characters)
     Console.WriteLine($"    {file} : {reference.Clip.Seconds:F1} s, {reference.Kept.Count} repliques, "
                       + $"RMS {reference.Clip.Rms:F3}");
 
-    recipe.Voices.Add(Recipe.VoiceOf(contactId, options.Language, reference));
+    recipe.Voices.Add(Recipe.VoiceOf(character, options.Language, reference));
     manifest.Voices.Add(new VoiceEntry
     {
         ContactId = contactId,

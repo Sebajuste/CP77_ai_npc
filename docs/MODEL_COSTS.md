@@ -109,6 +109,45 @@ re-propose them.
 **The safe-for-work tier costs about 160 tokens a message**, roughly 3 %. Cheap enough that
 the tier is never a budget decision.
 
+## The first real bill, and the holo lane
+
+Measured 2026-09-10 on `qwen/qwen3-235b-a22b-2507`, OpenRouter, provider `Auto`: 193 requests,
+the only OpenRouter traffic of the week, so the key's `usage_weekly` is that day's bill.
+
+| lane | requests | input | output | at list price | share of the real bill |
+|---|---:|---:|---:|---:|---:|
+| holo (calls) | 135 | 680 k | 15.3 k | 0.163 $ | 0.073 $ |
+| speaking (texts) | 44 | 185 k | 2.7 k | 0.043 $ | 0.019 $ |
+| thinking (memory) | 14 | 25 k | 5.1 k | 0.010 $ | 0.005 $ |
+| **all** | **193** | **890 k** | **23 k** | **0.216 $** | **0.097 $** |
+
+**The bill is 45 % of the list price.** `/api/v1/models` shows 0.22 / 0.88 $/M, the price of
+one endpoint; `Auto` routed most requests to GMICloud and Novita, at 0.09 $/M. The list price is
+not what a player pays, and `/endpoints` is the page to read.
+
+**The published qwen figure was half the real one.** `MODEL_BENCH.md` gave 0.54 $/month at two
+hours a day, from a cached price. The bill shows no cache discount: OpenRouter reported 126 k
+cached tokens, and the total matches the uncached estimate (0.019 $/h in the bench, 0.018 $/h
+measured).
+
+| | texts | holo calls |
+|---|---:|---:|
+| input per message | 4 200 tk | 5 040 tk |
+| output per message | 61 tk | 113 tk |
+| messages per hour | 38 | 46 (median gap 62 s) |
+| real cost per message, memory included | 0.00046 $ | 0.00057 $ |
+| **$/h** | **0.018** | **0.026** |
+| **2 h/day, one month** | **1.06 $** | **1.56 $** |
+| messages for 1 $ | 2 150 | 1 760 |
+
+A call's prompt is not bigger than a text's. It grows by ~130 tokens a line within a call, from
+~3.5 k to ~6 k (8 077 at most), and starts over at the next call. The difference comes from the
+replies, 2.5 times longer when spoken, and from a faster pace. Output is still 8 % of the bill.
+The voice is synthesised on the player's machine and costs nothing.
+
+The other models in `MODEL_BENCH.md` still carry their 2026-08-28 list-price estimate. None
+has been checked against a bill.
+
 ## The CLI lanes bill more than they send
 
 Corrected on 2026-08-25. The previous edition said "the local bridge adds about 18 000 tokens

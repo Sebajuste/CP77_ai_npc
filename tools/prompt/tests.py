@@ -26,6 +26,7 @@ import extract                                         # noqa: E402
 import fixture as fixtures                             # noqa: E402
 import language                                        # noqa: E402
 import passes                                          # noqa: E402
+import queststage                                      # noqa: E402
 import recipe as recipes                               # noqa: E402
 
 
@@ -228,6 +229,25 @@ def passes_still_match_the_mod():
     return check("passes: memes noms, memes sources", True)
 
 
+def a_quest_account_waits_for_its_moment():
+    """Une quete est suivie de sa premiere seconde a sa derniere : c est le fait pose, et non
+    la quete suivie, qui dit ou V en est. Meme selection qu AiNpcQuestTextIn."""
+    table = {"q": [{"sinceFact": "", "unlessFact": "", "text": "rendez-vous pris"},
+                   {"sinceFact": "rencontre", "unlessFact": "", "text": "il a refuse"},
+                   {"sinceFact": "paye", "unlessFact": "", "text": "itineraire achete"}]}
+    read = [queststage.quest_account(table, "q", posed)
+            for posed in ([], ["rencontre"], ["rencontre", "paye"], ["paye"])]
+    late = queststage.quest_account({"q": [{"sinceFact": "rencontre", "unlessFact": "",
+                                           "text": "il a refuse"}]}, "q", [])
+    plain = queststage.quest_account({"q": "un seul compte rendu"}, "q", ["rencontre"])
+    return check("etapes de quete: le fait pose decide",
+                 read == ["rendez-vous pris", "il a refuse", "itineraire achete",
+                          "itineraire achete"]
+                 and late == "" and plain == "un seul compte rendu",
+                 "%s / etape datee avant son fait: %r / forme simple: %r"
+                 % (read, late, plain))
+
+
 def main():
     try:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -242,6 +262,7 @@ def main():
                                    shipped_default_renders_everything,
                                    a_dropped_block_leaves_the_prompt,
                                    a_required_block_is_refused,
+                                   a_quest_account_waits_for_its_moment,
                                    passes_still_match_the_mod)]
     failed = results.count(False)
     print("\n%d/%d" % (len(results) - failed, len(results)))

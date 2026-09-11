@@ -423,6 +423,7 @@ Every method has a default; `""` and an empty array mean "no opinion".
 | `GetQuestContext(questKey) -> String` | `""` | `<quest>` — what this contact says while V tracks that quest. Write the account only |
 | `GetLiveContext() -> String` | `""` | `<now>`, rebuilt for every message |
 | `GetSpeechStyle() -> String` | `""` | Additive: appended to the rule block, at the weight of the rule it bends |
+| `GetVoice() -> ref<AiNpcVoiceDef>` | `null` | Which voice speaks on a call: `clone`, a reference file in `r6\storages\AiNpc\voices\` (default `<contactId>.wav`) — the mod makes it from the game when its recipe knows the name, including voices cut from anonymous civilians such as `"civ_mid_f_21_enus_25.wav"`; `fallback`, a catalogue voice — `"eve"`, `"jean"`… — when no clone is possible; `rate`, the catalogue voice's playback speed, pitch and pace together (`1.06` = one semitone higher, 6 % quicker), held to 0.8–1.25. `null` keeps a shipped character's own |
 | `GetPromptOverrides() -> ref<AiNpcPromptOverrides>` | `null` | Whole sections replaced |
 | `GetScriptedReply(playerText) -> String` | `""` | `""` = the model answers; `AiNpcSilentAnswer()` = nothing at all; anything else IS the reply |
 | `GetContactTags() -> array<String>` | empty | What this character IS. `"ainpc:"` is ai_npc's namespace and is ignored |
@@ -629,9 +630,10 @@ keys it got wrong. Any key starting with `_` is ignored, so `_note` works as a c
 | `relationship` | replaces | `<relationship>`. Injected romanced or not, so anything true in only one state does not belong here |
 | `romance` | **additive** | What the romance *changes*, added to `<now>` while romanced. Do not restate `relationship` |
 | `speechStyle` | **additive** | One or two sentences on how they *speak*. Appended to the rule block |
+| `voice` | replaces | `{"clone": "nadia.wav", "fallback": "eve", "rate": 1.06}` — the reference file (default `<contactId>.wav`), the catalogue voice used when no clone is possible, and the playback speed. Any key alone. Ignored for a contact a script provider owns: that provider answers `GetVoice()` |
 | `intent` | replaces | What they want *from V*. About wanting, not knowing — a mood goes in live context |
 | `questIntents` | replaces | Keyed like `questContexts`; replaces `intent` while that quest is tracked. Absent leaves the durable one standing |
-| `questContexts` | replaces | Keyed by the canonical quest name ai_npc logs when it meets an unknown one. Declaring any replaces the shipped set for that character |
+| `questContexts` | replaces | Keyed by the canonical quest name ai_npc logs when it meets an unknown one. A string, or a list of dated stages — below. Declaring any replaces the shipped set for that character |
 | `prompts` | replaces | Whole sections; keys below |
 | `tags` | adds | What this character IS. Tags only ever add |
 | `suppressActions` | removes | Commands refused, named by the head — `["[ACTION:GIVE_EDDIES:"]`. One-way |
@@ -646,6 +648,30 @@ keys it got wrong. Any key starting with `_` is ignored, so `_note` works as a c
 
 **Resolution, per section:** `this contact` → `prompts.json` (global) → ai_npc's built-in text.
 In JSON the shape says the regime: **a string replaces, an object contributes.**
+
+#### `questContexts`: a quest has stages
+
+A quest is tracked from its first second to its last, so a single account written for the whole
+of it is handed to the model at the first message — the character tells V how the mission ends
+before V has left for it. Where what your contact knows changes *inside* a quest, write a list
+instead of a string:
+
+```json
+"questContexts": {
+    "down_on_the_street": [
+        { "text": "You have arranged a meeting and V is on {their} way to it." },
+        { "sinceFact": "q112_oda_char_entry",
+          "text": "He would not hear it, and he let slip where Hanako will be." }
+    ]
+}
+```
+
+Stages are declared **in the order they happen** and the last one whose `sinceFact` the save has
+posed is the one read. A stage with no `sinceFact` is the account the quest opens on, and there
+is only one of those. `unlessFact` holds a stage back while that fact is posed, for an outcome
+this game writes as an absence — the stage before it is then what stands.
+
+The facts are the game's own, read and never written. `questIntents` takes the same two forms.
 
 #### `prompts`
 
