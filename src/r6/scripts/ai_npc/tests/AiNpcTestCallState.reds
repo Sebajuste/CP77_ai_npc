@@ -47,6 +47,23 @@ func AiNpcTestCallTransitions(t: ref<AiNpcTestRunner>) -> Void {
         !AiNpcCallMayGo(AiNpcCallState.Ended, AiNpcCallState.Dialing));
 }
 
+func AiNpcTestCallHearsOnlyItsOwn(t: ref<AiNpcTestRunner>) -> Void {
+    let live = AiNpcCallState.Connected;
+
+    t.Check("hears/its own spoken reply",
+        AiNpcCallHears(live, "victor_vector", "victor_vector", AiNpcChannelId.Call));
+    t.Check("hears/not another contact's text",
+        !AiNpcCallHears(live, "victor_vector", "anon_1298803501", AiNpcChannelId.Text));
+    t.Check("hears/not its own contact's text",
+        !AiNpcCallHears(live, "victor_vector", "victor_vector", AiNpcChannelId.Text));
+    t.Check("hears/not another contact on the call channel",
+        !AiNpcCallHears(live, "victor_vector", "judy", AiNpcChannelId.Call));
+    t.Check("hears/nothing once it has ended",
+        !AiNpcCallHears(AiNpcCallState.Ended, "victor_vector", "victor_vector", AiNpcChannelId.Call));
+    t.Check("hears/nothing for nobody",
+        !AiNpcCallHears(live, "", "", AiNpcChannelId.Call));
+}
+
 // The rule this whole step exists to prove, and the one a widget could hide later: a call that
 // was not answered opens no conversation.
 func AiNpcTestCallOpensOnce(t: ref<AiNpcTestRunner>) -> Void {

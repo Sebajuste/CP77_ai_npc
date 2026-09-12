@@ -294,6 +294,14 @@ public class AiNpcClient extends IScriptable {
         return AiNpcClientWrote(this.m_modId, contactId, text, true);
     }
 
+    // The character sends this text now, as a message V receives: filed as CharacterWrote
+    // files it, then delivered the way a generated reply is -- painted if the thread is open,
+    // notified otherwise. The words are yours; how the message reaches V is ai_npc's. Same
+    // codes as CharacterWrote.
+    public func CharacterSends(contactId: String, text: String) -> Int32 {
+        return AiNpcClientSends(this.m_modId, contactId, text);
+    }
+
     /// Statements: what the character wants to say ///
 
     // The character has a reason to write to V unprompted. ai_npc turns it into a message in

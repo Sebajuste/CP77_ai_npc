@@ -175,6 +175,15 @@ public func AiNpcUnpromptedEnabled() -> Bool {
     return settings.unpromptedEnabled;
 }
 
+// On with no service, the field's default.
+func AiNpcHoloPlayerVoiceEnabled() -> Bool {
+    let settings = AiNpcSettingsService.Get();
+    if !IsDefined(settings) {
+        return true;
+    }
+    return settings.holoPlayerVoice;
+}
+
 // Off with no service, the field's default and the only safe direction: a cap that switched
 // itself on because the menu had not loaded would refuse a request against a budget nobody
 // set, and the symptom names none of that.

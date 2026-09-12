@@ -180,4 +180,11 @@ public class AiNpcSettingsService extends ScriptableService {
     @runtimeProperty("ModSettings.displayName", "Characters May Write First")
     @runtimeProperty("ModSettings.description", "Lets other installed mods have a character text you unprompted, for a reason they give. Off means characters only ever answer.")
     public let unpromptedEnabled: Bool = true;
+
+    @runtimeProperty("ModSettings.mod", "AI NPC")
+    @runtimeProperty("ModSettings.category", "Calls")
+    @runtimeProperty("ModSettings.category.order", "4")
+    @runtimeProperty("ModSettings.displayName", "V Speaks Your Lines")
+    @runtimeProperty("ModSettings.description", "On a holo call, V says what you type out loud, in V's own voice, before the character answers. Off keeps V silent.")
+    public let holoPlayerVoice: Bool = true;
 }

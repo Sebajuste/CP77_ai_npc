@@ -413,6 +413,11 @@ public class AiNpcSetupSystem extends ScriptableSystem {
         return AiNpcAudio.Beep();
     }
 
+    // off, light, medium or strong. ai_npc.dll reads the same key and falls back to medium.
+    public func HoloRadioFilter() -> String {
+        return AiNpcGetSetting("holoRadioFilter", "medium");
+    }
+
     // The journal's own contact rows, to the log. The holo draws nothing for a contact the game
     // cannot resolve, and this is what says which names it does resolve on THIS save.
     public func DumpContacts() -> String {
@@ -628,7 +633,8 @@ func AiNpcSetupIsWritableKey(key: String) -> Bool {
         || Equals(key, "codexCliModel")
         || Equals(key, "codexCliPath")
         || Equals(key, "appearance")
-        || Equals(key, "playerDescription");
+        || Equals(key, "playerDescription")
+        || Equals(key, "holoRadioFilter");
 }
 
 // Whether a value must never be echoed back in full.

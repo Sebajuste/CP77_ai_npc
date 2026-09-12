@@ -13,7 +13,7 @@ func AiNpcTestHistory(spec: array<String>) -> array<ref<AiNpcMessage>> {
     let i = 0;
     while i < ArraySize(spec) {
         let fromPlayer = StrBeginsWith(spec[i], "V:");
-        ArrayPush(result, AiNpcMessageNew(StrRight(spec[i], StrLen(spec[i]) - 2), fromPlayer));
+        ArrayPush(result, AiNpcMessageNewAt(StrRight(spec[i], StrLen(spec[i]) - 2), fromPlayer, AiNpcTimeUnknown(), AiNpcChannelId.Text));
         i += 1;
     }
     return result;
@@ -76,24 +76,24 @@ func AiNpcTestTidyAfterRemoval(t: ref<AiNpcTestRunner>) -> Void {
         AiNpcTidyAfterRemoval("\n\n"), "");
 }
 
-/// AiNpcHistoryAppend ///
+/// AiNpcHistoryAppendAt ///
 
 func AiNpcTestAppend(t: ref<AiNpcTestRunner>) -> Void {
     let empty: array<ref<AiNpcMessage>>;
 
-    let one = AiNpcHistoryAppend(empty, "hey", true);
+    let one = AiNpcHistoryAppendAt(empty, "hey", true, AiNpcTimeUnknown(), AiNpcChannelId.Text);
     t.EqInt("append/size", ArraySize(one), 1);
     t.EqBool("append/author", one[0].fromPlayer, true);
     t.EqString("append/text", one[0].text, "hey");
 
-    let two = AiNpcHistoryAppend(one, "\n  yo", false);
+    let two = AiNpcHistoryAppendAt(one, "\n  yo", false, AiNpcTimeUnknown(), AiNpcChannelId.Text);
     t.EqString("append/order", AiNpcTestRender(two), "V:hey|N:yo");
     t.EqString("append/normalizes", two[1].text, "yo");
 
     // The source array must not be mutated: the store relies on replacing it wholesale.
     t.EqInt("append/no side effect", ArraySize(one), 1);
 
-    let piped = AiNpcHistoryAppend(empty, "a|b|c", true);
+    let piped = AiNpcHistoryAppendAt(empty, "a|b|c", true, AiNpcTimeUnknown(), AiNpcChannelId.Text);
     t.EqString("append/pipe is data", piped[0].text, "a|b|c");
 }
 
@@ -215,18 +215,18 @@ func AiNpcTestScriptedReply(t: ref<AiNpcTestRunner>) -> Void {
     t.EqBool("scripted/delay is not instant", AiNpcScriptedReplyDelay() > 0.0, true);
 }
 
-/// AiNpcHistoryTranscript ///
+/// AiNpcHistoryTranscriptOn ///
 
 func AiNpcTestTranscript(t: ref<AiNpcTestRunner>) -> Void {
     let empty: array<ref<AiNpcMessage>>;
-    t.EqString("transcript/empty", AiNpcHistoryTranscript(empty, "Judy"), "");
+    t.EqString("transcript/empty", AiNpcHistoryTranscriptOn(empty, "Judy", AiNpcTimeUnknown(), AiNpcChannelId.Text), "");
 
     let simple = AiNpcTestHistory(["V:hey", "N:hey yourself"]);
-    t.EqString("transcript/pairs", AiNpcHistoryTranscript(simple, "Judy"), "V: hey\nJudy: hey yourself\n");
+    t.EqString("transcript/pairs", AiNpcHistoryTranscriptOn(simple, "Judy", AiNpcTimeUnknown(), AiNpcChannelId.Text), "V: hey\nJudy: hey yourself\n");
 
     let pending = AiNpcTestHistory(["V:hey", "N:hi", "V:you there?"]);
     t.EqString("transcript/pending ends on V",
-        AiNpcHistoryTranscript(pending, "Judy"),
+        AiNpcHistoryTranscriptOn(pending, "Judy", AiNpcTimeUnknown(), AiNpcChannelId.Text),
         "V: hey\nJudy: hi\nV: you there?\n");
 
     // Regression: the previous design walked vMessages and indexed npcResponses by the same
@@ -238,7 +238,7 @@ func AiNpcTestTranscript(t: ref<AiNpcTestRunner>) -> Void {
     ]);
     let windowed = AiNpcHistoryTrim(long, 2);
     t.EqString("transcript/regression: pairing survives trimming",
-        AiNpcHistoryTranscript(windowed, "Judy"),
+        AiNpcHistoryTranscriptOn(windowed, "Judy", AiNpcTimeUnknown(), AiNpcChannelId.Text),
         "V: 3\nJudy: 3\nV: 4\nJudy: 4\nV: 5\n");
 }
 
@@ -298,10 +298,10 @@ func AiNpcTestJsonRoundTrip(t: ref<AiNpcTestRunner>) -> Void {
     // Regression: history used to be persisted as "|"-joined strings, so any of these
     // characters in a message split it in two or corrupted the whole record on reload.
     let hostile: array<ref<AiNpcMessage>>;
-    ArrayPush(hostile, AiNpcMessageNew("pipe | inside", true));
-    ArrayPush(hostile, AiNpcMessageNew("quote \" and \\ backslash", false));
-    ArrayPush(hostile, AiNpcMessageNew("newline\nhere", true));
-    ArrayPush(hostile, AiNpcMessageNew("accents: éàü — ok", false));
+    ArrayPush(hostile, AiNpcMessageNewAt("pipe | inside", true, AiNpcTimeUnknown(), AiNpcChannelId.Text));
+    ArrayPush(hostile, AiNpcMessageNewAt("quote \" and \\ backslash", false, AiNpcTimeUnknown(), AiNpcChannelId.Text));
+    ArrayPush(hostile, AiNpcMessageNewAt("newline\nhere", true, AiNpcTimeUnknown(), AiNpcChannelId.Text));
+    ArrayPush(hostile, AiNpcMessageNewAt("accents: éàü — ok", false, AiNpcTimeUnknown(), AiNpcChannelId.Text));
 
     let restored = AiNpcMessagesFromJson(AiNpcMessagesToJson(hostile));
     t.EqInt("json/hostile size", ArraySize(restored), 4);
@@ -323,8 +323,8 @@ func AiNpcTestJsonRoundTrip(t: ref<AiNpcTestRunner>) -> Void {
 func AiNpcTestMessageTime(t: ref<AiNpcTestRunner>) -> Void {
     let empty: array<ref<AiNpcMessage>>;
 
-    let stamped = AiNpcHistoryAppendAt(empty, "hey", true, 90000);
-    stamped = AiNpcHistoryAppendAt(stamped, "yo", false, 90600);
+    let stamped = AiNpcHistoryAppendAt(empty, "hey", true, 90000, AiNpcChannelId.Text);
+    stamped = AiNpcHistoryAppendAt(stamped, "yo", false, 90600, AiNpcChannelId.Text);
     t.EqInt("time/append stores the stamp", stamped[0].gameTimeSeconds, 90000);
     t.EqInt("time/second message keeps its own", stamped[1].gameTimeSeconds, 90600);
 
@@ -334,7 +334,7 @@ func AiNpcTestMessageTime(t: ref<AiNpcTestRunner>) -> Void {
 
     // Untimed messages stay untimed rather than becoming midnight of day zero, and the
     // key is absent from the JSON entirely -- which is what an old journal line looks like.
-    let untimed = AiNpcHistoryAppend(empty, "hey", true);
+    let untimed = AiNpcHistoryAppendAt(empty, "hey", true, AiNpcTimeUnknown(), AiNpcChannelId.Text);
     t.EqBool("time/plain append is unknown", AiNpcMessageHasTime(untimed[0]), false);
     let untimedJson = AiNpcMessagesToJson(untimed);
     t.EqBool("time/unknown is not written", StrContains(untimedJson.ToString(), "\"g\""), false);
@@ -348,15 +348,15 @@ func AiNpcTestMessageTime(t: ref<AiNpcTestRunner>) -> Void {
 
     // Replay stamps the message with the time of the *write*, not of the reload.
     let lines: array<String>;
-    ArrayPush(lines, AiNpcJournalOpToLine(AiNpcJournalOpAppendAt(1, "judy", "hey", true, 90000)));
-    ArrayPush(lines, AiNpcJournalOpToLine(AiNpcJournalOpAppendAt(2, "judy", "yo", false, 176400)));
+    ArrayPush(lines, AiNpcJournalOpToLine(AiNpcJournalOpAppendAt(1, "judy", "hey", true, 90000, AiNpcChannelId.Text)));
+    ArrayPush(lines, AiNpcJournalOpToLine(AiNpcJournalOpAppendAt(2, "judy", "yo", false, 176400, AiNpcChannelId.Text)));
     let replayed = AiNpcJournalReplay(AiNpcJournalParseLines(lines), 2, 24);
     t.EqInt("time/replay restores the write time", replayed[0].messages[1].gameTimeSeconds, 176400);
 
     t.EqInt("time/last of a timed history", AiNpcHistoryLastTime(stamped), 90600);
     t.EqInt("time/last of an untimed history", AiNpcHistoryLastTime(untimed), AiNpcTimeUnknown());
     t.EqInt("time/last of an empty history", AiNpcHistoryLastTime(empty), AiNpcTimeUnknown());
-    let mixed = AiNpcHistoryAppend(stamped, "and?", true);
+    let mixed = AiNpcHistoryAppendAt(stamped, "and?", true, AiNpcTimeUnknown(), AiNpcChannelId.Text);
     t.EqInt("time/last skips an untimed tail", AiNpcHistoryLastTime(mixed), 90600);
 
     t.EqString("elapsed/seconds", AiNpcFormatElapsedGameTime(100, 130), "moments ago");
@@ -433,31 +433,31 @@ func AiNpcTestGapMarkers(t: ref<AiNpcTestRunner>) -> Void {
 
     // Rendering: markers own their line and never become a speaker.
     let blank = AiNpcTestEmptyHistory();
-    let history = AiNpcHistoryAppendAt(blank, "t'es ou ?", true, base);
-    history = AiNpcHistoryAppendAt(history, "bar, comme d'hab", false, base + 600);
-    history = AiNpcHistoryAppendAt(history, "desole, j'ai disparu", true, base + 2 * 86400 + 15 * 3600);
+    let history = AiNpcHistoryAppendAt(blank, "t'es ou ?", true, base, AiNpcChannelId.Text);
+    history = AiNpcHistoryAppendAt(history, "bar, comme d'hab", false, base + 600, AiNpcChannelId.Text);
+    history = AiNpcHistoryAppendAt(history, "desole, j'ai disparu", true, base + 2 * 86400 + 15 * 3600, AiNpcChannelId.Text);
     t.EqString("transcript/marker between messages",
-        AiNpcHistoryTranscriptAt(history, "Judy", AiNpcTimeUnknown()),
+        AiNpcHistoryTranscriptOn(history, "Judy", AiNpcTimeUnknown(), AiNpcChannelId.Text),
         "V: t'es ou ?\nJudy: bar, comme d'hab\n(2 days later, 3:00pm)\nV: desole, j'ai disparu\n");
 
     // The trailing marker: the silence before the line V is about to send.
     t.EqString("transcript/trailing marker",
-        AiNpcHistoryTranscriptAt(history, "Judy", base + 2 * 86400 + 22 * 3600),
+        AiNpcHistoryTranscriptOn(history, "Judy", base + 2 * 86400 + 22 * 3600, AiNpcChannelId.Text),
         "V: t'es ou ?\nJudy: bar, comme d'hab\n(2 days later, 3:00pm)\nV: desole, j'ai disparu\n(7 hours later, 10:00pm)\n");
 
     // An untimed history renders exactly as it did before the field existed.
     let untimed = AiNpcTestHistory(["V:hey", "N:yo"]);
     t.EqString("transcript/untimed is unchanged",
-        AiNpcHistoryTranscriptAt(untimed, "Judy", base + 90000),
-        AiNpcHistoryTranscript(untimed, "Judy"));
+        AiNpcHistoryTranscriptOn(untimed, "Judy", base + 90000, AiNpcChannelId.Text),
+        AiNpcHistoryTranscriptOn(untimed, "Judy", AiNpcTimeUnknown(), AiNpcChannelId.Text));
 
     // A message with no stamp in the middle does not break the chain: the gap of the next
     // timed message is still measured from the last real timestamp.
-    let mixed = AiNpcHistoryAppendAt(blank, "hey", true, base);
-    mixed = AiNpcHistoryAppend(mixed, "seeded line", false);
-    mixed = AiNpcHistoryAppendAt(mixed, "back", true, base + 2 * 3600);
+    let mixed = AiNpcHistoryAppendAt(blank, "hey", true, base, AiNpcChannelId.Text);
+    mixed = AiNpcHistoryAppendAt(mixed, "seeded line", false, AiNpcTimeUnknown(), AiNpcChannelId.Text);
+    mixed = AiNpcHistoryAppendAt(mixed, "back", true, base + 2 * 3600, AiNpcChannelId.Text);
     t.EqString("transcript/untimed message keeps the chain",
-        AiNpcHistoryTranscriptAt(mixed, "Judy", AiNpcTimeUnknown()),
+        AiNpcHistoryTranscriptOn(mixed, "Judy", AiNpcTimeUnknown(), AiNpcChannelId.Text),
         "V: hey\nJudy: seeded line\n(2 hours later)\nV: back\n");
 
     AiNpcTestChannelSeparation(t, base);
@@ -468,7 +468,7 @@ func AiNpcTestChannelSeparation(t: ref<AiNpcTestRunner>, base: Int32) -> Void {
     let blank = AiNpcTestEmptyHistory();
 
     // Un SMS, un appel de six minutes, un SMS.
-    let both = AiNpcHistoryAppendAt(blank, "t'es dispo ?", true, base);
+    let both = AiNpcHistoryAppendAt(blank, "t'es dispo ?", true, base, AiNpcChannelId.Text);
     both = AiNpcHistoryAppendAt(both, "appelle-moi", false, base + 60, AiNpcChannelId.Text);
     both = AiNpcHistoryAppendAt(both, "je t'ecoute", false, base + 120, AiNpcChannelId.Call);
     both = AiNpcHistoryAppendAt(both, "on se voit ce soir", true, base + 480, AiNpcChannelId.Call);

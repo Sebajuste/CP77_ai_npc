@@ -144,8 +144,9 @@ public class AiNpcMemoryService extends ScriptableSystem {
 
         // The builder decides once for both halves: the instruction asks for a CHRONICLE
         // exactly when the body carries an ARCHIVE to build it from.
+        // Le fil écrit : un appel n'y entre que par sa trace, pas par ce qui s'y est dit.
         let builder = AiNpcPassCompaction.Of(base, npcName,
-            AiNpcHistoryTranscript(evicted, npcName));
+            AiNpcHistoryTranscriptOn(evicted, npcName, AiNpcTimeUnknown(), AiNpcChannelId.Text));
 
         this.m_contact = contactId;
         this.m_base = base;

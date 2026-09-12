@@ -62,7 +62,7 @@ struct Voice
     uint32_t line = 0;
 
     // Le format de la prise en cours. Une phrase qui arrive au meme format continue la prise
-    // ouverte ; un format different est une autre voix, et celle-la remplace.
+    // ouverte ; un format different attend qu'elle ait ete entendue, puis rouvre.
     Format format{};
     // La replique en cours est finie. La sortie, elle, reste ouverte jusqu'a kLinger.
     bool closed = false;
@@ -429,6 +429,28 @@ Sound Tone(double aSeconds, double aHertz, double aAmplitude)
     return sound;
 }
 
+namespace
+{
+// Une voix a un autre format attend que celle qui parle ait ete entendue : rouvrir la sortie
+// maintenant couperait sa replique au milieu d'un mot. Hors du verrou de cycle de vie, pour que
+// Stop() coupe pendant l'attente.
+void WaitUntilHeard(Voice& aVoice, const Format& aFormat)
+{
+    for (;;)
+    {
+        {
+            std::lock_guard<std::mutex> guard(aVoice.mutex);
+            if (aVoice.device == nullptr || aVoice.stopping || SameFormat(aVoice.format, aFormat) ||
+                !SpeechPending(aVoice))
+            {
+                return;
+            }
+        }
+        Sleep(10);
+    }
+}
+} // namespace
+
 Status Open(const Format& aFormat)
 {
     if (!Supported(aFormat))
@@ -437,6 +459,7 @@ Status Open(const Format& aFormat)
     }
 
     Voice& voice = TheVoice();
+    WaitUntilHeard(voice, aFormat);
     std::lock_guard<std::mutex> lifecycle(voice.lifecycle);
     {
         // UNE REPLIQUE N'EST PAS UNE SUITE DE REPLIQUES. La deuxieme phrase d'une reponse coupait

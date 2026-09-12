@@ -40,6 +40,35 @@ devient l'une d'elles, épinglée en tête, comme une conversation de quête qui
 mais une réplique IA qui contredit le SMS de quête juste au-dessus se lit comme un bug du jeu,
 et le découpage en conversations disparaît.
 
+## Un contact livré par un autre mod
+
+Décidé le 2026-09-12, après que la passe ci-dessus eut rendu les anciennes conversations de Mira
+et de Juli inatteignables. Phone Extension et NightlyNow répondent eux-mêmes pour leurs contacts
+(`GetMessageDataArrayForContact`, `GotoSmsMessenger`) sans transmettre l'appel, et leurs dossiers
+se chargent après `ai_npc\` : notre greffe ne s'exécutait jamais. Le jeu, lui, ne leur dessine
+aucune liste — ils n'ont pas d'entrée dans son journal.
+
+Donc ai_npc ne se greffe plus partout : il **aiguille**, en un seul endroit, la touche des
+messages.
+
+| Ce que porte la ligne | Ce qui s'ouvre |
+|---|---|
+| notre conversation seule (inconnus, personnage sans SMS du jeu) | notre chat |
+| un contact du jeu | sa liste, où notre conversation est greffée (inchangé) |
+| un contact d'un autre mod | **nous dessinons la liste** : la nôtre, puis la sienne |
+
+La liste partagée est poussée avec le mécanisme du jeu (`PushList`, `m_threadsVisible`,
+`m_isSingleThread`), donc C la referme et le changement d'onglet la jette sans une ligne de code
+pour le dire. La conversation de l'autre mod y est une **copie** de sa ligne en type
+`SingleThread` : son hachage reste intact, donc son mod la reconnaît et l'ouvre par le chemin
+qu'il attend, et le type empêche la liste de se redéployer sur elle-même.
+
+Rien de spécifique à Phone Extension nulle part : aucun de ses types n'est importé, et le préfixe
+`zzz_` ne joue aucun rôle ici — la porte est `ExecuteAction`, qu'aucun autre mod n'intercepte.
+
+**L'onglet Messages ne reçoit rien.** Ses lignes sont des notifications de messages récents, pas
+un annuaire : seuls les inconnus qui viennent d'écrire y apparaissent, comme aujourd'hui.
+
 ## Holo : la barre de chat entre dans le holo vanilla
 
 ### Aiguillage à l'appel
@@ -127,6 +156,7 @@ hors dialogue (recharger en répondant est sans gravité). T en appui court est
 | **nouveau** `AiNpcHoloTurn.reds` | le tour de parole, pur |
 | **nouveau** `AiNpcDialogHub.reds` | lire le hub de dialogue, savoir s'il est minuté, le faire relire |
 | **nouveau** `AiNpcMessengerThread.reds` | greffer notre conversation, rendre les lignes des personnages appelables |
+| **nouveau** `AiNpcContactInbox.reds` | ce que la touche des messages ouvre : rien, notre chat, ou les deux conversations d'un contact partagé |
 | **nouveau** `AiNpcHoloReplyHint.reds` | « R Répondre » au-dessus de la ligne de saisie d'un holo du jeu |
 | `tests/` | `AiNpcTestCallRoute.reds`, `AiNpcTestHoloTurn.reds`, libellés |
 
@@ -188,6 +218,16 @@ Rien de ceci n'a tourné. Dans l'ordre où un défaut se verrait :
    Relevé hors ligne pour la suite : le système de scène n'expose aux scripts ni pause ni saut
    de réplique. Le seul levier de blocage trouvé est le volume des dialogues du joueur, un
    réglage sauvegardé -- écarté, parce qu'un plantage en pleine réponse le laisserait à zéro.
+
+9. **L'indice F sur la ligne de Mira** : il s'affiche. Il manquait alors que F marchait, parce
+   que la greffe des lignes tournait à l'intérieur de l'interception de Phone Extension, qui
+   insère ses contacts après son propre appel — le tableau ne les contenait pas encore. Les deux
+   passes sur la liste de contacts sont maintenant dans `zzz_ai_npc_phone\`.
+
+10. **La touche des messages sur Mira ou Juli** : une liste de deux conversations s'ouvre, la
+   nôtre en tête avec l'aperçu de sa dernière ligne. La sienne ouvre le dialogue de Negotiable
+   Affection comme avant, la nôtre ouvre le chat, et C revient à la liste de contacts. À
+   vérifier aussi sur le bot de NightCityAgenda, qui passe par le même framework.
 
 Limite connue : « la voix s'est tue » se lit sur `AiNpcAudio.Speaking()`. Si la dernière phrase
 est encore en synthèse quand la requête se termine, les choix peuvent revenir un instant avant

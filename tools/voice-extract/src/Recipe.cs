@@ -24,12 +24,6 @@ internal sealed class RecipeVoice
     // Le nom du fichier de reference sans extension, celui qu'une fiche nomme dans `clone`.
     [JsonPropertyName("voice")] public string Voice { get; set; }
     [JsonPropertyName("language")] public string Language { get; set; }
-
-    // Le facteur de relecture de la reference. Absent, 1 : la voix telle que le jeu la joue.
-    [JsonPropertyName("shift")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public double? Shift { get; set; }
-
     [JsonPropertyName("seconds")] public double Seconds { get; set; }
     [JsonPropertyName("lines")] public List<RecipeLine> Lines { get; set; } = new();
 }
@@ -65,7 +59,6 @@ internal sealed class Recipe
     public static RecipeVoice VoiceOf(CastVoice voice, string language, VoiceReference reference) => new()
     {
         Voice = voice.Name,
-        Shift = voice.Shift == 1.0 ? null : voice.Shift,
         Language = language,
         Seconds = Math.Round(reference.Clip.Seconds, 2),
         Lines = reference.Kept.Select(k => new RecipeLine

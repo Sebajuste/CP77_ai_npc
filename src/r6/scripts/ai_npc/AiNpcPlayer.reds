@@ -1,6 +1,6 @@
 // V, as the characters texting them perceive them.
 //
-// What the GAME knows is read (life path, body gender); what it cannot know is one free-form
+// What the GAME knows is read (life path, voice tone); what it cannot know is one free-form
 // line the player writes in settings.json. A setting the game can answer is a setting the
 // player can get wrong, and a wrong description is worse than none -- the model repeats it
 // back, in character, for hours.
@@ -10,21 +10,21 @@
 
 module AiNpc
 
-// The gender the prompt should use for V, with nothing to configure: GetResolvedGenderName()
-// is the same call the base game uses to gate romances, so it matches the body V was built
-// with.
+// V's gender is the voice tone, the character creator's "brain" gender: the game's pronouns
+// follow it. GetResolvedGenderName() is the body -- inventory icons and ripperdoc animations.
 //
-// Falls back to Male when there is no player yet -- this is reachable from the settings menu
-// before a save is loaded, and a missing player must not read as Female by accident.
+// Falls back to Male when there is no customization state yet -- this is reachable from the
+// settings menu before a save is loaded, and a missing state must not read as Female by accident.
 public func AiNpcResolveGender() -> AiNpcGender {
-    let player = GetPlayer(GetGameInstance());
-    if !IsDefined(player) {
+    let system = GameInstance.GetCharacterCustomizationSystem(GetGameInstance());
+    if !IsDefined(system) {
         return AiNpcGender.Male;
     }
-    if Equals(player.GetResolvedGenderName(), n"Female") {
-        return AiNpcGender.Female;
+    let state = system.GetState();
+    if !IsDefined(state) || state.IsBrainGenderMale() {
+        return AiNpcGender.Male;
     }
-    return AiNpcGender.Male;
+    return AiNpcGender.Female;
 }
 
 // Resolved once per call rather than per branch, so every word in one prompt agrees.

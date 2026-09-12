@@ -81,8 +81,8 @@ func AiNpcTestJournalPointer(t: ref<AiNpcTestRunner>) -> Void {
 func AiNpcTestJournalListing(t: ref<AiNpcTestRunner>) -> Void {
     let lines: array<String>;
     ArrayPush(lines, AiNpcJournalHeaderLine(3, "b7", "b3:4"));
-    ArrayPush(lines, AiNpcJournalOpToLine(AiNpcJournalOpAppend(11, "judy", "hey", true)));
-    ArrayPush(lines, AiNpcJournalOpToLine(AiNpcJournalOpAppend(12, "judy", "hey yourself", false)));
+    ArrayPush(lines, AiNpcJournalOpToLine(AiNpcJournalOpAppendAt(11, "judy", "hey", true, AiNpcTimeUnknown(), AiNpcChannelId.Text)));
+    ArrayPush(lines, AiNpcJournalOpToLine(AiNpcJournalOpAppendAt(12, "judy", "hey yourself", false, AiNpcTimeUnknown(), AiNpcChannelId.Text)));
     t.EqInt("listing/head is the tail operation", AiNpcJournalTailSeq(lines), 12);
 
     // A crash mid-write leaves a truncated last line; the head is the last COMPLETE one.
@@ -102,10 +102,10 @@ b", 90), "a b");
 
 func AiNpcTestJournal(t: ref<AiNpcTestRunner>) -> Void {
     let ops: array<ref<AiNpcJournalOp>>;
-    ArrayPush(ops, AiNpcJournalOpAppend(1, "judy", "hey", true));
-    ArrayPush(ops, AiNpcJournalOpAppend(2, "judy", "hey yourself", false));
-    ArrayPush(ops, AiNpcJournalOpAppend(3, "panam", "you up?", true));
-    ArrayPush(ops, AiNpcJournalOpAppend(4, "judy", "still there?", true));
+    ArrayPush(ops, AiNpcJournalOpAppendAt(1, "judy", "hey", true, AiNpcTimeUnknown(), AiNpcChannelId.Text));
+    ArrayPush(ops, AiNpcJournalOpAppendAt(2, "judy", "hey yourself", false, AiNpcTimeUnknown(), AiNpcChannelId.Text));
+    ArrayPush(ops, AiNpcJournalOpAppendAt(3, "panam", "you up?", true, AiNpcTimeUnknown(), AiNpcChannelId.Text));
+    ArrayPush(ops, AiNpcJournalOpAppendAt(4, "judy", "still there?", true, AiNpcTimeUnknown(), AiNpcChannelId.Text));
 
     let parsed = AiNpcTestRoundTripOps(ops);
     t.EqInt("journal/header line is not an operation", ArraySize(parsed), 4);
@@ -128,9 +128,9 @@ func AiNpcTestJournal(t: ref<AiNpcTestRunner>) -> Void {
 
     // Undo and clear replay as operations, not as rewritten history.
     let edits: array<ref<AiNpcJournalOp>>;
-    ArrayPush(edits, AiNpcJournalOpAppend(1, "judy", "hey", true));
-    ArrayPush(edits, AiNpcJournalOpAppend(2, "judy", "yo", false));
-    ArrayPush(edits, AiNpcJournalOpAppend(3, "judy", "again", true));
+    ArrayPush(edits, AiNpcJournalOpAppendAt(1, "judy", "hey", true, AiNpcTimeUnknown(), AiNpcChannelId.Text));
+    ArrayPush(edits, AiNpcJournalOpAppendAt(2, "judy", "yo", false, AiNpcTimeUnknown(), AiNpcChannelId.Text));
+    ArrayPush(edits, AiNpcJournalOpAppendAt(3, "judy", "again", true, AiNpcTimeUnknown(), AiNpcChannelId.Text));
     ArrayPush(edits, AiNpcJournalOpUndo(4, "judy"));
     ArrayPush(edits, AiNpcJournalOpClear(5, "judy"));
 
@@ -143,7 +143,7 @@ func AiNpcTestJournal(t: ref<AiNpcTestRunner>) -> Void {
     let many: array<ref<AiNpcJournalOp>>;
     let n = 1;
     while n <= 10 {
-        ArrayPush(many, AiNpcJournalOpAppend(n, "judy", s"m\(n)", (n % 2) == 1));
+        ArrayPush(many, AiNpcJournalOpAppendAt(n, "judy", s"m\(n)", (n % 2) == 1, AiNpcTimeUnknown(), AiNpcChannelId.Text));
         n += 1;
     }
     let trimmed = AiNpcJournalReplay(AiNpcTestRoundTripOps(many), 10, 2);
@@ -172,7 +172,7 @@ func AiNpcTestJournal(t: ref<AiNpcTestRunner>) -> Void {
     // message in the snapshot *and* in the entry after it.
     let rewound = AiNpcJournalReplay(parsed, 2, 20);
     let forkOps = AiNpcJournalSnapshotOps(rewound);
-    let resumed = AiNpcJournalOpAppend(ArraySize(forkOps) + 1, "judy", "wait, again", true);
+    let resumed = AiNpcJournalOpAppendAt(ArraySize(forkOps) + 1, "judy", "wait, again", true, AiNpcTimeUnknown(), AiNpcChannelId.Text);
     ArrayPush(forkOps, resumed);
 
     t.EqString("journal/fork resumes from the pointer, not the head",
@@ -182,7 +182,7 @@ func AiNpcTestJournal(t: ref<AiNpcTestRunner>) -> Void {
     // JSONL invariant: one operation is exactly one line. A newline inside a message is
     // escaped by the JSON writer -- if it ever were not, every message after it would be
     // lost on the next load, silently.
-    let hostile = AiNpcJournalOpAppend(1, "judy", "two\nlines \"quoted\" and a | pipe", true);
+    let hostile = AiNpcJournalOpAppendAt(1, "judy", "two\nlines \"quoted\" and a | pipe", true, AiNpcTimeUnknown(), AiNpcChannelId.Text);
     let line = AiNpcJournalOpToLine(hostile);
     let lineParts = StrSplit(line, "\n");
     t.EqInt("journal/one operation is one line", ArraySize(lineParts), 1);
@@ -198,11 +198,11 @@ func AiNpcTestJournal(t: ref<AiNpcTestRunner>) -> Void {
     // message, not the conversation.
     let damaged: array<String>;
     ArrayPush(damaged, AiNpcJournalHeaderLine(3l, "b1", "b0:12"));
-    ArrayPush(damaged, AiNpcJournalOpToLine(AiNpcJournalOpAppend(1, "judy", "hey", true)));
+    ArrayPush(damaged, AiNpcJournalOpToLine(AiNpcJournalOpAppendAt(1, "judy", "hey", true, AiNpcTimeUnknown(), AiNpcChannelId.Text)));
     ArrayPush(damaged, "");
     ArrayPush(damaged, "{\"n\":2,\"c\":\"judy\",\"o\":\"a\",\"p\":fal");
     ArrayPush(damaged, "not json at all");
-    ArrayPush(damaged, AiNpcJournalOpToLine(AiNpcJournalOpAppend(3, "judy", "still here", false)));
+    ArrayPush(damaged, AiNpcJournalOpToLine(AiNpcJournalOpAppendAt(3, "judy", "still here", false, AiNpcTimeUnknown(), AiNpcChannelId.Text)));
 
     let survivors = AiNpcJournalParseLines(damaged);
     t.EqInt("journal/skips blank and corrupt lines", ArraySize(survivors), 2);

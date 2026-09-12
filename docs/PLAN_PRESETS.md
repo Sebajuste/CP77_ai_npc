@@ -87,7 +87,7 @@ guess.
 | preset | model | what is measured (`docs/MODEL_BENCH.md`) |
 |---|---|---|
 | **light** | `google/gemma-4-31b-it:free` | 0 mechanical defects over 34 replies, the action command 3/3 on the fixture. Never measured on the real rendezvous conversations, and NSFW never measured. **Rate-limited by the provider, not by the key**: 46 HTTP 429 out of 54 on 2026-08-28 |
-| **normal** | `qwen/qwen3-235b-a22b-2507` | 18/20 on the real conversations, 0 defects over 54 replies, 2.7 s median, ~0.55 $/month at two hours a day |
+| **normal** | `qwen/qwen3-235b-a22b-2507` | 18/20 on the real conversations, 0 defects over 54 replies, 2.7 s median, ~1 $/month at two hours a day (real bill, 2026-09-10) |
 | **premium** | `meta-llama/llama-4-maverick` | 20/20 on the real conversations, one `<\|eot_id\|>` leak in 54, 2.0 s median, ~2.57 $/month. `deepseek/deepseek-chat-v3-0324` is the documented fallback when a provider outage makes it unavailable |
 
 **light is what it says it is.** One model for every pass, deliberately: the ceiling on the free

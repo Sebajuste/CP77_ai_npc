@@ -231,8 +231,8 @@ public func AiNpcGetExtensionRegistry() -> ref<AiNpcExtensionRegistry> {
 
 // Built once per question asked of the extensions, not per extension: a dozen contributions on
 // one contact must not mean a dozen quest-fact reads.
-func AiNpcBuildContactContext(contactId: String, opt playerText: String,
-                              opt channel: AiNpcChannelId) -> ref<AiNpcContactContext> {
+func AiNpcBuildContactContext(contactId: String, playerText: String,
+                              channel: AiNpcChannelId) -> ref<AiNpcContactContext> {
     let medium = AiNpcChannelOf(channel);
     let ctx = new AiNpcContactContext();
     ctx.channel = medium.Name();
@@ -381,8 +381,8 @@ func AiNpcExtensionLiveContext(ctx: ref<AiNpcContactContext>) -> String {
 // it over, ignore whatever they do. No ordering guarantee and no return value to collect,
 // which is why observers cost nothing to add.
 
-func AiNpcPublishMessage(contactId: String, text: String, fromPlayer: Bool, opt sourceId: String,
-                         opt systemNotice: Bool, opt channel: AiNpcChannelId) -> Void {
+func AiNpcPublishMessage(contactId: String, text: String, fromPlayer: Bool, sourceId: String,
+                         systemNotice: Bool, channel: AiNpcChannelId) -> Void {
     let registry = AiNpcGetExtensionRegistry();
     if !IsDefined(registry) {
         return;

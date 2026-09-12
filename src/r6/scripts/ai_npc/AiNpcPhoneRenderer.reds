@@ -50,6 +50,7 @@ public class AiNpcPhoneChatRenderer extends AiNpcChatRenderer {
     private let messengerSlotRoot: wref<inkCanvas>;
     private let chatScrollController: wref<inkScrollController>;
     private let typingIndicator: wref<inkFlex>;
+    private let hintStrip: wref<inkHorizontalPanel>;
 
     // Pushed in by the model, never read back out of it: a view reaching for GetAiNpcSystem()
     // to ask who is selected would be the same disease in a new file.
@@ -141,6 +142,14 @@ public class AiNpcPhoneChatRenderer extends AiNpcChatRenderer {
     // The player switched contact without closing: same widgets, different contents.
     public func ShowContact() -> Void {
         this.RefreshConversation();
+        this.ShowThreadChoices();
+    }
+
+    // The choices of the thread on screen, asked of its contact each time it is shown.
+    public func ShowThreadChoices() -> Void {
+        if IsDefined(this.hintStrip) {
+            AiNpcPhoneShowChoices(this.hintStrip, AiNpcThreadChoicesFor(this.m_session.GetShownContactId()));
+        }
     }
 
     // -- Input, driven by the model's key handling ------------------------------
@@ -290,6 +299,12 @@ public class AiNpcPhoneChatRenderer extends AiNpcChatRenderer {
     // that read the lane and its own typing flag would be deciding the state as well as
     // drawing it, and the other surface would decide the same thing separately.
     public func SetInputMode(mode: AiNpcInputMode) -> Void {
+        // The strip follows the mode, because every key it names belongs to the reading
+        // screen: while a field has the keyboard, the mod answers Enter and nothing else.
+        // Left up, it promised four keys and a thread choice pressed there died in silence.
+        if IsDefined(this.hintStrip) {
+            this.hintStrip.SetVisible(NotEquals(mode, AiNpcInputMode.Typing));
+        }
         if !IsDefined(this.typedMessageText) || !IsDefined(this.chatInputHint) {
             return;
         }
@@ -357,7 +372,7 @@ public class AiNpcPhoneChatRenderer extends AiNpcChatRenderer {
     }
 
     // Assembles the panel out of the six builders that draw it -- a frame, a header, a
-    // scrolling list, a typing indicator, an input line, three key hints -- and keeps the five
+    // scrolling list, a typing indicator, an input line, the key hints -- and keeps the
     // handles anything touches again.
     private func BuildChatUi() {
         AiNpcLog("Building chat UI...");
@@ -372,8 +387,10 @@ public class AiNpcPhoneChatRenderer extends AiNpcChatRenderer {
         this.typedMessageWrapper = chrome.input.wrapper;
         this.typedMessageText = chrome.input.label;
         this.chatInputHint = chrome.input.hint;
+        this.hintStrip = chrome.hints;
 
         this.FillFromStore();
+        this.ShowThreadChoices();
 
         chrome.root.PlayAnimation(AiNpcPhoneEntranceAnim());
     }

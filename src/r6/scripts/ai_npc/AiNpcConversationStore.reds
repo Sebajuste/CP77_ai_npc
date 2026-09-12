@@ -221,7 +221,7 @@ public class AiNpcConversationStore extends ScriptableSystem {
     }
 
     public func Append(contactId: String, text: String, fromPlayer: Bool,
-                       opt channel: AiNpcChannelId) -> Void {
+                       channel: AiNpcChannelId) -> Void {
         this.EnsureResolved();
         // The clock is read at the one impure edge and travels with the operation, so the
         // replay stamps the message with the time it was written, not the time the save was

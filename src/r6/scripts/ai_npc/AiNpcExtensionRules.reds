@@ -17,7 +17,8 @@ module AiNpc
 
 /// Order ///
 
-// Where `id` belongs in a list already sorted ascending. Returns ArraySize(ids) for an id
+// Where `id` belongs in a list already sorted ascending: the first position whose id does not
+// sort before it. An id already held belongs where it is. Returns ArraySize(ids) for an id
 // that sorts after everything, which is the append case.
 //
 // StrCmp, and CASE-SENSITIVE on purpose: an id is a key, not a label. Folding case would order
@@ -30,7 +31,7 @@ func AiNpcIdInsertionPoint(ids: array<String>, id: String) -> Int32 {
     let i = 0;
     let count = ArraySize(ids);
     while i < count {
-        if StrCmp(ids[i], id) > 0 {
+        if StrCmp(ids[i], id) >= 0 {
             return i;
         }
         i += 1;

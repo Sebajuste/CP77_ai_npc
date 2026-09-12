@@ -233,6 +233,7 @@ nothing is sent; present means a state held until the bound you give.
 |---|---|---|
 | `CharacterKnows(contactId, text, opt until)` | `Int32` ticket | Something your systems know and the conversation cannot hear. `0` is refused outright. Idempotent on exact text |
 | `CharacterWrote(contactId, text)` | `Int32` write code | The character wrote this. **Nothing is sent** — no notification, no chat opened. Write first, notify second |
+| `CharacterSends(contactId, text)` | `Int32` write code | The character sends this now: filed as `CharacterWrote` files it, then painted if the thread is open and notified otherwise. The words are yours, the delivery is ai_npc's |
 | `PlayerWrote(contactId, text)` | `Int32` write code | V wrote this. Same contract, other speaker |
 | `CharacterWantsToSay(contactId, reason, opt intent, opt policy)` | `Int32` ticket | She has a reason to write unprompted; ai_npc writes the line, files it and pushes an SMS. Present tense — nothing is recorded at the call |
 | `CancelWantsToSay(ticket)` | `Bool` | Takes a waiting reason back. `false` for a second cancel, somebody else's ticket, or one already gone out |
@@ -322,7 +323,9 @@ and the ring is the only moment nobody is waiting through.
 
 | Call | Returns | |
 |---|---|---|
-| `AiNpcDrivesCharacter(contactId)` | `Bool` | Can ai_npc hold a conversation for this id right now |
+| `AiNpcDrivesCharacter(contactId)` | `Bool` | Can ai_npc hold a conversation for this id right now. Also whether F calls it: ai_npc places the call for any contact it drives that the game cannot call, so a row your mod builds sets `isCallable` from this |
+| `AiNpcThreadChoiceOf(id, label)` | `ref<AiNpcThreadChoice>` | One entry for `GetThreadChoices`: the id `OnThreadChoice` receives, and the label the player reads |
+| `AiNpcStrangerVoice(draw, sex)` | `ref<AiNpcVoiceDef>` | A voice for a character the game never voiced: an anonymous civilian re-read at a drawn `shift`, or a catalogue voice of that sex at the same speed. Same `draw`, same voice — pass a number you keep stable for the contact. `sex` is `AiNpcVoiceMale()` or `AiNpcVoiceFemale()`. Any change to the pools in a later version re-voices every stranger |
 | `AiNpcListBuiltInCharacters()` | `array<String>` | ai_npc's own cast |
 | `AiNpcListDrivableCharacters()` | `array<String>` | The built-ins plus every registered provider whose `IsAvailable()` is true |
 | `AiNpcCharacterInOpenChat()` | `ref<AiNpcContactProvider>` | The provider behind the open chat, or null |
@@ -423,7 +426,7 @@ Every method has a default; `""` and an empty array mean "no opinion".
 | `GetQuestContext(questKey) -> String` | `""` | `<quest>` — what this contact says while V tracks that quest. Write the account only |
 | `GetLiveContext() -> String` | `""` | `<now>`, rebuilt for every message |
 | `GetSpeechStyle() -> String` | `""` | Additive: appended to the rule block, at the weight of the rule it bends |
-| `GetVoice() -> ref<AiNpcVoiceDef>` | `null` | Which voice speaks on a call: `clone`, a reference file in `r6\storages\AiNpc\voices\` (default `<contactId>.wav`) — the mod makes it from the game when its recipe knows the name, including voices cut from anonymous civilians such as `"civ_mid_f_21_enus_25.wav"`; `fallback`, a catalogue voice — `"eve"`, `"jean"`… — when no clone is possible; `rate`, the catalogue voice's playback speed, pitch and pace together (`1.06` = one semitone higher, 6 % quicker), held to 0.8–1.25. `null` keeps a shipped character's own |
+| `GetVoice() -> ref<AiNpcVoiceDef>` | `null` | Which voice speaks on a call: `clone`, a reference file in `r6\storages\AiNpc\voices\` (default `<contactId>.wav`) — the mod makes it from the game when its recipe knows the name, including voices cut from anonymous civilians such as `"civ_mid_f_21_enus_25.wav"`; `fallback`, a catalogue voice — `"eve"`, `"jean"`… — when no clone is possible; `rate`, the catalogue voice's playback speed, pitch and pace together (`1.06` = one semitone higher, 6 % quicker), held to 0.8–1.25; `shift`, the same derivation for the clone, held to 0.85–1.15 — the reference is made as `<clone>-x<shift>.wav`; `cloneLines`, the voice-over lines the reference is cut from, by file name — what a vanilla character ai_npc does not ship needs, since the recipe only names its own cast. `null` keeps a shipped character's own |
 | `GetPromptOverrides() -> ref<AiNpcPromptOverrides>` | `null` | Whole sections replaced |
 | `GetScriptedReply(playerText) -> String` | `""` | `""` = the model answers; `AiNpcSilentAnswer()` = nothing at all; anything else IS the reply |
 | `GetContactTags() -> array<String>` | empty | What this character IS. `"ainpc:"` is ai_npc's namespace and is ignored |
@@ -433,8 +436,10 @@ Every method has a default; `""` and an empty array mean "no opinion".
 | `IsRomanceCapable() -> Bool` | `false` | A property of the character, never inferred from a fact |
 | `GetRomance() -> String` | `""` | What the romance *changes*, added to `<now>` while romanced |
 | `IsRomanced() -> Bool` | `false` | For a contact of yours; a built-in reads the save |
-| `WantsPhoneContact() -> Bool` | `false` | Opt in only when nothing else supplies the row |
+| `WantsPhoneContact() -> Bool` | `false` | Opt in only when nothing else supplies the row. The row ai_npc adds opens its chat from both phone tabs and offers F |
 | `GetPhoneAvatarId() -> TweakDBID` | `Avatar_Unknown` | Only consulted when the above is true |
+| `GetThreadChoices() -> array<ref<AiNpcThreadChoice>>` | empty | What the player can do in the thread besides writing, built with `AiNpcThreadChoiceOf(id, label)`. Shown on the phone (keys 1–9) and the terminal (buttons), asked again each time the thread is shown. Nine at most |
+| `OnThreadChoice(choiceId)` | nothing | The player picked one. What it does is yours; a contact no longer available afterwards has its thread closed |
 | `Notify(text) -> Bool` | `false` | Push the notification through your own framework; `false` falls through to ai_npc's vanilla SMS |
 
 ### `AiNpcCharacterExtension` — adding to a character you do not own
@@ -630,7 +635,7 @@ keys it got wrong. Any key starting with `_` is ignored, so `_note` works as a c
 | `relationship` | replaces | `<relationship>`. Injected romanced or not, so anything true in only one state does not belong here |
 | `romance` | **additive** | What the romance *changes*, added to `<now>` while romanced. Do not restate `relationship` |
 | `speechStyle` | **additive** | One or two sentences on how they *speak*. Appended to the rule block |
-| `voice` | replaces | `{"clone": "nadia.wav", "fallback": "eve", "rate": 1.06}` — the reference file (default `<contactId>.wav`), the catalogue voice used when no clone is possible, and the playback speed. Any key alone. Ignored for a contact a script provider owns: that provider answers `GetVoice()` |
+| `voice` | replaces | `{"clone": "nadia.wav", "cloneLines": ["fingers_q105_f_16edcd0f892b6000.wem"], "fallback": "eve", "rate": 1.06, "shift": 1.04}` — the reference file (default `<contactId>.wav`), the voice-over lines it is cut from, the catalogue voice used when no clone is possible, its playback speed, and the speed the clone's reference is re-read at. Any key alone. Ignored for a contact a script provider owns: that provider answers `GetVoice()` |
 | `intent` | replaces | What they want *from V*. About wanting, not knowing — a mood goes in live context |
 | `questIntents` | replaces | Keyed like `questContexts`; replaces `intent` while that quest is tracked. Absent leaves the durable one standing |
 | `questContexts` | replaces | Keyed by the canonical quest name ai_npc logs when it meets an unknown one. A string, or a list of dated stages — below. Declaring any replaces the shipped set for that character |
@@ -927,6 +932,40 @@ there is no hierarchy and no wildcard. A tag is never omitted in order to remove
 ```reds
 client.SuppressAction(AiNpcTransferHead(), "joytoy:vip");
 ```
+
+### Give a vanilla character the game's own voice
+
+Your mod brings a character ai_npc does not ship — Fingers, a fixer, anyone the game voiced
+and the mod turns into a contact. The clone tier is open to them, and the lines are yours to
+name:
+
+```reds
+public func GetVoice() -> ref<AiNpcVoiceDef> {
+    let voice = new AiNpcVoiceDef();
+    voice.clone = "fingers.wav";
+    ArrayPush(voice.cloneLines, "fingers_q105_f_16edcd0f892b6000.wem");
+    // ...five more
+    voice.fallback = "javert";
+    return voice;
+}
+```
+
+**Why one by one.** An archive holds no path, only the hash of one, so "every line of this
+character" is not a question anything can ask while the game runs. `toolsoice-extract` asks it
+offline against the path dictionary, keeps what passes its thresholds — about thirty seconds —
+and prints the list to paste:
+
+```
+powershell -File toolsoice-extractoice-extract.ps1 -Pattern "^fingers_" -Exclude "_vs_" fingers
+```
+
+Listen to the `.wav` it writes before shipping the list: it is what the player will hear.
+
+**What crosses to the player.** The names, and nothing else. The reference is cut on their
+machine, out of their own archives, at the first line the character speaks — and only if they
+installed the cloning pack. Without it, `fallback` speaks. The names carry no folder because
+they are the same in every language; a player whose dub does not have that character simply
+falls back.
 
 ### React to my quest
 

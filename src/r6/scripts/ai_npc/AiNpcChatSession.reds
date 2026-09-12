@@ -88,13 +88,16 @@ public class AiNpcChatSession extends IScriptable {
     // The surface, or nothing. Nothing is an ordinary state: it is what a chat that is not on
     // screen looks like, and why replies fall through to the SMS notification.
     private let m_renderer: ref<AiNpcChatRenderer>;
+    // The channel the attached surface paints, stated by whoever attaches it.
+    private let m_channel: AiNpcChannelId;
 
     private let m_shownContactId: String = "";
     private let m_typing: Bool = false;
     private let m_busy: Bool = false;
 
-    public final func Attach(renderer: ref<AiNpcChatRenderer>) -> Void {
+    public final func Attach(renderer: ref<AiNpcChatRenderer>, channel: AiNpcChannelId) -> Void {
         this.m_renderer = renderer;
+        this.m_channel = channel;
     }
 
     public final func Detach() -> Void {
@@ -145,7 +148,7 @@ public class AiNpcChatSession extends IScriptable {
         // Un fil ecrit garde la trace des appels ; une surface parlee n'a rien a resumer,
         // puisqu'elle ne montre que l'echange qu'on est en train d'avoir.
         let shown = messages;
-        if AiNpcChannelOf(renderer.Channel()).ShowsInThread() {
+        if AiNpcChannelOf(this.m_channel).ShowsInThread() {
             let settled = AiNpcHistoryWithoutLiveCall(messages,
                 AiNpcLiveCallSince(this.GetShownContactId()));
             shown = AiNpcHistoryForThread(settled);
@@ -154,7 +157,7 @@ public class AiNpcChatSession extends IScriptable {
         let count: Int32 = ArraySize(shown);
         let i: Int32 = AiNpcHistoryWindowStart(count, renderer.HistoryLimit());
         while i < count {
-            if AiNpcIsDisplayableMessage(shown[i], renderer.Channel()) {
+            if AiNpcIsDisplayableMessage(shown[i], this.m_channel) {
                 this.Paint(shown[i].text, shown[i].fromPlayer, false);
             }
             i += 1;
@@ -189,7 +192,7 @@ public class AiNpcChatSession extends IScriptable {
         if !this.HasRenderer() {
             return false;
         }
-        if !AiNpcSessionAccepts(this.m_shownContactId, contactId, this.m_renderer.Channel(), channel) {
+        if !AiNpcSessionAccepts(this.m_shownContactId, contactId, this.m_channel, channel) {
             return false;
         }
         let follow: Bool = this.m_renderer.IsAtBottom();
@@ -208,7 +211,7 @@ public class AiNpcChatSession extends IScriptable {
         if !this.HasRenderer() {
             return;
         }
-        if AiNpcSessionAccepts(this.m_shownContactId, contactId, this.m_renderer.Channel(), channel)
+        if AiNpcSessionAccepts(this.m_shownContactId, contactId, this.m_channel, channel)
                 || !value {
             this.m_renderer.SetTypingIndicator(value);
         }

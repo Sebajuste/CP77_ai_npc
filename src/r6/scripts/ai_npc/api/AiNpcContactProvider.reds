@@ -229,6 +229,21 @@ public class AiNpcContactProvider extends IScriptable {
         return t"PhoneAvatars.Avatar_Unknown";
     }
 
+    /// The thread ///
+
+    // What the player can do in this thread besides writing, in the order shown. ai_npc draws
+    // them on every written surface and calls OnThreadChoice with the id of the one picked.
+    // Asked each time the thread is shown, so a choice can come and go with the contact's
+    // state. Nine at most: the phone binds them to the keys 1 to 9.
+    public func GetThreadChoices() -> array<ref<AiNpcThreadChoice>> {
+        let none: array<ref<AiNpcThreadChoice>>;
+        return none;
+    }
+
+    // The player picked one of GetThreadChoices. A contact that is no longer available once
+    // this returns has its thread closed.
+    public func OnThreadChoice(choiceId: String) -> Void {}
+
     // A line has been written into this contact's thread and no surface painted it. Push the
     // notification yourself, or return false and let ai_npc push its own.
     //

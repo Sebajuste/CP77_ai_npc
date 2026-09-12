@@ -18,8 +18,9 @@ public class AiNpcHttpSystem extends ScriptableSystem {
   // timer.
   private let m_watchdog: ref<AiNpcWatchdog>;
 
-  // Counted up on every send. Only the CLI transport reads them: an HTTP answer comes back
-  // through the callback object it was sent with, so a stale one cannot arrive.
+  // Counted up on every send. Read by the CLI answers and by the streamed sentences of both
+  // transports, which carry nothing else to say which generation they belong to. A complete
+  // HTTP answer comes back through the callback object it was sent with instead.
   //
   // Two counters, because the repair is a second request inside one turn whose answer
   // re-enters elsewhere: a shared counter would let a late chat answer pass for a repair.
@@ -63,7 +64,7 @@ public class AiNpcHttpSystem extends ScriptableSystem {
   // The contact is a parameter, not a lookup: this is the one place a generation is addressed,
   // and everything downstream reads the generation rather than asking again.
   public func TriggerPostRequest(contactId: String, playerMessage: String,
-                                 opt channel: AiNpcChannelId) {
+                                 channel: AiNpcChannelId) {
     if Equals(StrLen(contactId), 0) {
       AiNpcLog("Refused to generate a reply for an empty contact id.");
       return;
@@ -137,7 +138,9 @@ public class AiNpcHttpSystem extends ScriptableSystem {
       queue.MarkSpoken(contactId, now);
     }
 
-    this.m_generation = AiNpcGeneration.ForMod(contactId, modId, reason, ticket, intent);
+    // Écrire en premier, c'est envoyer un SMS.
+    this.m_generation = AiNpcGeneration.ForMod(contactId, modId, reason, ticket, intent,
+      AiNpcChannelId.Text);
     AiNpcLog(s"'\(modId)' asked '\(contactId)' to write first. The reason it gave: \(reason)");
     if NotEquals(StrLen(intent), 0) {
       // Logged apart from the reason: they answer different questions, and showing one as the
@@ -199,11 +202,6 @@ public class AiNpcHttpSystem extends ScriptableSystem {
   // One send for every chat-shaped backend: url, headers and body shape are AiNpcLlm's, the
   // same answers the thinking lane gets. What is left here belongs to this lane -- capturing
   // the contact, reporting the failure to the player, and the generating state.
-  // Si la recette du tour en cours offre des commandes. Lue a la construction de la passe et
-  // relue a l'arrivee de la reponse, qui est plusieurs secondes plus tard et n'a plus la
-  // recette sous la main.
-  private let m_offersCommands: Bool = true;
-
   private func ChatPostRequest() {
     // Before the url, the credentials and the prompt, because everything below costs
     // something. Here rather than in TriggerPostRequest so a contact that answers for itself
@@ -241,12 +239,6 @@ public class AiNpcHttpSystem extends ScriptableSystem {
       this.m_generation.Ask(),
       this.m_generation.SpeaksFirst());
 
-    // Retenu ici parce que c'est ici que la recette du tour existe. Une replique parlee n'en
-    // porte pas : la recette `spoken` laisse tomber le bloc, donc le modele n'a jamais entendu
-    // parler d'une commande, et la passe de reparation qui en cherche une derriere chaque
-    // reponse n'a rien a y chercher.
-    this.m_offersCommands = AiNpcRecipeHas(builder.Recipe(), "actions");
-
     // One send for both transports, and this lane is not told which one runs. Naming the CLI
     // type in one file limits the blast radius of a plugin that failed to load.
     this.m_chatSerial += 1;
@@ -277,6 +269,14 @@ public class AiNpcHttpSystem extends ScriptableSystem {
       return;
     }
     this.HandleChatReply(reply);
+  }
+
+  // The generation a streamed sentence belongs to. Null once the serial has moved on.
+  public func GenerationOf(serial: Int32) -> ref<AiNpcGeneration> {
+    if NotEquals(serial, this.m_chatSerial) {
+      return null;
+    }
+    return this.m_generation;
   }
 
   private func HandleChatReply(reply: ref<AiNpcReply>) -> Void {
@@ -401,7 +401,7 @@ public class AiNpcHttpSystem extends ScriptableSystem {
     // La ligne operateur est celle du mod, pas du personnage : elle reste ecrite, quel que
     // soit le canal de la generation qui a echoue.
     AiNpcChannelOf(AiNpcChannelId.Text).Deliver(contactId, text);
-    AiNpcAppendMessage(contactId, text, false, "", true);
+    AiNpcAppendMessage(contactId, text, false, "", true, AiNpcChannelId.Text);
   }
 
   // Single exit for every failed request: an early return that skips the typing indicator
@@ -490,6 +490,9 @@ public class AiNpcHttpSystem extends ScriptableSystem {
     // Un seul texte : nettoye une fois par le canal, puis livre, peint et classe. Le meme
     // nettoyage passe sur les phrases que le streaming remet a la voix -- voir
     // AiNpcStreamDeliver -- parce que n'en nettoyer qu'un prononcerait ce que l'autre a retire.
+    // La selection lit la replique d'avant le nettoyage : une didascalie comme *lui tend 500
+    // eddies* est precisement l'intention qu'elle cherche, et le canal vocal l'efface.
+    let written = processedText;
     let channel = AiNpcChannelOf(this.m_generation.Channel());
     processedText = channel.Clean(processedText, AiNpcResolveLanguage());
     channel.Deliver(contactId, processedText);
@@ -498,10 +501,10 @@ public class AiNpcHttpSystem extends ScriptableSystem {
     // pass builds quotes the reply itself, and a thread that already held it would show the
     // model the same line twice. The player is not waiting on any of it -- the message is on
     // screen, and what is at stake is whether a command fires behind it.
-    if !carrier && !authored && this.m_offersCommands {
+    if !carrier && !authored {
       let actions = AiNpcActionService.Get();
       if IsDefined(actions) {
-        actions.Examine(contactId, processedText);
+        actions.Examine(contactId, written, this.m_generation.Channel());
       }
     }
 
@@ -592,7 +595,7 @@ public class AiNpcHttpSystem extends ScriptableSystem {
     // Built before the claim, because the claim is made against the vocabulary this pass would
     // send: the builder is the one place that renders it, and the tag it aims at comes out of
     // the claim itself.
-    let builder = AiNpcPassRepair.Of(contactId);
+    let builder = AiNpcPassRepair.Of(contactId, this.m_generation.Channel());
     let provider = AiNpcProviderSetting();
     let tag = this.m_generation.Repair().Claim(text, candidates, builder.Instruction(),
       AiNpcRetryActionsEnabled(),

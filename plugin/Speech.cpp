@@ -2,7 +2,9 @@
 
 #include "Audio.hpp"
 #include "PocketVoice.hpp"
+#include "RadioFilter.hpp"
 #include "SapiVoice.hpp"
+#include "SettingsFile.hpp"
 #include "VoiceMake.hpp"
 
 #include <chrono>
@@ -57,6 +59,9 @@ struct Line
 
     // La vitesse de lecture que la fiche declare.
     float rate = 1.0f;
+
+    // La replique de V : de ce cote de la ligne, donc sans filtre radio.
+    bool player = false;
 };
 
 struct Worker
@@ -74,7 +79,7 @@ struct Worker
     // Purgee au fil de la lecture : une conversation entiere n'a pas a rester en memoire pour
     // qu'une phrase s'affiche.
     uint32_t nextLine = 1;
-    std::map<uint32_t, std::string> spoken;
+    std::map<uint32_t, Heard> spoken;
 
     std::string result = "nothing said yet";
     bool running = false;
@@ -171,8 +176,9 @@ std::string NeuralTier(const std::wstring& aPluginDirectory, const std::string& 
 // `aWhy` est la raison du repli, pas une erreur -- elle est journalisee telle quelle, parce que
 // « ca parle avec la voix de Windows » sans explication est la question qui coute le plus de
 // temps a quelqu'un qui vient d'installer le pack.
-bool RenderBest(const std::wstring& aPluginDirectory, const Line& aLine, std::vector<uint8_t>& aSamples,
-                Engine& aEngine, std::chrono::steady_clock::time_point& aFirstSound, std::string& aWhy)
+bool RenderBest(const std::wstring& aPluginDirectory, const Line& aLine, radio::Level aRadio,
+                std::vector<uint8_t>& aSamples, Engine& aEngine,
+                std::chrono::steady_clock::time_point& aFirstSound, std::string& aWhy)
 {
     // Le pack de clonage installe est ce qui autorise une reference, et sa premiere consequence
     // est ici : si ce personnage n'en a pas encore, on la fabrique maintenant, depuis les
@@ -200,7 +206,7 @@ bool RenderBest(const std::wstring& aPluginDirectory, const Line& aLine, std::ve
         // premier son en ~123 ms au lieu d'attendre la fin de la synthese. Elle ne rend donc
         // aucun tampon, et il n'y a rien a remettre au chemin audio apres elle.
         std::string neural;
-        if (voice::Render(aPluginDirectory, tier, aLine.text, false, rate, aFirstSound, neural))
+        if (voice::Render(aPluginDirectory, tier, aLine.text, false, rate, aRadio, aFirstSound, neural))
         {
             aEngine = Engine::Pocket;
             return true;
@@ -242,7 +248,7 @@ bool WarmVoice(const std::wstring& aPluginDirectory, const Line& aLine, std::str
     // un personnage pendant que son telephone sonne.
     std::string neural;
     std::chrono::steady_clock::time_point unheard{};
-    if (!voice::Render(aPluginDirectory, tier, "Oui.", true, rate, unheard, neural))
+    if (!voice::Render(aPluginDirectory, tier, "Oui.", true, rate, radio::Level::Off, unheard, neural))
     {
         aWhy = neural;
         return false;
@@ -297,8 +303,10 @@ void Run()
             continue;
         }
 
+        const radio::Level radio =
+            line.player ? radio::Level::Off : radio::LevelNamed(ReadHoloRadioFilter(pluginDirectory));
         std::chrono::steady_clock::time_point firstSound{};
-        if (!RenderBest(pluginDirectory, line, samples, engine, firstSound, why))
+        if (!RenderBest(pluginDirectory, line, radio, samples, engine, firstSound, why))
         {
             SetResult("no voice: " + why);
             continue;
@@ -320,6 +328,7 @@ void Run()
             }
             else
             {
+                radio::Filter(radio, sapi::SampleRate()).Process(samples.data(), samples.size());
                 // En file comme la voie neuronale : Play() couperait la phrase precedente.
                 status = audio::Open(SapiFormat());
                 if (status == audio::Status::Ok)
@@ -337,7 +346,8 @@ void Run()
         // l'accompagne, parce que la voix du personnage et celle de Windows ne se comparent pas.
         const auto sinceQueued = [&line](std::chrono::steady_clock::time_point aThen)
         { return std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(aThen - line.queuedAt).count()); };
-        SetResult(std::string(engine == Engine::Pocket ? "pocket" : "sapi") + " -- " +
+        SetResult(std::string(engine == Engine::Pocket ? "pocket" : "sapi") + ", radio " +
+                  radio::NameOf(radio) + " -- " +
                   std::string(audio::Describe(status)) + " -- line " + std::to_string(line.line) +
                   ": first sound " + sinceQueued(firstSound) + " ms after it was queued, " +
                   sinceQueued(started) + " of them behind the previous line; done after " +
@@ -369,11 +379,14 @@ uint16_t BitsPerSample()
     return sapi::BitsPerSample();
 }
 
-uint32_t Speak(const std::string& aUtf8Text, const std::string& aContactId,
-               const std::string& aVoiceFile, const std::string& aCatalogueVoice,
-               const std::string& aLanguage, float aRate)
+namespace
 {
-    if (aUtf8Text.empty())
+// Le nom de la replique de V dans le journal, la ou un personnage a son contact.
+constexpr const char* kPlayer = "V";
+
+uint32_t Enqueue(Line aLine)
+{
+    if (aLine.text.empty())
     {
         return 0;
     }
@@ -390,13 +403,13 @@ uint32_t Speak(const std::string& aUtf8Text, const std::string& aContactId,
         worker.thread = std::thread(&Run);
     }
 
-    const uint32_t line = worker.nextLine;
+    aLine.line = worker.nextLine;
+    aLine.queuedAt = std::chrono::steady_clock::now();
     worker.nextLine += 1;
-    worker.spoken[line] = aUtf8Text;
+    worker.spoken[aLine.line] = Heard{aLine.text, aLine.player};
 
-    worker.pending.push_back(
-        Line{aUtf8Text, aContactId, aVoiceFile, aCatalogueVoice, aLanguage, false, line,
-             std::chrono::steady_clock::now(), aRate});
+    const uint32_t line = aLine.line;
+    worker.pending.push_back(std::move(aLine));
     while (worker.pending.size() > kQueueLimit)
     {
         worker.spoken.erase(worker.pending.front().line);
@@ -404,6 +417,34 @@ uint32_t Speak(const std::string& aUtf8Text, const std::string& aContactId,
     }
     worker.wake.notify_one();
     return line;
+}
+} // namespace
+
+uint32_t Speak(const std::string& aUtf8Text, const std::string& aContactId,
+               const std::string& aVoiceFile, const std::string& aCatalogueVoice,
+               const std::string& aLanguage, float aRate)
+{
+    Line line;
+    line.text = aUtf8Text;
+    line.contactId = aContactId;
+    line.voiceFile = aVoiceFile;
+    line.catalogueVoice = aCatalogueVoice;
+    line.language = aLanguage;
+    line.rate = aRate;
+    return Enqueue(std::move(line));
+}
+
+uint32_t SpeakAsPlayer(const std::string& aUtf8Text, const std::string& aVoiceFile,
+                       const std::string& aCatalogueVoice, const std::string& aVoiceOverLocale)
+{
+    Line line;
+    line.text = aUtf8Text;
+    line.contactId = kPlayer;
+    line.voiceFile = aVoiceFile;
+    line.catalogueVoice = aCatalogueVoice;
+    line.language = aVoiceOverLocale;
+    line.player = true;
+    return Enqueue(std::move(line));
 }
 
 void Warm(const std::string& aContactId, const std::string& aVoiceFile,
@@ -457,6 +498,16 @@ std::string Prime(const std::string& aVoiceFile, const std::string& aCatalogueVo
 
 std::string Speaking()
 {
+    return Hearing().text;
+}
+
+bool SpeakingPlayer()
+{
+    return Hearing().player;
+}
+
+Heard Hearing()
+{
     const uint32_t line = audio::PlayingLine();
     if (line == 0)
     {
@@ -474,7 +525,7 @@ std::string Speaking()
     }
 
     const auto found = worker.spoken.find(line);
-    return found == worker.spoken.end() ? std::string{} : found->second;
+    return found == worker.spoken.end() ? Heard{} : found->second;
 }
 
 void Silence()

@@ -190,7 +190,7 @@ public class AiNpcTerminalChat extends AiNpcChatRenderer {
         if !IsDefined(this.m_session) {
             this.m_session = new AiNpcChatSession();
         }
-        this.m_session.Attach(this);
+        this.m_session.Attach(this, AiNpcChannelId.Text);
         let registry = AiNpcChatSessionRegistry.Get();
         if IsDefined(registry) {
             registry.Register(this.m_session);
@@ -597,6 +597,7 @@ public class AiNpcTerminalChat extends AiNpcChatRenderer {
                         - AiNpcTerminalStyle.ButtonWidth(),
                     AiNpcTerminalStyle.NavY(), AiNpcTerminalStyle.ButtonWidth(),
                     n"OnAiNpcTerminalBack", -1);
+        this.BuildChoices(root);
 
         this.ScrollShell(root, AiNpcTerminalStyle.PageHeight()
                                - AiNpcTerminalStyle.HeaderHeight()
@@ -609,6 +610,22 @@ public class AiNpcTerminalChat extends AiNpcChatRenderer {
         // Not scrolled here: the tree is not laid out yet.
         this.m_pendingScroll = true;
         return root;
+    }
+
+    // The thread's own choices, one button each, leftward from Back.
+    private func BuildChoices(root: ref<inkCanvas>) -> Void {
+        let choices = AiNpcThreadChoicesFor(this.m_contactId);
+        let width: Float = AiNpcTerminalStyle.ButtonWidth();
+        let gap: Float = 24.0;
+        let back: Float = AiNpcTerminalStyle.PageWidth() - AiNpcTerminalStyle.SideMargin() - width;
+        let count = ArraySize(choices);
+        let i = 0;
+        while i < count {
+            this.Button(root, choices[i].label, AiNpcTerminalStyle.ColDim(),
+                        back - Cast<Float>(i + 1) * (width + gap), AiNpcTerminalStyle.NavY(),
+                        width, n"OnAiNpcTerminalChoice", i);
+            i += 1;
+        }
     }
 
     private func BuildFooter(root: ref<inkCanvas>) -> Void {
@@ -932,6 +949,25 @@ public class AiNpcTerminalChat extends AiNpcChatRenderer {
         }
         evt.Consume();
         this.Navigate(AiNpcTerminalAddressHome());
+        return true;
+    }
+
+    // A contact the choice made unreachable sends the page back to the list.
+    protected cb func OnAiNpcTerminalChoice(evt: ref<inkPointerEvent>) -> Bool {
+        if !evt.IsAction(n"click") {
+            return false;
+        }
+        evt.Consume();
+
+        let controller = evt.GetCurrentTarget().GetController() as AiNpcTerminalRowController;
+        if !IsDefined(controller) || !AiNpcThreadChoose(this.m_contactId, controller.index) {
+            return false;
+        }
+        if AiNpcIsContactSupported(this.m_contactId) {
+            this.Navigate(AiNpcTerminalAddressChat());
+        } else {
+            this.Navigate(AiNpcTerminalAddressHome());
+        }
         return true;
     }
 

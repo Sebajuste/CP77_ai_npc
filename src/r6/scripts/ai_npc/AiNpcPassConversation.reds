@@ -10,6 +10,8 @@ module AiNpc
 
 class AiNpcPassConversation extends AiNpcPassBuilder {
     let contactId: String;
+    // Set by each constructor: the written pass is Text, the spoken one Call.
+    let channel: AiNpcChannelId;
     // Already taken from the pending store by the lane. Consuming is an act, and a builder
     // performs none.
     let pendingContext: String;
@@ -21,6 +23,7 @@ class AiNpcPassConversation extends AiNpcPassBuilder {
                    speaksFirst: Bool) -> ref<AiNpcPassConversation> {
         let self = new AiNpcPassConversation();
         self.contactId = contactId;
+        self.channel = AiNpcChannelId.Text;
         self.pendingContext = pendingContext;
         self.intent = intent;
         self.ask = ask;
@@ -34,17 +37,16 @@ class AiNpcPassConversation extends AiNpcPassBuilder {
 
     func Instruction() -> String {
         return AiNpcBuildSystemPromptWith(this.contactId, this.pendingContext, this.intent,
-            this.Recipe(), this.Pass());
+            this.Recipe(), this.channel);
     }
 
     // The one place the choice is made. Measured 2026-08-23: a reason placed in <now> is an
     // afterthought in half the replies and dropped in the other half; in V's slot it is the
     // subject every time.
     func Ask() -> String {
-        let channel = AiNpcChannelOfPass(this.Pass());
         if this.speaksFirst {
-            return AiNpcBuildUnpromptedTranscript(this.contactId, this.ask, channel);
+            return AiNpcBuildUnpromptedTranscript(this.contactId, this.ask, this.channel);
         }
-        return AiNpcBuildTranscript(this.contactId, this.ask, channel);
+        return AiNpcBuildTranscript(this.contactId, this.ask, this.channel);
     }
 }

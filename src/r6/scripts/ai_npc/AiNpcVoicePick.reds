@@ -10,6 +10,15 @@
 
 module AiNpc
 
+// Ce que la DLL recoit pour une replique, lu une seule fois sur le personnage.
+class AiNpcVoiceChoice {
+    // Le fichier de reference, dans r6\storages\AiNpc\voices\.
+    public let file: String;
+    // La voix de catalogue, ou "".
+    public let fallback: String;
+    public let rate: Float = 1.0;
+}
+
 // La voix que le provider declare, quel qu'il soit -- fiche ou script d'un autre mod. Null est
 // « sans avis » : la fiche livree repond alors, et c'est aussi elle qui repond quand le registre
 // n'existe pas encore, pour qu'un appel tres tot dise quelque chose de juste plutot que rien.
@@ -31,37 +40,56 @@ func AiNpcVoiceOf(contactId: String) -> ref<AiNpcVoiceDef> {
     return null;
 }
 
-// Le fichier de reference, dans r6\storages\AiNpc\voices\. Par defaut `<contactId>.wav`, qui
-// est ce que la recette d'extraction produit.
-func AiNpcVoiceFileFor(contactId: String) -> String {
+// Sans clone declare, `<contactId>.wav`, qui est ce que la recette d'extraction produit. La
+// vitesse est bornee ici et nulle part ailleurs : au-dela de quatre demi-tons une voix derivee
+// ne ressemble plus a une personne.
+func AiNpcVoiceChoiceFor(contactId: String) -> ref<AiNpcVoiceChoice> {
+    let choice = new AiNpcVoiceChoice();
     if Equals(StrLen(contactId), 0) {
-        return "";
+        return choice;
     }
-    let voice = AiNpcVoiceOf(contactId);
-    if IsDefined(voice) && NotEquals(StrLen(voice.clone), 0) {
-        return voice.clone;
-    }
-    return contactId + ".wav";
-}
-
-// La vitesse de lecture, bornee ici et nulle part ailleurs : au-dela de quatre demi-tons une
-// voix derivee ne ressemble plus a une personne.
-func AiNpcVoiceRateFor(contactId: String) -> Float {
-    let voice = AiNpcVoiceOf(contactId);
-    if !IsDefined(voice) {
-        return 1.0;
-    }
-    return ClampF(voice.rate, 0.8, 1.25);
-}
-
-// La voix de catalogue de ce personnage, ou "" s'il n'en declare aucune.
-func AiNpcVoiceFallbackFor(contactId: String) -> String {
-    if Equals(StrLen(contactId), 0) {
-        return "";
-    }
+    choice.file = contactId + ".wav";
     let voice = AiNpcVoiceOf(contactId);
     if IsDefined(voice) {
-        return voice.fallback;
+        if NotEquals(StrLen(voice.clone), 0) {
+            choice.file = AiNpcDerivedVoiceFile(voice.clone, voice.shift);
+            AiNpcAnnounceVoiceLines(voice);
+        }
+        choice.fallback = voice.fallback;
+        choice.rate = ClampF(voice.rate, 0.8, 1.25);
     }
-    return "";
+    return choice;
+}
+
+// `<clone>-x<shift>.wav`, the name the DLL reads the derivation back from. A clone at 1 keeps
+// its own name, so a reference the player dropped in is still the one read.
+func AiNpcDerivedVoiceFile(clone: String, shift: Float) -> String {
+    let hundredths = Cast<Int32>(ClampF(shift, 0.85, 1.15) * 100.0 + 0.5);
+    if hundredths == 100 {
+        return clone;
+    }
+    let stem = AiNpcVoiceStem(clone);
+    let fraction = hundredths % 100;
+    let digits = fraction < 10 ? s"0\(fraction)" : s"\(fraction)";
+    return s"\(stem)-x\(hundredths / 100).\(digits).wav";
+}
+
+// Les repliques qu'un personnage d'un autre mod donne a couper, poussees vers la DLL avant
+// qu'elle en ait besoin. Rien a faire pour le casting livre : la recette nomme deja les siennes.
+//
+// A chaque replique, parce que ce fichier n'a pas de memoire et qu'un systeme entier pour en
+// avoir une couterait plus que l'appel. La DLL ne retient que les changements.
+func AiNpcAnnounceVoiceLines(voice: ref<AiNpcVoiceDef>) -> Void {
+    let lines = voice.cloneLines;
+    if ArraySize(lines) > 0 {
+        AiNpcAudio.DeclareVoice(AiNpcVoiceStem(voice.clone), lines);
+    }
+}
+
+// Le nom sous lequel la DLL cherche une voix : le fichier de reference sans son extension.
+func AiNpcVoiceStem(clone: String) -> String {
+    if StrEndsWith(clone, ".wav") {
+        return StrLeft(clone, StrLen(clone) - 4);
+    }
+    return clone;
 }

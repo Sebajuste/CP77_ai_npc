@@ -111,16 +111,14 @@ class Builder(object):
     def env(self):
         return Env(values=_Locals(self), calls={
             "AiNpcSection": self._section,
-            "AiNpcGetSystemRules": lambda _c: self.sections.system_rules(),
+            "AiNpcGetSystemRules": lambda _c, _ctx: self.sections.system_rules(),
             "AiNpcGetConversationTypePrompt": lambda _c: self.sections.tone_prompt(),
             "AiNpcRenderCharacter": lambda _c, _r, spoken: self._character(spoken),
-            # Le canal se deduit de la passe, comme dans les sources : une seule correspondance.
-            "AiNpcChannelOfPass": lambda p: "Call" if p == "holo" else "Text",
             "AiNpcChannelPromptFor": self.sections.channel_prompt,
             "Equals": lambda left, right: left == right,
             "AiNpcRenderTarget": lambda _c, _r: self._target(),
             "AiNpcGetRelationship": lambda _c: self.sections.relationship(),
-            "AiNpcRenderInteractions": lambda _c, _r: self._interactions(),
+            "AiNpcRenderInteractions": lambda _c, _r, _ctx: self._interactions(),
             "AiNpcGetWorldBackground": lambda _c: self.sections.world_background(),
             "AiNpcBuildActionTable": lambda _c: None,
             "AiNpcRenderActionBlock": lambda _ctx, _table: self.sections.action_block(),
@@ -250,11 +248,10 @@ class Builder(object):
         # which is why it shows up here at all.
         if name == "live":
             return self.sections.live_context()
-        # La passe, dont le canal se deduit. Une fixture decrit une conversation ecrite sauf
-        # quand elle dit le contraire : c'est ce que le mod fait, et ce qu'un fixture ancien doit
-        # continuer de rendre.
-        if name == "pass":
-            return self.fixture.get("pass", "speaking")
+        # Le canal du constructeur de passe, qui va avec la passe de la fixture comme
+        # AiNpcPassBuilderFor les apparie. Une fixture sans passe decrit une conversation ecrite.
+        if name == "channel":
+            return "Call" if self.fixture.get("pass", "speaking") == "holo" else "Text"
         # L'enum du canal, reduit a ce que le prompt en lit. Les deux membres portent leur propre
         # nom : rien ici n'a besoin d'un entier, et une chaine se compare et se lit dans une
         # trace.

@@ -45,6 +45,7 @@
 #include "Speech.hpp"
 #include "Stream.hpp"
 #include "Transport.hpp"
+#include "VoiceLines.hpp"
 
 #include <atomic>
 #include <cstdio>
@@ -676,6 +677,78 @@ void SpeakImpl(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, RED4ext::CSt
     }
 }
 
+// Les repliques qu'un mod donne a couper pour une voix vanilla qu'ai_npc ne connait pas.
+//
+// Appelee a chaque replique, parce que le script qui lit la voix du personnage n'a pas de
+// memoire : la declaration est idempotente, et seule la premiere laisse une trace.
+//
+// Le mod nomme ses repliques parce que rien d'autre ne le peut : une archive ne porte que des
+// hachages de chemin, donc « toutes les repliques de Fingers » n'est pas une question qu'on
+// puisse poser ici. Elles sont choisies hors ligne, par toolsoice-extract.
+void DeclareVoiceImpl(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, void*, int64_t)
+{
+    RED4ext::CString voiceName;
+    RED4ext::DynArray<RED4ext::CString> lines;
+    RED4ext::GetParameter(aFrame, &voiceName);
+    RED4ext::GetParameter(aFrame, &lines);
+    ++aFrame->code; // skip ParamEnd
+
+    std::vector<std::string> names;
+    names.reserve(lines.size());
+    for (uint32_t i = 0; i < lines.size(); ++i)
+    {
+        names.emplace_back(lines[i].c_str());
+    }
+    if (!voicelines::Declare(voiceName.c_str(), names))
+    {
+        return;
+    }
+
+    char message[200];
+    std::snprintf(message, sizeof(message), "voice: %s declared with %u line(s)", voiceName.c_str(),
+                  static_cast<unsigned>(names.size()));
+    Log(message);
+}
+
+// V's typed line, in V's voice: the same queue as the character's lines, never radio-filtered.
+void SpeakAsPlayerImpl(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, RED4ext::CString* aOut, int64_t)
+{
+    RED4ext::CString text;
+    RED4ext::CString voiceFile;
+    RED4ext::CString catalogueVoice;
+    RED4ext::CString voiceOverLocale;
+    RED4ext::GetParameter(aFrame, &text);
+    RED4ext::GetParameter(aFrame, &voiceFile);
+    RED4ext::GetParameter(aFrame, &catalogueVoice);
+    RED4ext::GetParameter(aFrame, &voiceOverLocale);
+    ++aFrame->code; // skip ParamEnd
+
+    const uint32_t line = speech::SpeakAsPlayer(text.c_str(), voiceFile.c_str(), catalogueVoice.c_str(),
+                                                voiceOverLocale.c_str());
+    const std::string answer =
+        line != 0 ? ("queued line " + std::to_string(line) + " as V; previous: " + speech::LastResult())
+                  : std::string("nothing to say");
+
+    char message[400];
+    std::snprintf(message, sizeof(message), "speak: %s", answer.c_str());
+    Log(message);
+
+    if (aOut)
+    {
+        *aOut = RED4ext::CString(message);
+    }
+}
+
+void SpeakingPlayerImpl(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, bool* aOut, int64_t)
+{
+    ++aFrame->code; // skip ParamEnd
+
+    if (aOut)
+    {
+        *aOut = speech::SpeakingPlayer();
+    }
+}
+
 // Prepares a character's voice without saying anything, and returns at once.
 //
 // Called when a call starts ringing. What it buys is the seven seconds a first line would
@@ -889,6 +962,31 @@ void PostRegisterTypes()
     speak->AddParam("Float", "rate");
     speak->SetReturnType("String");
     audioClass->RegisterFunction(speak);
+
+    auto* speakAsPlayer = RED4ext::CClassStaticFunction::Create(audioClass, "SpeakAsPlayer", "SpeakAsPlayer",
+                                                               &SpeakAsPlayerImpl);
+    speakAsPlayer->flags = {.isNative = true, .isStatic = true, .isPublic = true};
+    speakAsPlayer->AddParam("String", "text");
+    speakAsPlayer->AddParam("String", "voiceFile");
+    speakAsPlayer->AddParam("String", "catalogueVoice");
+    speakAsPlayer->AddParam("String", "voiceOverLocale");
+    speakAsPlayer->SetReturnType("String");
+    audioClass->RegisterFunction(speakAsPlayer);
+
+    auto* speakingPlayer = RED4ext::CClassStaticFunction::Create(audioClass, "SpeakingPlayer", "SpeakingPlayer",
+                                                                &SpeakingPlayerImpl);
+    speakingPlayer->flags = {.isNative = true, .isStatic = true, .isPublic = true};
+    speakingPlayer->SetReturnType("Bool");
+    audioClass->RegisterFunction(speakingPlayer);
+
+    auto* declareVoice = RED4ext::CClassStaticFunction::Create(audioClass, "DeclareVoice", "DeclareVoice",
+                                                               &DeclareVoiceImpl);
+    declareVoice->flags = {.isNative = true, .isStatic = true, .isPublic = true};
+    // Le nom de reference sans extension : c'est sous lui que la voix sera cherchee.
+    declareVoice->AddParam("String", "voiceName");
+    // Les noms de fichiers de doublage, sans dossier, identiques d'une langue a l'autre.
+    declareVoice->AddParam("array:String", "lines");
+    audioClass->RegisterFunction(declareVoice);
 
     Log("AiNpc.AiNpcAudio registered.");
 }

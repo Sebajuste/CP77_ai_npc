@@ -16,6 +16,8 @@ module AiNpc
 
 class AiNpcPassCommands extends AiNpcPassBuilder {
     let contactId: String;
+    // The channel of the reply these commands are read from.
+    let channel: AiNpcChannelId;
 
     private let m_vocabulary: String;
     private let m_rendered: Bool;
@@ -25,11 +27,12 @@ class AiNpcPassCommands extends AiNpcPassBuilder {
     func Instruction() -> String {
         if !this.m_rendered {
             let recipe = this.Recipe();
-            let vocabulary = AiNpcActionVocabularyFor(this.contactId, recipe);
+            let ctx = AiNpcBuildContactContext(this.contactId, "", this.channel);
+            let vocabulary = AiNpcActionVocabularyFor(this.contactId, recipe, ctx);
             // No vocabulary, no instruction: Ready() reads this, and a conduct rubric with no
             // commands under it would send a request about nothing.
             if NotEquals(StrLen(vocabulary), 0) {
-                this.m_vocabulary = AiNpcRenderInteractions(this.contactId, recipe) + vocabulary;
+                this.m_vocabulary = AiNpcRenderInteractions(this.contactId, recipe, ctx) + vocabulary;
             }
             this.m_rendered = true;
         }
@@ -50,9 +53,10 @@ class AiNpcPassCommands extends AiNpcPassBuilder {
 class AiNpcPassRepair extends AiNpcPassCommands {
     let tag: String;
 
-    static func Of(contactId: String) -> ref<AiNpcPassRepair> {
+    static func Of(contactId: String, channel: AiNpcChannelId) -> ref<AiNpcPassRepair> {
         let self = new AiNpcPassRepair();
         self.contactId = contactId;
+        self.channel = channel;
         return self;
     }
 
@@ -77,9 +81,10 @@ class AiNpcPassActions extends AiNpcPassCommands {
     let reply: String;
 
     static func Of(contactId: String, npcName: String, transcript: String,
-                   reply: String) -> ref<AiNpcPassActions> {
+                   reply: String, channel: AiNpcChannelId) -> ref<AiNpcPassActions> {
         let self = new AiNpcPassActions();
         self.contactId = contactId;
+        self.channel = channel;
         self.npcName = npcName;
         self.transcript = transcript;
         self.reply = reply;

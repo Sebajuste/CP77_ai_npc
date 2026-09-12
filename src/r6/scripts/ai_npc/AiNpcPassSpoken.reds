@@ -26,6 +26,7 @@ class AiNpcPassSpoken extends AiNpcPassConversation {
                        speaksFirst: Bool) -> ref<AiNpcPassSpoken> {
         let self = new AiNpcPassSpoken();
         self.contactId = contactId;
+        self.channel = AiNpcChannelId.Call;
         self.pendingContext = pendingContext;
         self.intent = intent;
         self.ask = ask;

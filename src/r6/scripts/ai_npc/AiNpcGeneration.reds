@@ -67,7 +67,7 @@ public class AiNpcGeneration {
 
     // V wrote something and the character is answering it.
     public static func ForPlayer(contactId: String, playerLine: String,
-                                opt channel: AiNpcChannelId) -> ref<AiNpcGeneration> {
+                                channel: AiNpcChannelId) -> ref<AiNpcGeneration> {
         let self = AiNpcGeneration.Addressed(contactId);
         self.m_ask = playerLine;
         self.m_channel = channel;
@@ -76,8 +76,9 @@ public class AiNpcGeneration {
 
     // A mod stated a reason and the character is writing first.
     public static func ForMod(contactId: String, modId: String, reason: String, ticket: Int32,
-                              opt intent: String) -> ref<AiNpcGeneration> {
+                              intent: String, channel: AiNpcChannelId) -> ref<AiNpcGeneration> {
         let self = AiNpcGeneration.Addressed(contactId);
+        self.m_channel = channel;
         self.m_askedBy = modId;
         self.m_ask = reason;
         self.m_ticket = ticket;

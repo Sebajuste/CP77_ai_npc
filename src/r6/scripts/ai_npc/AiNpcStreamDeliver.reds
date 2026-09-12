@@ -41,8 +41,15 @@ public func AiNpcStreamDeliver(requestId: Int32, text: String, isFinal: Bool) ->
 
     AiNpcLog(s"Stream: request \(requestId) delivered '\(text)'.");
 
+    let lane = GetAiNpcHttpSystem();
+    let generation = IsDefined(lane) ? lane.GenerationOf(AiNpcCliSerialOf(requestId)) : null;
+    if !IsDefined(generation) {
+        AiNpcLog(s"Stream: request \(requestId) is no longer the generation in flight; not spoken.");
+        return;
+    }
+
     let call = AiNpcCallSystem.Get();
     if IsDefined(call) {
-        call.SpeakStreamed(text);
+        call.SpeakStreamed(generation.Contact(), generation.Channel(), text);
     }
 }

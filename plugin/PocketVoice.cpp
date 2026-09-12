@@ -4,6 +4,7 @@
 #include "PocketVoice.hpp"
 
 #include "Audio.hpp"
+#include "SpeakableText.hpp"
 
 #include <atomic>
 #include <cmath>
@@ -226,7 +227,7 @@ void CancelCurrent()
 }
 
 bool Render(const std::wstring& aPluginDirectory, const std::string& aVoiceFile,
-            const std::string& aUtf8Text, bool aSilent, float aRate,
+            const std::string& aUtf8Text, bool aSilent, float aRate, radio::Level aRadio,
             std::chrono::steady_clock::time_point& aFirstSound, std::string& aWhy)
 {
     TheCancel().store(false);
@@ -260,7 +261,7 @@ bool Render(const std::wstring& aPluginDirectory, const std::string& aVoiceFile,
     // Le moteur ouvre un fil pour produire ses morceaux ; on les consomme jusqu'a epuisement,
     // donc du point de vue de l'appelant ceci est bloquant, comme SAPI l'etait. Ce qui a change
     // est que le SON, lui, commence des le premier morceau.
-    void* stream = ptt_stream_start(handle, aUtf8Text.c_str(), aVoiceFile.c_str());
+    void* stream = ptt_stream_start(handle, Speakable(aUtf8Text).c_str(), aVoiceFile.c_str());
     if (stream == nullptr)
     {
         aWhy = "the voice could not be started";
@@ -284,6 +285,7 @@ bool Render(const std::wstring& aPluginDirectory, const std::string& aVoiceFile,
         opened = true;
     }
 
+    radio::Filter filter(aRadio, kSampleRate);
     std::vector<uint8_t> pcm;
     size_t total = 0;
     float* chunk = nullptr;
@@ -294,6 +296,7 @@ bool Render(const std::wstring& aPluginDirectory, const std::string& aVoiceFile,
         pcm.clear();
         AppendPcm(chunk, count, pcm);
         ptt_free_audio(chunk);
+        filter.Process(pcm.data(), pcm.size());
         const bool first = total == 0;
         total += pcm.size();
         if (opened && !pcm.empty())

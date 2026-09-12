@@ -76,6 +76,9 @@ func AiNpcFirstActionTag(text: String) -> String {
 //
 // "[ACTION:TRICK:JIGJIG:2300]" yields ["TRICK", "JIGJIG", "2300"]. The first segment is the
 // verb; a declaration decides what the rest mean.
+//
+// An empty segment is kept: "[ACTION:TRICK::2300]" yields ["TRICK", "", "2300"]. StrSplit drops
+// empties unless told otherwise, which shifts every field after the hole one slot to the left.
 func AiNpcActionTagSegments(tag: String) -> array<String> {
     let empty: array<String>;
     if !AiNpcActionTagIsWellFormed(tag) {
@@ -84,5 +87,5 @@ func AiNpcActionTagSegments(tag: String) -> array<String> {
 
     let open = AiNpcActionTagOpen();
     let body = StrLeft(StrRight(tag, StrLen(tag) - StrLen(open)), StrLen(tag) - StrLen(open) - 1);
-    return StrSplit(body, ":");
+    return StrSplit(body, ":", true);
 }

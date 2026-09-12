@@ -58,7 +58,7 @@ internal static class RecipeExtractor
 
             var clip = ClipBuilder.Assemble(lines, settings);
             var file = Path.Combine(options.Out, voice.Voice + ".wav");
-            WavWriter.Write(file, clip, voice.Shift ?? 1.0);
+            WavWriter.Write(file, clip);
             Console.WriteLine($"{voice.Voice} : {clip.Seconds:F1} s, {lines.Count} repliques, "
                               + $"RMS {clip.Rms:F3}");
 

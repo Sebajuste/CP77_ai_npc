@@ -81,6 +81,17 @@ func AiNpcCallConnects(from: AiNpcCallState, to: AiNpcCallState) -> Bool {
     return Equals(to, AiNpcCallState.Connected) && AiNpcCallMayGo(from, to);
 }
 
+// Si une réplique générée se dit sur cet appel. Le lane de parole est partagé : pendant un appel,
+// un autre contact peut écrire un SMS, et sa réplique arrive par la même voie que celle de
+// l'appel. Mesuré le 2026-09-11 : le premier message d'un anonyme de joytoys, dit par Viktor.
+func AiNpcCallHears(state: AiNpcCallState, callContact: String, replyContact: String,
+                    replyChannel: AiNpcChannelId) -> Bool {
+    return Equals(state, AiNpcCallState.Connected)
+        && Equals(replyChannel, AiNpcChannelId.Call)
+        && NotEquals(StrLen(callContact), 0)
+        && Equals(replyContact, callContact);
+}
+
 // Qui a placé l'appel. Le jeu place les siens avec leur scène ; le mod n'y greffe que la parole.
 enum AiNpcCallOrigin {
     Ours = 0,

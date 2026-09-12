@@ -74,9 +74,10 @@ func AiNpcBuildContactData(provider: ref<AiNpcContactProvider>, isText: Bool) ->
     data.localizedName = provider.GetDisplayName();
     data.avatarID = provider.GetPhoneAvatarId();
 
-    // Not callable: this mod gives the contact a text conversation, not a voice line, and a
-    // row that offers a call the game cannot place is worse than no row.
-    data.isCallable = false;
+    // The mod's own conversation: its chat opens from this row on both tabs, and F places the
+    // call, as on any contact the mod drives.
+    data.ainpcThread = true;
+    data.isCallable = true;
     data.questRelated = false;
     data.playerIsLastSender = false;
 
@@ -184,10 +185,21 @@ public func AiNpcApplyPhoneContacts(contacts: array<ref<IScriptable>>, isText: B
 
 /// Hooks ///
 
-// The contacts list.
+// The contacts list: the pass above, then the rows of every contact the mod carries told to
+// offer F and the messages key.
+//
+// THE SECOND PASS LIVES HERE FOR THE REASON THE FILE EXISTS, and it was measured the hard way on
+// 2026-09-12. A framework inserts its contacts AFTER its own wrappedMethod returns
+// (PhoneExtension.Overrides.reds:47), so a wrapper of ours running inside theirs walks an array
+// their rows are not in yet: Mira's row never got isCallable, and the game hides the call hint
+// on a row that says false (phoneDialerContact.script:128). F still worked, which is what makes
+// the defect so quiet -- CallContact is answered by the mod before the vanilla check reads the
+// field, so the gesture and its hint disagreed.
 @wrapMethod(JournalManager)
 public final func GetContactDataArray(includeUnknown: Bool, includeNonCallable: Bool) -> array<ref<IScriptable>> {
-    return AiNpcApplyPhoneContacts(wrappedMethod(includeUnknown, includeNonCallable), false);
+    let rows = AiNpcApplyPhoneContacts(wrappedMethod(includeUnknown, includeNonCallable), false);
+    AiNpcGraftContactRows(rows);
+    return rows;
 }
 
 // The messages list. Same pass, and the reason it is not skipped: a contact repaired in one

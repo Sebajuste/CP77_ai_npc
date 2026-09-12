@@ -87,6 +87,23 @@ std::string Prime(const std::string& aVoiceFile, const std::string& aCatalogueVo
 // numero pour que l'appelant n'ait aucune comptabilite a tenir : il affiche ce qu'on lui donne.
 std::string Speaking();
 
+// La replique de V, dite de sa voix. Meme file que celles du personnage, donc dite avant la
+// reponse qu'elle precede ; jamais passee au filtre radio, parce que V n'est pas au bout du fil.
+uint32_t SpeakAsPlayer(const std::string& aUtf8Text, const std::string& aVoiceFile,
+                       const std::string& aCatalogueVoice, const std::string& aVoiceOverLocale);
+
+// La replique entendue est-elle celle de V. Faux quand rien ne joue.
+bool SpeakingPlayer();
+
+// Ce qu'on entend et qui le dit, lus ensemble : entre Speaking() et SpeakingPlayer(), la
+// replique peut changer.
+struct Heard
+{
+    std::string text;
+    bool player = false;
+};
+Heard Hearing();
+
 // Le silence, tout de suite : ce qui joue s'arrete, ce qui attendait est jete, et la replique
 // en cours de synthese est abandonnee.
 //

@@ -38,12 +38,3 @@ func AiNpcChannelPromptFor(channel: AiNpcChannelId) -> String {
     }
     return "You and V are texting. Emoji and other pictographs cannot be displayed; typed smileys like :) ;) :/ xD are fine.";
 }
-
-// Le canal d'une passe. Une seule correspondance, ici, pour que le constructeur de prompt n'ait
-// à connaître que sa propre passe.
-func AiNpcChannelOfPass(pass: String) -> AiNpcChannelId {
-    if Equals(pass, AiNpcLaneHolo()) {
-        return AiNpcChannelId.Call;
-    }
-    return AiNpcChannelId.Text;
-}

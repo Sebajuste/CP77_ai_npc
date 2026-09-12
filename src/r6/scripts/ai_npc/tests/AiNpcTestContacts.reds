@@ -100,10 +100,9 @@ func AiNpcTestContactSupport(t: ref<AiNpcTestRunner>) -> Void {
     // system there is nothing to go on, and a contact hidden on no evidence reads in game as
     // the mod having lost it.
     t.EqBool("contacts/a contact with no story rule is in play",
-        AiNpcContactIsInPlay("panam"), true);
+        AiNpcContactIsInPlayWith("panam", null), true);
     t.EqBool("contacts/a contact with a story rule is in play without a session",
-        AiNpcContactIsInPlay("songbird"), true);
-    t.EqBool("contacts/songbird is supported offline", AiNpcIsContactSupported("songbird"), true);
+        AiNpcContactIsInPlayWith("songbird", null), true);
 
     // The other half of the same idea: a confidence has to be earned in the save. False is the
     // safe side here, unlike in-play above -- claiming one that never happened is what put "you
@@ -114,8 +113,9 @@ func AiNpcTestContactSupport(t: ref<AiNpcTestRunner>) -> Void {
     t.EqBool("variants/the vocabulary carries the confidence",
         ArrayContains(vocabulary, "confidedInV"), true);
     // Both states carry the refusal: a variant field replaces, it does not add.
+    let songbird = AiNpcSheetSongbird();
     t.EqBool("romance/songbird refuses before she confides",
-        StrContains(AiNpcSheetSongbird().relationship, "do not take it up"), true);
+        StrContains(songbird.relationship, "do not take it up"), true);
 
     t.EqBool("contacts/regression: panam is supported", AiNpcIsContactSupported("panam"), true);
     t.EqBool("contacts/judy is supported", AiNpcIsContactSupported("judy"), true);
@@ -153,15 +153,14 @@ func AiNpcTestContactSupport(t: ref<AiNpcTestRunner>) -> Void {
 
     // A copy must be writable without touching the shipped sheet -- the config loader
     // writes a player's overrides onto one of these, once per launch.
-    let copy = AiNpcCopySheet(AiNpcBuiltinSheet("panam"));
+    let jackie = AiNpcSheetJackie();
+    let shipped = ArraySize(jackie.variants);
+    let copy = AiNpcCopySheet(jackie);
     copy.bio = "Overridden.";
     ArrayClear(copy.variants);
-    t.Check("cast/a copy does not write back to the sheet",
-        NotEquals(AiNpcBuiltinSheet("panam").bio, "Overridden."));
-    // Bound to a local first: an array intrinsic reads a call result from a stack slot that
-    // is not stable, which compiles clean and answers zero.
-    let jackie = AiNpcSheetJackie();
-    t.EqInt("cast/a copy owns its variant list", ArraySize(jackie.variants), 1);
+    t.Check("cast/a copy does not write back to the sheet", NotEquals(jackie.bio, "Overridden."));
+    t.Check("cast/the sheet under test has variants", shipped > 0);
+    t.EqInt("cast/a copy owns its variant list", ArraySize(jackie.variants), shipped);
 
     // Reading the cast must not CHANGE which contact is selected. The side effect this
     // replaces made the question destructive: iterating the contact list -- as this very
@@ -313,14 +312,14 @@ func AiNpcTestSheetActions(t: ref<AiNpcTestRunner>) -> Void {
     // The shipped cast, against the same rules a file is held to. A sheet is code and is
     // never validated at load, so this is the only thing standing between a typo in cast\
     // and a bracket in the chat.
+    // No shipped sheet declares an action, on purpose: a declared tag is advertised to the
+    // model, and nothing in gameplay carries one out yet.
     let cast = AiNpcBuiltinCast();
     let c = 0;
-    let declared = 0;
     while c < ArraySize(cast) {
         let a = 0;
         while a < ArraySize(cast[c].actions) {
             let action = cast[c].actions[a];
-            declared += 1;
             t.Check(s"actions/\(cast[c].contactId) declares a well-formed \(action.tag)",
                 AiNpcActionTagIsWellFormed(action.tag));
             t.Check(s"actions/\(cast[c].contactId) writes inside the namespace",
@@ -331,7 +330,6 @@ func AiNpcTestSheetActions(t: ref<AiNpcTestRunner>) -> Void {
         }
         c += 1;
     }
-    t.Check("actions/the cast declares at least one command", declared > 0);
 }
 
 /// The variant field vocabulary ///

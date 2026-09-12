@@ -36,6 +36,21 @@ Le cache pese 130 Mo et ne se refait pas ; les extraits pesent 14 Mo au total.
 Le joueur copie ensuite `dist\voices\` vers `<jeu>\r6\storages\AiNpc\voices\` **lui-meme**.
 L'outil ne le fait pas et ne le fera pas.
 
+## Une voix pour un autre mod
+
+Un mod qui donne la parole a un personnage vanilla qu'ai_npc ne livre pas ne peut pas entrer
+dans la recette : elle ne porte que le casting du mod. Il declare ses repliques lui-meme, par
+leur nom de fichier, dans `AiNpcVoiceDef.cloneLines` -- et c'est ici qu'on obtient la liste :
+
+```
+powershell -File toolsoice-extractoice-extract.ps1 -Pattern "^fingers_" -Exclude "_vs_" fingers
+```
+
+Un nom hors du casting est accepte des lors qu'un motif dit ou chercher. L'outil ecrit l'extrait
+comme pour les autres -- c'est lui qu'on ecoute -- et imprime les repliques retenues, dans
+l'ordre, pretes a coller. Rien n'entre dans `voices-recipe.json` : une selection restreinte a la
+main n'y entre jamais.
+
 ## La recette : refaire les extraits sans WolvenKit
 
 Une passe normale ecrit, en plus des `.wav`, un `voices-recipe.json` dans `toolsoice-extract\`.

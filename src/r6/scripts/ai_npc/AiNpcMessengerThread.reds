@@ -36,13 +36,20 @@ func AiNpcThreadRowFor(journal: ref<JournalManager>, contactHash: Int32) -> ref<
     if !AiNpcIsContactSupported(contactId) {
         return null;
     }
+    return AiNpcThreadRowOf(contactId, entry.GetLocalizedName(journal), entry.GetAvatarID(journal),
+                            contactHash);
+}
 
+// Notre conversation en tant que ligne. Le journal du jeu n'entre pas ici : un contact livré par
+// un autre mod n'y a pas d'entrée, et sa conversation se dessine comme celle d'un contact du jeu.
+func AiNpcThreadRowOf(contactId: String, name: String, avatar: TweakDBID,
+                      contactHash: Int32) -> ref<ContactData> {
     let row = new ContactData();
     row.id = contactId;
     row.contactId = contactId;
     row.hash = contactHash;
-    row.localizedName = entry.GetLocalizedName(journal);
-    row.avatarID = entry.GetAvatarID(journal);
+    row.localizedName = name;
+    row.avatarID = avatar;
     row.type = MessengerContactType.SingleThread;
     row.isCallable = true;
     row.ainpcThread = true;
@@ -66,19 +73,4 @@ func AiNpcThreadPreview(row: ref<ContactData>, contactId: String) -> Void {
     }
     row.hasValidTitle = true;
     row.localizedPreview = AiNpcStartTypingLabel(AiNpcResolveLanguage());
-}
-
-// Une ligne qui ouvre le chat du mod : sa conversation, ou un contact dont la liste ne
-// tiendrait qu'elle. Le second cas évite au jeu d'ouvrir seul sa messagerie sur une liste
-// d'une seule conversation (m_isSingleThread).
-func AiNpcOpensModChat(row: ref<ContactData>) -> Bool {
-    if !IsDefined(row) {
-        return false;
-    }
-    if row.ainpcThread {
-        return true;
-    }
-    return Equals(row.type, MessengerContactType.Contact)
-        && row.messagesCount == 0 && row.repliesCount == 0
-        && AiNpcIsContactSupported(row.contactId);
 }

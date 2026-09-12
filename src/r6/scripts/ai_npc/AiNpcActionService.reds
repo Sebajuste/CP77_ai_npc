@@ -23,6 +23,7 @@ import RedData.Json.*
 public class AiNpcActionService extends ScriptableSystem {
 
     private let m_contact: String;
+    private let m_channel: AiNpcChannelId;
     private let m_serial: Int32 = 0;
     private let m_watchdog: ref<AiNpcWatchdog>;
     private let m_record: ref<AiNpcRequestRecord>;
@@ -42,7 +43,11 @@ public class AiNpcActionService extends ScriptableSystem {
     // Called once per delivered reply, from the speaking lane. Every refusal below is logged
     // and none of them reaches the player: the message they are reading is already correct,
     // and what is at stake is whether a command fires behind it.
-    public func Examine(contactId: String, reply: String) -> Void {
+    //
+    // The mode decides, never the channel: in Embedded a call offers no command at all, since
+    // the spoken recipe drops the block and nothing reads the reply afterwards; in Dedicated a
+    // call is examined like a text.
+    public func Examine(contactId: String, reply: String, channel: AiNpcChannelId) -> Void {
         if AiNpcSpeakingCarriesActions() {
             return;
         }
@@ -68,7 +73,7 @@ public class AiNpcActionService extends ScriptableSystem {
         let npcName = AiNpcGetCharacterName(contactId);
         let window = AiNpcHistoryTrim(AiNpcStoredMessages(contactId), AiNpcActionSelectorWindow());
         let builder = AiNpcPassActions.Of(contactId, npcName,
-            AiNpcHistoryTranscript(window, npcName), reply);
+            AiNpcHistoryTranscriptOn(window, npcName, AiNpcTimeUnknown(), channel), reply, channel);
 
         // No table means no command this contact may run: the recipe dropped the block, or
         // nothing is offered here. Nothing to select from, and nothing to pay for.
@@ -82,6 +87,7 @@ public class AiNpcActionService extends ScriptableSystem {
         }
 
         this.m_contact = contactId;
+        this.m_channel = channel;
         this.m_serial += 1;
         let request = AiNpcPassSend(builder, provider, contactId, this, n"OnActionResponse",
             AiNpcCliRequestId(AiNpcCliLaneActions(), this.m_serial));
@@ -145,7 +151,7 @@ public class AiNpcActionService extends ScriptableSystem {
         // from: this lane decides WHEN a command is looked for, never which ones exist or who
         // may run one. The text it returns is thrown away -- the message was delivered before
         // this request was sent, and rewriting it now would edit a bubble the player has read.
-        let outcome = AiNpcApplyActions(this.m_contact, tag);
+        let outcome = AiNpcApplyActions(this.m_contact, tag, this.m_channel);
         if ArraySize(outcome.unknown) > 0 {
             AiNpcLog(s"The action selection answered \(tag), which names no command this contact offers.");
             return;

@@ -27,27 +27,43 @@ T ReadAt(const std::vector<uint8_t>& aBytes, size_t aOffset)
     return value;
 }
 
+// Onze doublages, et la correspondance n'est pas une regle : "pt-br" donne l'archive "pt",
+// "es-es" se garde entier, "zh-cn" aussi. Le dossier depot, lui, ne suit pas l'archive : le
+// doublage mexicain est celui d'Espagne, sous `es-es`. Une table courte vaut mieux qu'une regle
+// qui a tort trois fois.
+constexpr struct
+{
+    const char* locale;
+    const char* code;
+    const char* folder;
+} kDubs[] = {
+    {"en-us", "en", "en-us"},     {"fr-fr", "fr", "fr-fr"},     {"de-de", "de", "de-de"},
+    {"es-es", "es-es", "es-es"},  {"es-mx", "es-es", "es-es"},  {"it-it", "it", "it-it"},
+    {"jp-jp", "jp", "jp-jp"},     {"kr-kr", "kr", "kr-kr"},     {"pl-pl", "pl", "pl-pl"},
+    {"pt-br", "pt", "pt-br"},     {"ru-ru", "ru", "ru-ru"},     {"zh-cn", "zh-cn", "zh-cn"},
+};
+
 } // namespace
 
 std::string ArchiveCodeForLocale(const std::string& aLocale)
 {
-    // Onze doublages, et la correspondance n'est pas une regle : "pt-br" donne "pt", "es-es"
-    // se garde entier, "zh-cn" aussi. Une table courte vaut mieux qu'une regle qui a tort
-    // trois fois.
-    static const struct
-    {
-        const char* locale;
-        const char* code;
-    } kCodes[] = {
-        {"en-us", "en"},   {"fr-fr", "fr"},   {"de-de", "de"},   {"es-es", "es-es"},
-        {"es-mx", "es-es"}, {"it-it", "it"},  {"jp-jp", "jp"},   {"kr-kr", "kr"},
-        {"pl-pl", "pl"},   {"pt-br", "pt"},   {"ru-ru", "ru"},   {"zh-cn", "zh-cn"},
-    };
-    for (const auto& entry : kCodes)
+    for (const auto& entry : kDubs)
     {
         if (aLocale == entry.locale)
         {
             return entry.code;
+        }
+    }
+    return {};
+}
+
+std::string VoFolderForLocale(const std::string& aLocale)
+{
+    for (const auto& entry : kDubs)
+    {
+        if (aLocale == entry.locale)
+        {
+            return entry.folder;
         }
     }
     return {};
@@ -208,6 +224,18 @@ bool VoiceArchives::Read(uint64_t aHash, std::vector<uint8_t>& aOut) const
         if (found != volume->files.end())
         {
             return ReadExact(volume->file, found->second.first, found->second.second, aOut);
+        }
+    }
+    return false;
+}
+
+bool VoiceArchives::Has(uint64_t aHash) const
+{
+    for (const Volume* volume : m_volumes)
+    {
+        if (volume->files.find(aHash) != volume->files.end())
+        {
+            return true;
         }
     }
     return false;

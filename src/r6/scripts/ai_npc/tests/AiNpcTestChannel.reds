@@ -127,6 +127,59 @@ func AiNpcTestChannelJournal(t: ref<AiNpcTestRunner>) -> Void {
     }
 }
 
+// La surface recoit son canal a l'attache, et c'est lui qui decide ce qu'elle accepte et ce
+// qu'elle peint. Le cas qui a motive tout le chantier : un fil ecrit qui montrerait un appel.
+func AiNpcTestChannelSurface(t: ref<AiNpcTestRunner>) -> Void {
+    let history: array<ref<AiNpcMessage>>;
+    ArrayPush(history, AiNpcMessageNewAt("tu m'appelles ?", true, 100, AiNpcChannelId.Text));
+    ArrayPush(history, AiNpcMessageNewAt("allo", false, 200, AiNpcChannelId.Call));
+    ArrayPush(history, AiNpcMessageNewAt("a plus", false, 900, AiNpcChannelId.Text));
+
+    let written = new AiNpcChatSession();
+    let phone = new AiNpcMockRenderer();
+    written.Attach(phone, AiNpcChannelId.Text);
+    written.Show("judy");
+
+    t.EqBool("surface/a written surface refuses a spoken reply",
+        written.Deliver("judy", "allo", AiNpcChannelId.Call), false);
+    t.EqInt("surface/and paints nothing of it", ArraySize(phone.lines), 0);
+
+    written.Fill(history);
+    t.EqInt("surface/a written thread shows the texts and one trace", ArraySize(phone.lines), 3);
+    t.Check("surface/and never what was said", !ArrayContains(phone.lines, "N:allo"));
+    t.Check("surface/it keeps the texts", ArrayContains(phone.lines, "N:a plus"));
+
+    let spoken = new AiNpcChatSession();
+    let holo = new AiNpcMockRenderer();
+    spoken.Attach(holo, AiNpcChannelId.Call);
+    spoken.Show("judy");
+
+    t.EqBool("surface/a spoken surface refuses a written reply",
+        spoken.Deliver("judy", "a plus", AiNpcChannelId.Text), false);
+    t.EqBool("surface/and takes a spoken one", spoken.Deliver("judy", "allo", AiNpcChannelId.Call), true);
+
+    spoken.Fill(history);
+    t.EqInt("surface/a spoken surface shows only what was said", ArraySize(holo.lines), 1);
+    t.Check("surface/and that is the call", ArrayContains(holo.lines, "N:allo"));
+}
+
+// Une operation de journal, relue du disque. L'absence de "ch" est la regle du format, pas un
+// defaut : c'est ce qu'etait toute ligne ecrite avant le champ.
+func AiNpcTestChannelJournalOp(t: ref<AiNpcTestRunner>) -> Void {
+    let old = AiNpcJournalOpFromJson(ParseJson("{\"n\":1,\"c\":\"judy\",\"o\":\"a\",\"p\":false,\"t\":\"salut\"}") as JsonObject);
+    t.Check("journal/a line with no channel reads as written", Equals(old.channel, AiNpcChannelId.Text));
+
+    let call = AiNpcJournalOpFromJson(ParseJson("{\"n\":2,\"c\":\"judy\",\"o\":\"a\",\"p\":false,\"t\":\"allo\",\"ch\":1}") as JsonObject);
+    t.Check("journal/a line marked 1 reads as a call", Equals(call.channel, AiNpcChannelId.Call));
+
+    let spoken = AiNpcJournalOpAppendAt(3, "judy", "allo", false, 200, AiNpcChannelId.Call);
+    let back = AiNpcJournalOpFromJson(ParseJson(AiNpcJournalOpToLine(spoken)) as JsonObject);
+    t.Check("journal/a spoken line survives the round trip", Equals(back.channel, AiNpcChannelId.Call));
+
+    let typed = AiNpcJournalOpAppendAt(4, "judy", "salut", true, 300, AiNpcChannelId.Text);
+    t.Check("journal/a written line writes no channel", !StrContains(AiNpcJournalOpToLine(typed), "\"ch\""));
+}
+
 // Ce qu'une voix ne peut pas dire. La regle du prompt le demande deja ; ceci est la garantie,
 // et elle passe sur les deux chemins -- la replique complete et la phrase que le streaming
 // remet a la voix.

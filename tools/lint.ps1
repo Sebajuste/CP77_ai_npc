@@ -445,6 +445,29 @@ if ($badIndexing) {
     Report-Pass "a call result is bound before it is indexed"
 }
 
+# --- 8c. A string intrinsic never reads a field of a call result -----------------------
+# Same defect again: StrLen(Sheet().romance) reads the field of a temporary and answers 0,
+# while EqString(Sheet().romanceFact, ...) on the same object reads correctly. Measured
+# 2026-09-11 on six self-tests red for that reason alone, and seven green only because an
+# empty string contains nothing. Bind the object to a local.
+$badStrField = @()
+foreach ($f in $files) {
+    $lineNo = 0
+    foreach ($line in [System.IO.File]::ReadAllLines($f.FullName)) {
+        $lineNo++
+        if ($line.TrimStart().StartsWith("//")) { continue }
+        # Str<Op>( <call>( ... ).field
+        if ($line -match 'Str[A-Z]\w*\s*\(\s*[A-Za-z_]\w*\s*\([^()]*\)\s*\.\w+') {
+            $badStrField += "$($f.Name):$lineNo  $($line.Trim())"
+        }
+    }
+}
+if ($badStrField) {
+    Report-Fail "string intrinsics read fields of locals, not of call results" ($badStrField -join "`n")
+} else {
+    Report-Pass "string intrinsics read fields of locals, not of call results"
+}
+
 # --- 8c. The palette lives in one file --------------------------------------------------
 # A colour written at a call site is a colour that cannot be changed. The mod has two chat
 # surfaces and the identity is the thing they share, so a literal outside AiNpcStyle.reds is
@@ -713,8 +736,7 @@ if ($registrarHits -eq 0) {
 # return URLs and model ids, and a rule that swept those would compare names against addresses.
 $providerNames = @()
 $llm = Read-Code (Join-Path $modSrc "AiNpcLlm.reds")
-$nameFunc = [regex]::Match($llm, 'func AiNpcProviderName\([^)]*\)[^{]*\{(.*?)?
-\}', 'Singleline')
+$nameFunc = [regex]::Match($llm, 'func AiNpcProviderName\([^)]*\)[^{]*\{(.*?)\r?\n\}', 'Singleline')
 if ($nameFunc.Success) {
     foreach ($m in [regex]::Matches($nameFunc.Groups[1].Value, 'case AiNpcProvider\.\w+:\s*return "([^"]+)";')) {
         $providerNames += $m.Groups[1].Value
@@ -1922,6 +1944,75 @@ if ($pipelineProblems) {
     Report-Fail "a request is assembled in one place" (($pipelineProblems | Select-Object -Unique) -join "`n")
 } else {
     Report-Pass "a request is assembled in one place ($($builtLanes.Count) pass builder(s), one spine)"
+}
+
+# --- A channel is never left to a default ------------------------------------------------------
+# The channel decides where a line is painted and what a prompt says the medium is. Optional, it
+# defaulted to Text, and a caller that forgot it filed a spoken line as a written one with no
+# error anywhere: ten functions took it as `opt` until 2026-09-11. A channel class that inherits
+# an answer from AiNpcChannel answers with the base class's, just as silently.
+$channelProblems = @()
+foreach ($f in $files) {
+    $lineNo = 0
+    foreach ($line in [System.IO.File]::ReadAllLines($f.FullName)) {
+        $lineNo++
+        if ($line -match '\bopt\s+\w+\s*:\s*AiNpcChannelId\b') {
+            $channelProblems += "$($f.Name):$lineNo  $($line.Trim())"
+        }
+    }
+}
+$channelBase = [System.IO.File]::ReadAllText((Join-Path $modSrc "AiNpcChannel.reds"))
+$questions = @([regex]::Matches($channelBase, 'public func (\w+)\(') | ForEach-Object { $_.Groups[1].Value })
+$channelClasses = 0
+if ($questions.Count -eq 0) {
+    $channelProblems += "AiNpcChannel declares no question - the rule is reading nothing"
+}
+foreach ($f in $files) {
+    $text = [System.IO.File]::ReadAllText($f.FullName)
+    foreach ($m in [regex]::Matches($text, 'class (\w+) extends AiNpcChannel\b')) {
+        $channelClasses++
+        foreach ($q in $questions) {
+            if ($text -notmatch "func $q\(") {
+                $channelProblems += "$($m.Groups[1].Value) inherits $q from AiNpcChannel - a channel answers every question itself"
+            }
+        }
+    }
+}
+if ($channelProblems) {
+    Report-Fail "a channel is never left to a default" ($channelProblems -join "`n")
+} else {
+    Report-Pass "a channel is never left to a default ($channelClasses channel(s), $($questions.Count) question(s) each)"
+}
+
+# --- The stranger pool is in the recipe --------------------------------------------------------
+# AiNpcStrangerVoice names civilians the DLL can only cut if voices-recipe.json lists them, in
+# every language the recipe carries. A name missing there speaks with a catalogue voice, and
+# nothing in the game says so. The catalogue names are not checked: no list of them is in the repo.
+$strangerProblems = @()
+$strangerText = [System.IO.File]::ReadAllText((Join-Path $PSScriptRoot "..\src\r6\scripts\ai_npc\api\AiNpcStrangerVoice.reds"))
+$poolBody = [regex]::Match($strangerText, '(?s)func AiNpcStrangerReferences\([^\)]*\)[^\{]*\{(?<body>.*?)\n\}')
+$pool = @()
+if ($poolBody.Success) {
+    foreach ($m in [regex]::Matches($poolBody.Groups["body"].Value, '"([A-Za-z0-9_\-\.]+)\.wav"')) {
+        $pool += $m.Groups[1].Value
+    }
+}
+$recipe = [System.IO.File]::ReadAllText((Join-Path $PSScriptRoot "voice-extract\voices-recipe.json")) | ConvertFrom-Json
+$languages = @($recipe.voices | ForEach-Object { $_.language } | Select-Object -Unique)
+if ($pool.Count -eq 0) {
+    $strangerProblems += "AiNpcStrangerReferences names no reference - the rule is reading nothing"
+}
+foreach ($name in $pool) {
+    foreach ($language in $languages) {
+        if (-not ($recipe.voices | Where-Object { $_.voice -ceq $name -and $_.language -ceq $language })) {
+            $strangerProblems += "the stranger pool names $name, which the recipe does not carry in '$language'"
+        }
+    }
+}
+if ($strangerProblems) {
+    Report-Fail "every stranger voice is in the recipe" ($strangerProblems -join "`n")
+} else {
+    Report-Pass "every stranger voice is in the recipe ($($pool.Count) reference(s), $($languages.Count) language(s))"
 }
 
 Write-Output ""

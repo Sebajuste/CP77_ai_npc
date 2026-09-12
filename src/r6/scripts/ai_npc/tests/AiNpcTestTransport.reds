@@ -121,10 +121,10 @@ func AiNpcTestWatchdog(t: ref<AiNpcTestRunner>) -> Void {
     t.Check("timeout/claude cli has a budget", AiNpcLlmRequestTimeout(AiNpcProvider.ClaudeCli, null) > 0.0);
     t.Check("timeout/codex cli has a budget", AiNpcLlmRequestTimeout(AiNpcProvider.CodexCli, null) > 0.0);
 
-    // A CLI lane has a process to start -- a runtime, an auth check, a handshake -- before a
-    // single token is generated, so it must never be held to a cloud provider's deadline.
-    t.Check("timeout/the cli lanes get the longest",
-        AiNpcLlmRequestTimeout(AiNpcProvider.ClaudeCli, null) > AiNpcLlmRequestTimeout(AiNpcProvider.OpenRouter, null));
+    // Every lane runs in the plugin, which keeps each lane's own clock; this is only the
+    // backstop for a plugin that never answers, so no lane gets a shorter one.
+    t.Check("timeout/every plugin lane gets the same backstop",
+        Equals(AiNpcLlmRequestTimeout(AiNpcProvider.ClaudeCli, null), AiNpcLlmRequestTimeout(AiNpcProvider.OpenRouter, null)));
     t.Check("timeout/both cli lanes agree",
         Equals(AiNpcLlmRequestTimeout(AiNpcProvider.ClaudeCli, null), AiNpcLlmRequestTimeout(AiNpcProvider.CodexCli, null)));
 
@@ -185,34 +185,28 @@ func AiNpcTestDiagnosticMessage(t: ref<AiNpcTestRunner>) -> Void {
 }
 
 func AiNpcTestTransportFailure(t: ref<AiNpcTestRunner>) -> Void {
-    let httpAdvice = AiNpcDescribeTransportFailure("http://127.0.0.1:8787/v1/chat/completions", "HTTP 0");
     let httpsAdvice = AiNpcDescribeTransportFailure("https://openrouter.ai/api/v1/chat/completions", "HTTP 0");
 
-    // Neither branch may fall through to the bare status code: "HTTP 0" is the useless
-    // message this whole function exists to replace.
-    t.Check("transport/http is explained", NotEquals(httpAdvice, "HTTP 0"));
+    // "HTTP 0" is the useless message this function exists to replace.
     t.Check("transport/https is explained", NotEquals(httpsAdvice, "HTTP 0"));
 
-    // Both failures need -no-tls named, because it is the one cause a player cannot
-    // observe from inside the game -- and it is the cause in both directions.
-    t.Check("transport/http names the launch flag", StrContains(httpAdvice, "-no-tls"));
+    // -no-tls is the one cause a player cannot observe from inside the game.
     t.Check("transport/https names the launch flag", StrContains(httpsAdvice, "-no-tls"));
 
-    // The two are opposite failures -- http refused because TLS is ON, https refused
-    // because it is OFF -- so identical advice would send half the players the wrong way.
-    t.Check("transport/the two cases read differently", NotEquals(httpAdvice, httpsAdvice));
+    // No lane dials plain http since the local bridge was removed: its old advice would
+    // describe a mod that no longer exists, so that url keeps the caller's detail.
+    t.EqString("transport/plain http falls back",
+        AiNpcDescribeTransportFailure("http://127.0.0.1:8787/v1/chat/completions", "HTTP 0"), "HTTP 0");
 
     // Regression: the https branch is the one that was missing. Reported as a dead bridge,
     // it sent a player who was on a cloud provider to go debug a local server they were not
     // using.
     t.Check("transport/https does not blame the bridge", !StrContains(httpsAdvice, "bridge unreachable"));
 
-    // Regression: status 0 is the only thing actually observed here, so both branches must
+    // Regression: status 0 is the only thing actually observed here, so the advice must
     // OFFER causes, never assert one. "bridge unreachable - needs ... AND ..." reads as a
     // diagnosis, and the real cause once was a request body that was not valid UTF-8. "Could
     // be" is the marker of the hedge.
-    t.Check("transport/http offers causes rather than asserting one",
-        StrContains(httpAdvice, "status 0") && StrContains(httpAdvice, "Could be"));
     t.Check("transport/https offers causes rather than asserting one",
         StrContains(httpsAdvice, "status 0") && StrContains(httpsAdvice, "Could be"));
 
@@ -639,7 +633,7 @@ func AiNpcTestFiller(length: Int32) -> String {
 }
 
 func AiNpcTestGeneration(t: ref<AiNpcTestRunner>) -> Void {
-    let gen = AiNpcGeneration.ForPlayer("panam", "t'es ou ?");
+    let gen = AiNpcGeneration.ForPlayer("panam", "t'es ou ?", AiNpcChannelId.Text);
     t.EqString("gen/a generation knows who it is for", gen.Contact(), "panam");
     t.EqString("gen/and what it was asked", gen.Ask(), "t'es ou ?");
     t.EqString("gen/and nothing was sent yet", gen.Url(), "");
@@ -650,7 +644,7 @@ func AiNpcTestGeneration(t: ref<AiNpcTestRunner>) -> Void {
 
     // The invariant: opening a second generation cannot re-address the first. This is what
     // stops a reply arriving nine seconds later from being filed under whoever is on screen.
-    let second = AiNpcGeneration.ForPlayer("judy", "salut");
+    let second = AiNpcGeneration.ForPlayer("judy", "salut", AiNpcChannelId.Text);
     t.EqString("gen/a new one does not re-address the old", gen.Contact(), "panam");
     t.EqString("gen/and the new one is addressed to its own", second.Contact(), "judy");
 
@@ -663,7 +657,7 @@ func AiNpcTestGeneration(t: ref<AiNpcTestRunner>) -> Void {
         gen.Repair().Claim(broken, candidates, vocabulary, true, true, true), "[ACTION:BROKEN:1]");
     t.EqString("gen/spent within it", gen.Repair().Claim(broken, candidates, vocabulary, true, true, true), "");
     t.EqString("gen/the next one starts with its own budget",
-        AiNpcGeneration.ForPlayer("panam", "?").Repair().Claim(broken, candidates, vocabulary, true, true, true),
+        AiNpcGeneration.ForPlayer("panam", "?", AiNpcChannelId.Text).Repair().Claim(broken, candidates, vocabulary, true, true, true),
         "[ACTION:BROKEN:1]");
 
     // An idle generation names nobody rather than being null, so the typing indicator and the
@@ -679,7 +673,7 @@ func AiNpcTestGeneration(t: ref<AiNpcTestRunner>) -> Void {
     t.EqString("gen/and carries no author", gen.AskedBy(), "");
     t.EqInt("gen/and no ticket", gen.Ticket(), 0);
 
-    let mine = AiNpcGeneration.ForMod("river_ward", "rogue_gigs", "C'est son anniversaire.", 7);
+    let mine = AiNpcGeneration.ForMod("river_ward", "rogue_gigs", "C'est son anniversaire.", 7, "", AiNpcChannelId.Text);
     t.EqBool("gen/a mod's generation speaks first", mine.SpeaksFirst(), true);
     t.EqString("gen/and names its author", mine.AskedBy(), "rogue_gigs");
     t.EqString("gen/and carries the reason as its ask", mine.Ask(), "C'est son anniversaire.");
@@ -696,7 +690,7 @@ func AiNpcTestGeneration(t: ref<AiNpcTestRunner>) -> Void {
     t.EqString("gen/a mod that states no intent carries none", mine.Intent(), "");
 
     let purposeful = AiNpcGeneration.ForMod("river_ward", "rogue_gigs", "C'est son anniversaire.",
-        7, "You want to know whether {they} is still in the city.");
+        7, "You want to know whether {they} is still in the city.", AiNpcChannelId.Text);
     t.EqString("gen/an intent given is an intent carried", purposeful.Intent(),
         "You want to know whether {they} is still in the city.");
     t.EqString("gen/and it does not disturb the reason", purposeful.Ask(),
@@ -779,7 +773,7 @@ func AiNpcTestUsageLedger(t: ref<AiNpcTestRunner>) -> Void {
     // picking the right backend. So it charges a guess, and says that it guessed.
     let silent = new AiNpcUsage();
     let guessed = AiNpcMeasureCharge(silent, 17174);
-    t.EqInt("usage/estimates what nobody measured", guessed.tokens, 4507);
+    t.EqInt("usage/estimates what nobody measured", guessed.tokens, 4508);
     t.EqBool("usage/and marks the estimate as one", guessed.estimated, true);
     t.EqBool("usage/a null usage block is an estimate too",
         AiNpcMeasureCharge(null, 3810).estimated, true);

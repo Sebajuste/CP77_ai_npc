@@ -84,7 +84,7 @@ func AiNpcTestRecipeQueries(t: ref<AiNpcTestRunner>) -> Void {
 
     let some = AiNpcRecipeWith(full, AiNpcRecipeBlockOf("memory", ["facts"]));
     t.Check("recipe/a kept part answers true", AiNpcRecipeWants(some, "memory", "facts"));
-    t.Check("recipe/an unlisted part answers false", AiNpcRecipeWants(some, "memory", "agreed"));
+    t.Check("recipe/an unlisted part answers false", !AiNpcRecipeWants(some, "memory", "agreed"));
     t.Check("recipe/a trimmed block is still rendered", AiNpcRecipeHas(some, "memory"));
 
     // Building one never edits the one it was built from: a recipe is handed around a whole
@@ -107,10 +107,10 @@ func AiNpcTestRecipeParse(t: ref<AiNpcTestRunner>) -> Void {
     t.EqInt("recipe/a well-formed recipe reports nothing", ArraySize(issues), 0);
 
     // The four ways to remove a block, and they agree.
-    let byWord = AiNpcTestRecipeOf("{\"commands\": \"none\"}", issues);
-    let byBool = AiNpcTestRecipeOf("{\"commands\": false}", issues);
-    let byList = AiNpcTestRecipeOf("{\"commands\": []}", issues);
-    let byNull = AiNpcTestRecipeOf("{\"commands\": null}", issues);
+    let byWord = AiNpcTestRecipeOf("{\"actions\": \"none\"}", issues);
+    let byBool = AiNpcTestRecipeOf("{\"actions\": false}", issues);
+    let byList = AiNpcTestRecipeOf("{\"actions\": []}", issues);
+    let byNull = AiNpcTestRecipeOf("{\"actions\": null}", issues);
     t.Check("recipe/none removes the block", !AiNpcRecipeHas(byWord, "actions"));
     t.Check("recipe/false removes the block", !AiNpcRecipeHas(byBool, "actions"));
     t.Check("recipe/an empty list removes the block", !AiNpcRecipeHas(byList, "actions"));
@@ -231,7 +231,7 @@ func AiNpcTestRecipeRefusals(t: ref<AiNpcTestRunner>) -> Void {
 func AiNpcTestRecipeBook(t: ref<AiNpcTestRunner>) -> Void {
     let issues: array<ref<AiNpcConfigIssue>>;
     let book = AiNpcRecipeBookFromJson(
-        ParseJson("{\"active\": \"compact\", \"recipes\": {\"default\": {}, \"compact\": {\"commands\": false}}}") as JsonObject,
+        ParseJson("{\"active\": \"compact\", \"recipes\": {\"default\": {}, \"compact\": {\"actions\": false}}}") as JsonObject,
         "test", issues);
     t.EqInt("recipe/both recipes are read", ArraySize(book.recipes), 2);
     t.EqString("recipe/active is read", book.active, "compact");

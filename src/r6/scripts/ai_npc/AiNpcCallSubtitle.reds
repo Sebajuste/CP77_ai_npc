@@ -66,6 +66,7 @@ public class AiNpcCallSubtitles extends ScriptableSystem {
     private let m_line: scnDialogLineData;
     private let m_speakerName: String = "";
     private let m_shown: String = "";
+    private let m_shownByPlayer: Bool = false;
     private let m_following: Bool = false;
 
     public static func Get() -> ref<AiNpcCallSubtitles> {
@@ -100,13 +101,16 @@ public class AiNpcCallSubtitles extends ScriptableSystem {
             return;
         }
 
+        // Deux lectures, et une ligne peut finir entre les deux : comparer les deux fait que le
+        // tick suivant corrige un nom pris a la replique d'a cote.
         let saying = AiNpcAudio.Speaking();
-        if NotEquals(saying, this.m_shown) {
-            AiNpcLog(s"Subtitle: the speaker moved to '\(saying)'.");
+        let byPlayer = AiNpcAudio.SpeakingPlayer();
+        if NotEquals(saying, this.m_shown) || NotEquals(byPlayer, this.m_shownByPlayer) {
+            AiNpcLog(s"Subtitle: the speaker moved to '\(saying)'\(byPlayer ? " (V)" : "").");
             if Equals(StrLen(saying), 0) {
                 this.Hide();
             } else {
-                this.Paint(saying);
+                this.Paint(saying, byPlayer);
             }
         }
         this.Arm();
@@ -116,7 +120,7 @@ public class AiNpcCallSubtitles extends ScriptableSystem {
         AiNpcArmTimeout(new AiNpcSubtitleFollowCallback(), AiNpcSubtitleFollowSeconds());
     }
 
-    private func Paint(text: String) -> Void {
+    private func Paint(text: String, byPlayer: Bool) -> Void {
         let board = GameInstance.GetBlackboardSystem(this.GetGameInstance())
             .Get(GetAllBlackboardDefs().UIGameData);
         if !IsDefined(board) {
@@ -131,7 +135,7 @@ public class AiNpcCallSubtitles extends ScriptableSystem {
         // Le porteur de la ligne, pas celui qu'on lit : le personnage n'est pas dans le monde
         // pendant un appel, et un sous-titre du bas s'annonce par son nom, pas par son entite.
         line.speaker = GetPlayer(this.GetGameInstance());
-        line.speakerName = this.m_speakerName;
+        line.speakerName = byPlayer ? "V" : this.m_speakerName;
         line.duration = AiNpcSubtitleMaxSeconds();
         line.isPersistent = false;
         line.type = scnDialogLineType.Regular;
@@ -139,6 +143,7 @@ public class AiNpcCallSubtitles extends ScriptableSystem {
         board.SetVariant(GetAllBlackboardDefs().UIGameData.ShowDialogLine, ToVariant([line]), true);
         this.m_line = line;
         this.m_shown = text;
+        this.m_shownByPlayer = byPlayer;
     }
 
     private func Hide() -> Void {

@@ -150,6 +150,7 @@ will be asked to check when something does not work.
     "codexCliPath": "",
     "appearance": "",
     "playerDescription": "",
+    "holoRadioFilter": "medium",
     "importConversationsFrom": ""
 }
 ```
@@ -202,6 +203,11 @@ will be asked to check when something does not work.
   of adding to it, life path included. Empty by default. This is the escape hatch for a mod
   or a player who needs the mod to stop stating anything of its own about V; for normal use,
   `appearance` is the one you want.
+
+- **`holoRadioFilter`** — how much the spoken voice of a call sounds like a transmission:
+  `off`, `light`, `medium` (the default) or `strong`. The voice plays outside the game's
+  mixer, so the effect the game puts on its own calls never reaches it; the mod applies its
+  own. Taken from the next spoken line, and settable from the setup window.
 
 - **`importConversationsFrom`** — a repair hatch, empty except when you are using it: a
   journal pointer such as `"b14:467"`, which the next save you load adopts as its own
@@ -398,7 +404,7 @@ was the wrong shape for the question:
 | Romance: Panam / Judy / River / Kerry | the save's romance facts (`sq027_panam_lover`, `sq030_judy_lover`, `sq029_river_lover`, `sq028_kerry_relationship`) |
 | Romance: Songbird / Rogue / Viktor / Takemura | removed — the base game has no romance for them |
 | Character | the contact you open on the phone |
-| Gender | the character V was created with (`GetResolvedGenderName`) |
+| Gender | V's voice tone, which the game's pronouns follow (`IsBrainGenderMale`, not the body) |
 | Language | the game's own text language (`/language` in the game options) |
 | V's appearance: origin / hair / build / breast size | nothing -- four closed lists could name a hair colour and not a tattoo. Replaced by the free-form `appearance` key in `settings.json`, above |
 

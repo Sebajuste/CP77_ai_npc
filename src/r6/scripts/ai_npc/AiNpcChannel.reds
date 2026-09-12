@@ -27,6 +27,8 @@
 
 module AiNpc
 
+// Chaque méthode non finale est une question que chaque canal répond lui-même : tools\lint.ps1
+// refuse un canal qui en hérite une.
 abstract class AiNpcChannel extends IScriptable {
 
     // Ce qui part sur le disque, et ce à quoi une surface est comparée.
@@ -58,7 +60,7 @@ abstract class AiNpcChannel extends IScriptable {
     // L'ORDRE EST UN PIÈGE ET C'EST POURQUOI IL EST ÉCRIT ICI UNE FOIS : déposer avant
     // d'envoyer envoie la ligne deux fois, parce que la voie lit le transcript dans le store et
     // reçoit la ligne de V séparément.
-    public func Send(session: ref<AiNpcChatSession>, text: String) -> Void {
+    public final func Send(session: ref<AiNpcChatSession>, text: String) -> Void {
         if !IsDefined(session) {
             return;
         }
@@ -79,7 +81,7 @@ abstract class AiNpcChannel extends IScriptable {
     // reste -- appeler la voie, classer la ligne de V -- est la même séquence, et elle est ici
     // pour qu'il n'y en ait qu'une : deux copies dériveraient, et la première dérive serait un
     // tour envoyé au modèle sans être classé.
-    public func SendFrom(contactId: String, text: String) -> Void {
+    public final func SendFrom(contactId: String, text: String) -> Void {
         if Equals(StrLen(contactId), 0) || Equals(StrLen(text), 0) {
             return;
         }
@@ -109,9 +111,8 @@ abstract class AiNpcChannel extends IScriptable {
     }
 }
 
-// Le canal d'une valeur. Sans état, donc résoudre c'est allouer -- et un canal inconnu rend le
-// canal écrit, parce qu'un entier venu d'un journal plus récent que le mod ne doit pas faire
-// disparaître une conversation.
+// Le canal d'une valeur. Sans état, donc résoudre c'est allouer. L'énumération a deux membres,
+// un par branche ; un entier inconnu du disque est tranché avant, par AiNpcChannelFromInt.
 func AiNpcChannelOf(id: AiNpcChannelId) -> ref<AiNpcChannel> {
     if Equals(id, AiNpcChannelId.Call) {
         return new AiNpcChannelHolo();

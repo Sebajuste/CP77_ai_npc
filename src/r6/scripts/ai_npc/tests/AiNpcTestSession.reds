@@ -102,7 +102,7 @@ func AiNpcTestSessionPolicy(t: ref<AiNpcTestRunner>) -> Void {
     let session = new AiNpcChatSession();
     let mock = new AiNpcMockRenderer();
     mock.budget = 4;
-    session.Attach(mock);
+    session.Attach(mock, AiNpcChannelId.Text);
     session.Show("panam");
 
     t.EqBool("session/delivery to another contact is refused",
@@ -125,7 +125,7 @@ func AiNpcTestSessionPolicy(t: ref<AiNpcTestRunner>) -> Void {
 
     let fill = new AiNpcChatSession();
     let fillMock = new AiNpcMockRenderer();
-    fill.Attach(fillMock);
+    fill.Attach(fillMock, AiNpcChannelId.Text);
     fill.Show("panam");
     fill.Fill(AiNpcTestHistory(["V:hi", "N:yo", "V:" + AiNpcSystemEventMarker()]));
     t.EqInt("session/filling clears first", fillMock.clears, 1);
@@ -135,7 +135,7 @@ func AiNpcTestSessionPolicy(t: ref<AiNpcTestRunner>) -> Void {
 
     let modes = new AiNpcChatSession();
     let modeMock = new AiNpcMockRenderer();
-    modes.Attach(modeMock);
+    modes.Attach(modeMock, AiNpcChannelId.Text);
     modes.Show("panam");
 
     modes.EndTyping();
@@ -156,7 +156,7 @@ func AiNpcTestSessionPolicy(t: ref<AiNpcTestRunner>) -> Void {
 
     let send = new AiNpcChatSession();
     let sendMock = new AiNpcMockRenderer();
-    send.Attach(sendMock);
+    send.Attach(sendMock, AiNpcChannelId.Text);
     send.Show("panam");
     send.BeginTyping();
 
@@ -177,7 +177,7 @@ func AiNpcTestSessionPolicy(t: ref<AiNpcTestRunner>) -> Void {
 
     let dead = new AiNpcChatSession();
     let deadMock = new AiNpcMockRenderer();
-    dead.Attach(deadMock);
+    dead.Attach(deadMock, AiNpcChannelId.Text);
     dead.Show("panam");
     deadMock.alive = false;
     t.EqBool("session/a dead renderer is no renderer", dead.HasRenderer(), false);
@@ -204,7 +204,7 @@ func AiNpcTestSessionPolicy(t: ref<AiNpcTestRunner>) -> Void {
 // it refuses in the game.
 func AiNpcFakeSession(shown: String) -> ref<AiNpcChatSession> {
     let session = new AiNpcChatSession();
-    session.Attach(new AiNpcMockRenderer());
+    session.Attach(new AiNpcMockRenderer(), AiNpcChannelId.Text);
     session.Show(shown);
     return session;
 }

@@ -232,6 +232,23 @@ public func AiNpcClientWrote(modId: String, contactId: String, text: String, fro
     return AiNpcWriteOk();
 }
 
+// Filed, then delivered through the written channel. Not through AiNpcSeedMessage: it
+// refreshes an open chat, and the delivery would then paint the same line a second time.
+func AiNpcClientSends(modId: String, contactId: String, text: String) -> Int32 {
+    if Equals(StrLen(contactId), 0) || Equals(StrLen(text), 0) {
+        return AiNpcWriteEmpty();
+    }
+    if !AiNpcMayWriteTo(contactId, modId) {
+        AiNpcLog(s"'\(modId)' may not send to '\(contactId)': '\(AiNpcFloorHolder(contactId))' holds the floor.");
+        return AiNpcWriteFloorHeld();
+    }
+    if !AiNpcAppendMessage(contactId, text, false, modId, false, AiNpcChannelId.Text) {
+        return AiNpcWriteNoSession();
+    }
+    AiNpcChannelOf(AiNpcChannelId.Text).Deliver(contactId, text);
+    return AiNpcWriteOk();
+}
+
 // The character writes first, because this mod gave her a reason to. The contract and the
 // refusals live on AiNpcClient.CharacterWantsToSay; what is here is the split between what can
 // be answered without the speaking lane and what cannot.
@@ -469,7 +486,8 @@ public func AiNpcExplainContact(contactId: String) -> String {
         return report;
     }
 
-    let ctx = AiNpcBuildContactContext(contactId);
+    let written = AiNpcBuildContactContext(contactId, "", AiNpcChannelId.Text);
+    let spoken = AiNpcBuildContactContext(contactId, "", AiNpcChannelId.Call);
     let entries = registry.Extensions();
     let i = 0;
     let count = ArraySize(entries);
@@ -484,7 +502,8 @@ public func AiNpcExplainContact(contactId: String) -> String {
     // reason any of the commands below are here, and a command that is missing is nearly always
     // a tag that is missing.
     let table = AiNpcBuildActionTable(contactId);
-    ctx.tags = table.tags;
+    written.tags = table.tags;
+    spoken.tags = table.tags;
     report += s"  tags: \(AiNpcJoinStrings(table.tags, ", "))\n";
 
     let claims = table.claims;
@@ -495,10 +514,17 @@ public func AiNpcExplainContact(contactId: String) -> String {
         // Offered is stated separately from owned: a command that is owned and not offered is
         // absent from the prompt and still recognised in a reply, which is the one piece of
         // this design that surprises a reader of the log.
-        if claim.handler.IsOffered(ctx) {
-            report += s"  command \(claim.pattern.raw) from '\(claim.fullId)' via \(claim.scopeTag)\n";
+        let onText = claim.handler.IsOffered(written);
+        let onCall = claim.handler.IsOffered(spoken);
+        let head = s"  command \(claim.pattern.raw) from '\(claim.fullId)' via \(claim.scopeTag)";
+        if onText && onCall {
+            report += head + "\n";
+        } else if onText {
+            report += head + ", on texts only\n";
+        } else if onCall {
+            report += head + ", on calls only\n";
         } else {
-            report += s"  command \(claim.pattern.raw) from '\(claim.fullId)' via \(claim.scopeTag), not offered right now\n";
+            report += head + ", not offered right now\n";
         }
         c += 1;
     }

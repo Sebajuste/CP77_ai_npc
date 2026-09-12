@@ -28,6 +28,15 @@ namespace ainpc::voicemake
 // serait ecrite, retenue comme palier, et illisible par le moteur.
 bool Possible(const std::wstring& aPluginDirectory);
 
+// Un nom de reference `<voix>-x<facteur>` designe la voix de la recette relue a ce facteur.
+// Sans suffixe numerique, le nom est la voix elle-meme, a 1.
+struct Derivation
+{
+    std::string voice;
+    double shift = 1.0;
+};
+Derivation Derive(const std::string& aVoiceName);
+
 // Fabrique `aVoiceFile` dans r6\storages\AiNpc\voices\, ou dit pourquoi elle n'a pas pu.
 //
 // Bloquant, de l'ordre de la demi-seconde. Appele depuis le worker de la voie parlee, jamais

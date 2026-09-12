@@ -92,8 +92,8 @@ func AiNpcTestQuestContext(t: ref<AiNpcTestRunner>) -> Void {
     // and therefore cannot be handed a block written in the dead man's first person.
     t.EqString("quest/jackie_dead has no first-person block",
         AiNpcTestQuestLine("jackie_dead", "the_heist", ""), "");
-    t.Check("quest/jackie has the heist",
-        NotEquals(StrLen(AiNpcTestQuestLine("jackie", "the_heist", "")), 0));
+    // He is beside V for the whole of The Heist, so the phone is never the channel.
+    t.EqString("quest/jackie has no heist entry", AiNpcTestQuestLine("jackie", "the_heist", ""), "");
 
     // Every key the tables answer to is one AiNpcQuestKeyFor can produce. A key written
     // only in a character table is unreachable, and silently so.
@@ -101,7 +101,7 @@ func AiNpcTestQuestContext(t: ref<AiNpcTestRunner>) -> Void {
         "all_along_the_watchtower", "both_sides_now", "ex_factor", "talkin_bout_a_revolution",
         "pisces", "pyramid_song", "playing_for_time", "down_on_the_street", "life_during_wartime",
         "play_it_safe", "search_and_destroy", "totalimmortal", "where_is_my_mind", "the_rescue",
-        "the_ripperdoc", "the_ride", "the_pickup", "the_heist", "nocturne_op55n1", "ghost_town",
+        "the_ripperdoc", "the_ride", "the_pickup", "nocturne_op55n1", "ghost_town",
         "chippin_in", "blistering_love", "path_of_glory", "i_fought_the_law", "the_hunt",
         "following_the_river"];
     let contacts = ["panam", "judy", "takemura", "jackie", "river_ward", "rogue"];
@@ -111,7 +111,7 @@ func AiNpcTestQuestContext(t: ref<AiNpcTestRunner>) -> Void {
         let j = 0;
         let answered = false;
         while j < ArraySize(contacts) {
-            if NotEquals(StrLen(AiNpcQuestContextFor(contacts[j], keys[i], "", "")), 0) {
+            if NotEquals(StrLen(AiNpcTestQuestLine(contacts[j], keys[i], "")), 0) {
                 answered = true;
             }
             j += 1;
@@ -147,14 +147,14 @@ func AiNpcTestRomanceFacts(t: ref<AiNpcTestRunner>) -> Void {
 
     // A romanceable character needs both halves: the fact to read, and the text to add when
     // it is set. One without the other is a romance that never shows or never resolves.
-    t.Check("romance/panam has a romance rubric",
-        NotEquals(StrLen(AiNpcSheetPanam().romance), 0));
-    t.Check("romance/judy has a romance rubric",
-        NotEquals(StrLen(AiNpcSheetJudy().romance), 0));
-    t.Check("romance/river has a romance rubric",
-        NotEquals(StrLen(AiNpcSheetRiver().romance), 0));
-    t.Check("romance/kerry has a romance rubric",
-        NotEquals(StrLen(AiNpcSheetKerry().romance), 0));
+    let panam = AiNpcSheetPanam();
+    let judy = AiNpcSheetJudy();
+    let river = AiNpcSheetRiver();
+    let kerry = AiNpcSheetKerry();
+    t.Check("romance/panam has a romance rubric", NotEquals(StrLen(panam.romance), 0));
+    t.Check("romance/judy has a romance rubric", NotEquals(StrLen(judy.romance), 0));
+    t.Check("romance/river has a romance rubric", NotEquals(StrLen(river.romance), 0));
+    t.Check("romance/kerry has a romance rubric", NotEquals(StrLen(kerry.romance), 0));
 
     // THE ADDITIVE INVARIANT, and the one worth a test rather than a comment.
     //
@@ -170,13 +170,13 @@ func AiNpcTestRomanceFacts(t: ref<AiNpcTestRunner>) -> Void {
     // Keyed on "advance" rather than on the sentence: the wording is meant to be edited, and a
     // test pinning it would fail on every rewrite while catching none of what it guards.
     t.EqBool("romance/panam does not refuse in the plain relationship",
-        StrContains(AiNpcSheetPanam().relationship, "advance"), false);
+        StrContains(panam.relationship, "advance"), false);
     t.EqBool("romance/judy does not refuse in the plain relationship",
-        StrContains(AiNpcSheetJudy().relationship, "advance"), false);
+        StrContains(judy.relationship, "advance"), false);
     t.EqBool("romance/river does not refuse in the plain relationship",
-        StrContains(AiNpcSheetRiver().relationship, "advance"), false);
+        StrContains(river.relationship, "advance"), false);
     t.EqBool("romance/kerry does not refuse in the plain relationship",
-        StrContains(AiNpcSheetKerry().relationship, "advance"), false);
+        StrContains(kerry.relationship, "advance"), false);
     t.EqBool("romance/the refusal is stated somewhere",
         StrContains(AiNpcRomanceRefusalLine(), "advance"), true);
 
@@ -237,14 +237,10 @@ func AiNpcTestRomanceFacts(t: ref<AiNpcTestRunner>) -> Void {
     // The rubric is one extension line among everybody else's, and the merge clamps a line
     // past AiNpcNowLineBudget. A sheet written past it loses its tail to a log message
     // nobody reads, which is the quietest way for characterisation to go missing.
-    t.Check("romance/panam fits the event budget",
-        StrLen(AiNpcSheetPanam().romance) <= AiNpcNowLineBudget());
-    t.Check("romance/judy fits the event budget",
-        StrLen(AiNpcSheetJudy().romance) <= AiNpcNowLineBudget());
-    t.Check("romance/river fits the event budget",
-        StrLen(AiNpcSheetRiver().romance) <= AiNpcNowLineBudget());
-    t.Check("romance/kerry fits the event budget",
-        StrLen(AiNpcSheetKerry().romance) <= AiNpcNowLineBudget());
+    t.Check("romance/panam fits the event budget", StrLen(panam.romance) <= AiNpcNowLineBudget());
+    t.Check("romance/judy fits the event budget", StrLen(judy.romance) <= AiNpcNowLineBudget());
+    t.Check("romance/river fits the event budget", StrLen(river.romance) <= AiNpcNowLineBudget());
+    t.Check("romance/kerry fits the event budget", StrLen(kerry.romance) <= AiNpcNowLineBudget());
 
     // No vanilla romance exists for these, so there is no fact to read. They must carry no
     // fact at all rather than some neighbouring one that happens to be set.

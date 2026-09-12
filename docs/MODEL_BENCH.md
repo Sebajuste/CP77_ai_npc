@@ -32,13 +32,14 @@ a tie.
 hour, from `MODEL_COSTS.md`. **Output is this bench's own measurement, per model**, not the
 nominal 44 tokens: a reasoning model bills its hidden draft, and one of the rows below spends
 1 339 output tokens where the others spend 40. `2 h/day` is a month of that, using the cached
-price where the provider discounts a prefix.
+price where the provider discounts a prefix. qwen's is the exception: the real bill of
+2026-09-10 showed no cache discount, and its `2 h/day` is that bill (`MODEL_COSTS.md`).
 
 | model | actions: fixture · real | form defects | median | tier 1 → top | $/M in | $/M out | $/h | 2 h/day |
 |---|:--:|---|---:|---|---:|---:|---:|---:|
 | *claude sonnet 5 (CLI, the yardstick)* | 3/3 · **20/20** | **0 / 51** | 2.4 s | not measured | — | — | — | subscription |
 | **meta-llama/llama-4-maverick** | 3/3 · **20/20** | 1 — one `<\|eot_id\|>` leak | **2.0 s** | **1/24 → 24/24** | 0.20 | 0.80 | 0.043 | **2.57** |
-| qwen/qwen3-235b-a22b-2507 | 3/3 · **18/20** | **0** | 2.7 s | 23/24 → 24/24 | 0.09 | 0.35 | 0.019 | **0.54** |
+| qwen/qwen3-235b-a22b-2507 | 3/3 · **18/20** | **0** | 2.7 s | 23/24 → 24/24 | 0.09 | 0.35 | 0.019 | **1.06** |
 | deepseek/deepseek-v4-flash | 3/3 · 8/20 | 1 — name prefix | 4.6 s | 14/24 → 24/24 | 0.09 | 0.18 | 0.020 | 0.60 |
 | z-ai/glm-5.3-flash | 3/3 · not measured | 0 | **25 s** | **0/24 → 24/24** | 0.07 | 0.25 | 0.028 | 1.19 |
 | **deepseek/deepseek-chat-v3-0324** | 3/3 · **20/20** | 1 — roleplay asterisks | 3.7 s | **4/24 → 24/24** | 0.25 | 1.00 | 0.053 | 3.21 |
@@ -74,7 +75,7 @@ asked for in the format the player is shown, the transfer withheld from a joytoy
 | *claude sonnet 5 (yardstick)* | 20/20 | **20/20** | subscription |
 | **meta-llama/llama-4-maverick** | 18/20 | **20/20** | 2.56 |
 | **deepseek/deepseek-chat-v3-0324** | 19/20 | **20/20** | 3.21 |
-| **qwen/qwen3-235b-a22b-2507** | 14/20 | **18/20** | **0.54** |
+| **qwen/qwen3-235b-a22b-2507** | 14/20 | **18/20** | **1.06** |
 | deepseek/deepseek-v4-flash | not measured | **8/20** | 0.59 |
 
 No refusals, on any of the four. **The rewrite moved every model that had been measured before
@@ -194,14 +195,14 @@ rate-limited by the provider, not by the key: an evening of play can hit the sam
 **The tiers are now the only thing separating the top three**, because the rewritten command
 block took all of them to 18/20 or better.
 
-**`qwen/qwen3-235b-a22b-2507`, about 0.55 $/month**, is the value pick and it is no longer a
+**`qwen/qwen3-235b-a22b-2507`, about 1 $/month**, is the value pick and it is no longer a
 compromise on the commands: 18/20, zero mechanical defects over 54 replies, 2.7 s. What it
 does not do is respect the Normal tier — 23 explicit replies out of 24 — so recommend it to a
 player who leaves the mod on its top tier, and not to one who expects Normal to hold.
 
 **`meta-llama/llama-4-maverick`, about 2.56 $/month**, for a player who uses the tiers. 20/20
 on the commands, and 1/24 at the Normal tier: the strictest measured, and it never refuses to
-play. Five times the price of qwen, for the tier and nothing else.
+play. Two and a half times the price of qwen, for the tier and nothing else.
 
 **`deepseek/deepseek-chat-v3-0324`, about 3.21 $/month**, matches Maverick on the commands
 (20/20) and is close on the tier (4/24), for 25 % more. No reason to prefer it unless a

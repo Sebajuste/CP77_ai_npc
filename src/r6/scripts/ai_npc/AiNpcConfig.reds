@@ -380,7 +380,10 @@ public class AiNpcConfigService extends ScriptableService {
 
     // {"voice": {"clone": "judy.wav", "fallback": "eve"}}
     //
-    // Les deux entrees sont independantes : une fiche peut nommer un repli sans toucher au
+    // `cloneLines` est la liste des repliques de doublage a couper, par nom de fichier : ce que
+    // porte une fiche pour un personnage vanilla dont ai_npc ne livre pas la recette.
+    //
+    // Les entrees sont independantes : une fiche peut nommer un repli sans toucher au
     // clone, ce qui est le cas ordinaire -- le clone porte deja le bon nom par defaut.
     //
     // Un objet absent laisse la fiche livree intacte, comme partout ailleurs ici. Un objet
@@ -395,15 +398,32 @@ public class AiNpcConfigService extends ScriptableService {
             this.AddIssue("error", fileName, s"\(def.contactId) has a \"voice\" that is not an object; ignored.");
             return;
         }
-        this.ReportUnknownKeys(raw, ["clone", "fallback", "rate"], fileName, s"\(def.contactId).voice.");
+        this.ReportUnknownKeys(raw, ["clone", "cloneLines", "fallback", "rate", "shift"], fileName, s"\(def.contactId).voice.");
 
         let voice = new AiNpcVoiceDef();
         if IsDefined(def.voice) {
             voice.clone = def.voice.clone;
+            voice.cloneLines = def.voice.cloneLines;
             voice.fallback = def.voice.fallback;
             voice.rate = def.voice.rate;
+            voice.shift = def.voice.shift;
+        }
+        if raw.HasKey("shift") {
+            voice.shift = Cast<Float>(raw.GetKeyDouble("shift"));
+            if voice.shift < 0.85 || voice.shift > 1.15 {
+                this.AddIssue("warning", fileName,
+                    s"\(def.contactId).voice.shift is \(voice.shift); it is held between 0.85 and 1.15.");
+            }
         }
         if raw.HasKey("clone") { voice.clone = raw.GetKeyString("clone"); }
+        if raw.HasKey("cloneLines") {
+            voice.cloneLines = this.ReadRawStringArray(raw, "cloneLines");
+            let declared = voice.cloneLines;
+            if Equals(ArraySize(declared), 0) {
+                this.AddIssue("warning", fileName,
+                    s"\(def.contactId).voice.cloneLines names no line; the clone tier is out of reach.");
+            }
+        }
         if raw.HasKey("fallback") { voice.fallback = raw.GetKeyString("fallback"); }
         if raw.HasKey("rate") {
             voice.rate = Cast<Float>(raw.GetKeyDouble("rate"));

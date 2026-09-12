@@ -18,7 +18,7 @@
 // child added is the one UNDERNEATH. Reordering the calls below reorders the panel visually,
 // though nothing about the code reads as positional.
 //
-// It returns five handles, the complete list of what the renderer can still touch after the
+// It returns six handles, the complete list of what the renderer can still touch after the
 // build. Everything else is drawn once and never spoken to again, which is what makes the
 // renderer droppable.
 
@@ -33,6 +33,8 @@ public class AiNpcPhoneChrome {
     public let typing: ref<inkFlex>;
     public let scroll: ref<inkScrollController>;
     public let input: ref<AiNpcPhoneInputRow>;
+    // Where the thread's choices are drawn, beside the fixed hints.
+    public let hints: ref<inkHorizontalPanel>;
 }
 
 func AiNpcPhoneBuildChrome(container: wref<inkCanvas>, contactName: String) -> ref<AiNpcPhoneChrome> {
@@ -186,7 +188,7 @@ func AiNpcPhoneBuildChrome(container: wref<inkCanvas>, contactName: String) -> r
     rule.SetRenderTransformPivot(new Vector2(0, 0.5));
     AiNpcInkBind(rule, AiNpcStyle.MainColorsStyle(), n"tintColor", AiNpcStyle.PropAccentTint());
 
-    AiNpcPhoneBuildHints(wrapper);
+    chrome.hints = AiNpcPhoneBuildHints(wrapper);
 
     return chrome;
 }

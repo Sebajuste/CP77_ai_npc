@@ -366,12 +366,12 @@ func AiNpcGetSpeechStyle(contactId: String) -> String {
 //
 // Every refusal is logged with its reason. A budget or a lock that bites silently is
 // indistinguishable from a mod that does not work, which is the rule <now> already follows.
-func AiNpcGetSystemRules(contactId: String) -> String {
+func AiNpcGetSystemRules(contactId: String, ctx: ref<AiNpcContactContext>) -> String {
     return AiNpcRenderRules("system_rules",
         AiNpcComposedRules("system_rules", contactId, AiNpcCoreRules(contactId),
             AiNpcPromptOverridesFor(contactId).rules,
             AiNpcGetPromptConfig().rules,
-            AiNpcExtensionRules(AiNpcBuildContactContext(contactId))));
+            AiNpcExtensionRules(ctx)));
 }
 
 // One composition for every composed block: the mod's rubrics, then the contact's, then

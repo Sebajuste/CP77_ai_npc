@@ -22,6 +22,8 @@
 #include "../Audio.hpp"
 #include "../PocketVoice.hpp"
 #include "../ProcessOutput.hpp"
+#include "../RadioFilter.hpp"
+#include "../SpeakableText.hpp"
 #include "../Speech.hpp"
 #include "../ClaudeCli.hpp"
 #include "../CodexCli.hpp"
@@ -30,6 +32,8 @@
 #include "../Registry.hpp"
 #include "../Stream.hpp"
 #include "../Transport.hpp"
+#include "../VoiceArchive.hpp"
+#include "../VoiceLines.hpp"
 #include "../VoiceMake.hpp"
 
 #include <chrono>
@@ -992,6 +996,44 @@ void TestVoicePacks()
     fs::remove_all(root, ignored);
 }
 
+// Le nom qu'AiNpcDerivedVoiceFile ecrit cote script, relu ici.
+void TestVoiceDerivation()
+{
+    std::printf("Voice derivation (<voice>-x<shift>)\n");
+
+    using ainpc::voicemake::Derive;
+    Check("a plain name is its own voice", Derive("judy").voice == "judy" && Derive("judy").shift == 1.0);
+
+    const auto derived = Derive("civ_mid_m_10_enus_30-x0.96");
+    Check("a suffix names the voice it derives from", derived.voice == "civ_mid_m_10_enus_30");
+    Check("and the speed it is re-read at", std::fabs(derived.shift - 0.96) < 1e-9);
+
+    Check("a suffix that is not a number stays in the name", Derive("rogue-xtra").voice == "rogue-xtra");
+    Check("a trailing marker stays in the name", Derive("rogue-x").voice == "rogue-x");
+}
+
+// Ce qu'un autre mod declare pour un personnage qu'ai_npc ne livre pas, et le dossier ou ses
+// repliques se lisent. Les deux moities de la voie « voix etrangere », sans archive ni jeu.
+void TestDeclaredVoice()
+{
+    std::printf("Declared voice (a mod names its own lines)\n");
+
+    const std::vector<std::string> lines = {"fingers_q105_f_16edcd0f892b6000.wem",
+                                            "fingers_q105_f_19fb9bcbdf610000.wem"};
+    Check("nobody has declared this voice yet", ainpc::voicelines::For("fingers").empty());
+    Check("declaring it is a change", ainpc::voicelines::Declare("fingers", lines));
+    Check("and it reads back", ainpc::voicelines::For("fingers") == lines);
+    Check("declaring the same list again is not", !ainpc::voicelines::Declare("fingers", lines));
+    Check("a different list is", ainpc::voicelines::Declare("fingers", {lines[0]}));
+    Check("and the last one wins", ainpc::voicelines::For("fingers").size() == 1);
+
+    using ainpc::archive::VoFolderForLocale;
+    Check("a dub locale names its own folder", VoFolderForLocale("fr-fr") == "fr-fr");
+    Check("the mexican dub is the spanish one", VoFolderForLocale("es-mx") == "es-es" &&
+                                                    ainpc::archive::ArchiveCodeForLocale("es-mx") == "es-es");
+    Check("a locale with no dub names none", VoFolderForLocale("nl-nl").empty());
+}
+
 // La file annonce ce qu'elle joue, dans l'ordre.
 //
 // C'est le contrat dont le sous-titre est la vue : trois repliques mises a la suite s'entendent
@@ -1042,6 +1084,147 @@ void TestSpeaking()
         Check("and in the order they will be heard",
               seen[0] == lines[0] && seen[1] == lines[1] && seen[2] == lines[2]);
     }
+}
+
+// La replique de V est annoncee comme la sienne, celle du personnage comme la sienne : c'est ce
+// que le sous-titre signe.
+void TestPlayerLine()
+{
+    std::printf("Player line (V's line is announced as V's)\n");
+
+    ainpc::speech::SpeakAsPlayer("Me.", "", "", "");
+    ainpc::speech::Speak("You.", "", "", "", "", 1.0f);
+
+    std::vector<ainpc::speech::Heard> seen;
+    for (int tick = 0; tick < 400; ++tick)
+    {
+        const ainpc::speech::Heard now = ainpc::speech::Hearing();
+        if (!now.text.empty() && (seen.empty() || seen.back().text != now.text))
+        {
+            seen.push_back(now);
+        }
+        if (seen.size() == 2 && ainpc::speech::Hearing().text.empty())
+        {
+            break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(25));
+    }
+    ainpc::speech::Silence();
+
+    Check("two lines are announced", seen.size() == 2);
+    if (seen.size() == 2)
+    {
+        Check("V's first, as V's", seen[0].text == "Me." && seen[0].player);
+        Check("then the character's, as the character's", seen[1].text == "You." && !seen[1].player);
+    }
+}
+
+// Une voix a un autre format attend que celle qui parle ait ete entendue : c'est ce qui laisse V
+// finir sa replique quand le personnage parle avec un autre moteur ou une autre vitesse.
+void TestFormatHandover()
+{
+    std::printf("Format handover (a new format waits for the line being heard)\n");
+
+    using ainpc::audio::Status;
+    const ainpc::audio::Sound line = ainpc::audio::Tone(0.5, 0.0, 0.0);
+    ainpc::audio::Format other = line.format;
+    other.sampleRate = line.format.sampleRate == 44100 ? 48000 : 44100;
+
+    Check("the first voice opens", ainpc::audio::Open(line.format) == Status::Ok);
+    Check("and queues half a second", ainpc::audio::Push(line.samples.data(), line.samples.size()) == Status::Ok);
+    ainpc::audio::Close();
+
+    const auto started = std::chrono::steady_clock::now();
+    Check("the second voice opens", ainpc::audio::Open(other) == Status::Ok);
+    const auto waited =
+        std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - started).count();
+    std::printf("        the second voice waited %lld ms\n", static_cast<long long>(waited));
+    Check("only after the first line was heard", waited >= 400);
+
+    ainpc::audio::Close();
+    ainpc::audio::Stop();
+}
+
+std::vector<uint8_t> SinePcm(double aHertz, uint32_t aSampleRate, size_t aSamples)
+{
+    std::vector<uint8_t> pcm(aSamples * 2);
+    for (size_t i = 0; i < aSamples; ++i)
+    {
+        const int16_t sample = static_cast<int16_t>(std::lround(8192.0 * std::sin(2.0 * 3.14159265358979 * aHertz * i / aSampleRate)));
+        std::memcpy(pcm.data() + i * 2, &sample, sizeof(sample));
+    }
+    return pcm;
+}
+
+// Sur la seconde moitie, une fois le transitoire des filtres passe.
+double TailRms(const std::vector<uint8_t>& aPcm)
+{
+    const size_t samples = aPcm.size() / 2;
+    double sum = 0.0;
+    for (size_t i = samples / 2; i < samples; ++i)
+    {
+        int16_t sample = 0;
+        std::memcpy(&sample, aPcm.data() + i * 2, sizeof(sample));
+        sum += static_cast<double>(sample) * sample;
+    }
+    return std::sqrt(sum / static_cast<double>(samples - samples / 2));
+}
+
+double RadioGain(ainpc::radio::Level aLevel, double aHertz)
+{
+    constexpr uint32_t rate = 24000;
+    std::vector<uint8_t> pcm = SinePcm(aHertz, rate, rate / 2);
+    const double before = TailRms(pcm);
+    ainpc::radio::Filter(aLevel, rate).Process(pcm.data(), pcm.size());
+    return TailRms(pcm) / before;
+}
+
+void TestRadioFilter()
+{
+    std::printf("Radio filter\n");
+    using ainpc::radio::Level;
+
+    const std::vector<uint8_t> tone = SinePcm(1000.0, 24000, 4800);
+    std::vector<uint8_t> untouched = tone;
+    ainpc::radio::Filter(Level::Off, 24000).Process(untouched.data(), untouched.size());
+    Check("off leaves the samples as they were", untouched == tone);
+
+    Check("medium keeps the voice band (1 kHz)", RadioGain(Level::Medium, 1000.0) > 0.8);
+    Check("medium cuts the lows (100 Hz)", RadioGain(Level::Medium, 100.0) < 0.05);
+    Check("medium cuts the highs (8 kHz)", RadioGain(Level::Medium, 8000.0) < 0.05);
+    Check("strong cuts deeper than light (6 kHz)",
+          RadioGain(Level::Strong, 6000.0) < RadioGain(Level::Light, 6000.0));
+
+    std::vector<uint8_t> whole = tone;
+    ainpc::radio::Filter(Level::Strong, 24000).Process(whole.data(), whole.size());
+    std::vector<uint8_t> pieces = tone;
+    ainpc::radio::Filter split(Level::Strong, 24000);
+    split.Process(pieces.data(), 3000);
+    split.Process(pieces.data() + 3000, pieces.size() - 3000);
+    Check("a line pushed in pieces sounds like a line pushed whole", pieces == whole);
+
+    Check("an unknown name is medium", ainpc::radio::LevelNamed("") == Level::Medium);
+    Check("the names round-trip", ainpc::radio::LevelNamed(ainpc::radio::NameOf(Level::Strong)) == Level::Strong &&
+                                      ainpc::radio::LevelNamed(ainpc::radio::NameOf(Level::Off)) == Level::Off);
+}
+
+void TestSpeakableText()
+{
+    std::printf("Speakable text\n");
+    using ainpc::voice::Speakable;
+
+    EqualString("the curly apostrophe becomes straight",
+                Speakable("Je ne veux pas qu\xE2\x80\x99il t\xE2\x80\x99" "arrive quelque chose."),
+                "Je ne veux pas qu'il t'arrive quelque chose.");
+    EqualString("the ellipsis sign becomes three dots", Speakable("Attends\xE2\x80\xA6"), "Attends...");
+    EqualString("a spaced dash becomes a pause", Speakable("Viens \xE2\x80\x94 vite."), "Viens, vite.");
+    EqualString("a bare dash becomes a pause", Speakable("Viens\xE2\x80\x94vite."), "Viens, vite.");
+    EqualString("non-breaking spaces become spaces",
+                Speakable("\xC2\xAB\xE2\x80\xAFSalut\xC2\xA0\xC2\xBB"), "\xC2\xAB Salut \xC2\xBB");
+    EqualString("a capital A grave loses its accent", Speakable("\xC3\x80 demain."), "A demain.");
+    EqualString("known accents are kept", Speakable("\xC3\xA9t\xC3\xA9 \xC3\xA7" "a"), "\xC3\xA9t\xC3\xA9 \xC3\xA7" "a");
+    EqualString("ascii passes through", Speakable("Quoi ? Non !"), "Quoi ? Non !");
+    EqualString("empty stays empty", Speakable(""), "");
 }
 
 void TestAudio(bool aAudible)
@@ -1543,10 +1726,16 @@ int main(int argc, char** argv)
     TestStreamAssembly();
     TestStreamFailures();
     TestStreamOptions();
+    TestRadioFilter();
+    TestSpeakableText();
     TestAudio(audible);
     TestSpeech();
     TestVoicePacks();
+    TestVoiceDerivation();
+    TestDeclaredVoice();
     TestSpeaking();
+    TestPlayerLine();
+    TestFormatHandover();
 
     std::printf("\n%d check(s), %d failure(s)\n", g_checks, g_failures);
     if (g_failures == 0)

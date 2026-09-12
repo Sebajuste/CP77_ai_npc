@@ -23,15 +23,20 @@ var writesRecipe = options.Pattern is null && options.Exclude is null;
 
 foreach (var contactId in options.Characters)
 {
-    var character = VoiceCast.Find(contactId);
+    // Un nom hors du casting est un essai pour un AUTRE mod : il n'a de sens qu'avec le motif
+    // qui dit ou chercher, et il ne rentre jamais dans la recette livree.
+    var character = VoiceCast.Find(contactId)
+                    ?? (options.Pattern is null ? null : new CastVoice(contactId, options.Pattern, null));
     if (character is null)
     {
         Console.WriteLine(contactId + " : aucune voix vanilla, personnage ignore");
         continue;
     }
+    var foreign = VoiceCast.Find(contactId) is null;
 
     var pattern = options.Pattern ?? character.Pattern;
-    var lines = source.LinesMatching(dictionary, pattern, options.Exclude).ToArray();
+    var exclude = options.Exclude ?? character.Exclude;
+    var lines = source.LinesMatching(dictionary, pattern, exclude).ToArray();
     Console.WriteLine($"{contactId} : {lines.Length} repliques selectionnees par {pattern}"
                       + (character.Note is null ? "" : "  (" + character.Note + ")"));
     if (options.ListOnly)
@@ -62,7 +67,7 @@ foreach (var contactId in options.Characters)
         }
     }
     var file = character.Name + ".wav";
-    WavWriter.Write(Path.Combine(options.Out, file), reference.Clip, character.Shift);
+    WavWriter.Write(Path.Combine(options.Out, file), reference.Clip);
     if (options.Raw)
     {
         var index = 0;
@@ -73,6 +78,10 @@ foreach (var contactId in options.Characters)
     }
     Console.WriteLine($"    {file} : {reference.Clip.Seconds:F1} s, {reference.Kept.Count} repliques, "
                       + $"RMS {reference.Clip.Rms:F3}");
+    if (foreign)
+    {
+        ForeignDeclaration.Print(character.Name, reference.Kept);
+    }
 
     recipe.Voices.Add(Recipe.VoiceOf(character, options.Language, reference));
     manifest.Voices.Add(new VoiceEntry

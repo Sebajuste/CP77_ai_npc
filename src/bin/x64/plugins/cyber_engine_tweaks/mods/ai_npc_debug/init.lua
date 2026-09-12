@@ -26,7 +26,6 @@
 
 local STORE = "AiNpc.AiNpcConversationStore"
 local SETUP = "AiNpc.AiNpcSetupSystem"
-local CALL  = "AiNpc.AiNpcCallSystem"
 
 local ui = {
     windowOpen = true,
@@ -241,8 +240,7 @@ local setup = {
     output = "",            -- the last thing that happened
     test = "",              -- the last test result
     beep = "",              -- what the audio device said to the last beep
-    callContact = "judy",   -- who the Call tab dials
-    callOutput = "",        -- what the call system answered last
+    radio = "",             -- holoRadioFilter, as settings.json holds it
     testing = false,        -- whether a request is in flight, so we only poll while it is
     showKeys = false,
 }
@@ -272,6 +270,7 @@ local function setupRefresh()
 
     local status, err = callSetup("DescribeSetup")
     setup.status = status or err
+    setup.radio = callSetup("HoloRadioFilter") or ""
 
     if setup.providers == "" then
         local providers = callSetup("DescribeProviders")
@@ -341,54 +340,6 @@ local function setupPoll()
                 setup.status = status
             end
         end
-    end
-end
-
--- The call, with no holo: the state machine driven by hand, so the door discipline can be
--- watched before any widget exists to hide it.
---
--- Dialing rings for a moment and then waits. Pick up and the conversation opens through
--- AiNpcChatDoor, exactly as a message notification opens one; let it ring out, or decline, and
--- nothing opens -- no announcement, no memory service, nothing in the journal.
-local function drawCall()
-    local state = callOn(CALL, "Describe")
-    ImGui.Text("State: " .. (state or "no session"))
-
-    ImGui.SetNextItemWidth(220)
-    local typed, changed = ImGui.InputText("contact##call", setup.callContact, 64)
-    if changed then
-        setup.callContact = typed
-    end
-
-    if ImGui.Button("Dial") then
-        local text, err = callOn(CALL, "Dial", setup.callContact)
-        setup.callOutput = err or text or ""
-    end
-    ImGui.SameLine()
-    if ImGui.Button("Pick up") then
-        local text, err = callOn(CALL, "PickUp")
-        setup.callOutput = err or text or ""
-    end
-    ImGui.SameLine()
-    if ImGui.Button("Decline") then
-        local text, err = callOn(CALL, "Decline")
-        setup.callOutput = err or text or ""
-    end
-    ImGui.SameLine()
-    if ImGui.Button("Hang up") then
-        local text, err = callOn(CALL, "HangUp")
-        setup.callOutput = err or text or ""
-    end
-
-    ImGui.Separator()
-    if ImGui.Button("Dump journal contacts to the log") then
-        local text, err = callSetup("DumpContacts")
-        setup.callOutput = err or text or ""
-    end
-
-    if setup.callOutput ~= "" then
-        ImGui.Separator()
-        ImGui.TextWrapped(setup.callOutput)
     end
 end
 
@@ -501,6 +452,23 @@ local function drawSetup()
         ImGui.TextWrapped(setup.beep)
     end
 
+    if ImGui.Button("Dump journal contacts to the log") then
+        local text, err = callSetup("DumpContacts")
+        setup.output = err or text or ""
+    end
+
+    -- Heard from the next spoken line: the DLL re-reads settings.json for each one.
+    ImGui.Text("Holo radio filter:")
+    for _, level in ipairs({ "off", "light", "medium", "strong" }) do
+        ImGui.SameLine()
+        local label = setup.radio == level and ("[" .. level .. "]") or level
+        if ImGui.Button(label .. "###radio_" .. level) then
+            local text, err = callSetup("SetSetting", "holoRadioFilter", level)
+            setup.output = text or err
+            setup.radio = callSetup("HoloRadioFilter") or ""
+        end
+    end
+
     if setup.output ~= "" then
         ImGui.Separator()
         ImGui.TextWrapped(setup.output)
@@ -605,11 +573,6 @@ registerForEvent("onDraw", function()
         setupPoll()
 
         if ImGui.BeginTabBar("aiNpcTabs") then
-            if ImGui.BeginTabItem("Call") then
-                drawCall()
-                ImGui.EndTabItem()
-            end
-
             if ImGui.BeginTabItem("Setup") then
                 drawSetup()
                 ImGui.EndTabItem()

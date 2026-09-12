@@ -37,6 +37,14 @@ func AiNpcCallHangUpAction() -> CName {
     return n"PhoneReject";
 }
 
+// La meme touche T porte une seconde action : PhoneInteract, dont le maintien sort le
+// telephone (NewHudPhoneGameController.OnAction, branche BUTTON_HOLD_COMPLETE). Un seul
+// maintien declenche les deux, et le jeu ne se marche jamais dessus parce que ses deux
+// branches s'excluent sur callPhase == IncomingCall -- ce qu'un appel du mod n'est pas.
+func AiNpcPhoneOpenAction() -> CName {
+    return n"PhoneInteract";
+}
+
 // Les actions de choix du jeu. F et Entrée valident (Choice1, ChoiceApply -- DialogConfirm lie
 // les deux touches), R et les autres prennent un choix secondaire. Une lettre tapée dans la
 // ligne de saisie les déclenche aussi.

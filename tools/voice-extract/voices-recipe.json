@@ -344,9 +344,94 @@
       ]
     },
     {
-      "voice": "civ_high_f_02_enus_30-x1.08",
+      "voice": "v_female",
       "language": "en",
-      "shift": 1.08,
+      "seconds": 36.23,
+      "lines": [
+        {
+          "hash": "00009bd1871ca947",
+          "path": "ep1\\localization\\en-us\\vo\\v_q302_f_33cab2375c45a000.wem"
+        },
+        {
+          "hash": "00140a255e8181c0",
+          "path": "base\\localization\\en-us\\vo\\v_q110_f_17ab76b91b351000.wem"
+        },
+        {
+          "hash": "0020365f63872aab",
+          "path": "ep1\\localization\\en-us\\vo\\v_q301_f_30875f893b45a008.wem"
+        },
+        {
+          "hash": "00291a4b123a2e4c",
+          "path": "base\\localization\\en-us\\vo\\v_q112_f_18934db44b4e1000.wem"
+        },
+        {
+          "hash": "002bcadfcb736e2f",
+          "path": "base\\localization\\en-us\\vo\\v_sq025_f_1ad9c875d3386000.wem"
+        },
+        {
+          "hash": "00321ccbfc2c645f",
+          "path": "ep1\\localization\\en-us\\vo\\v_q303_f_2c7ccb5b39754000.wem"
+        },
+        {
+          "hash": "0038db61153b6f91",
+          "path": "base\\localization\\en-us\\vo\\v_sq006_f_183bc958d6521000.wem"
+        },
+        {
+          "hash": "003d16f960acbb78",
+          "path": "base\\localization\\en-us\\vo\\v_q005_f_16bdcd8de22cd000.wem"
+        },
+        {
+          "hash": "0043dbdcd14fb58a",
+          "path": "base\\localization\\en-us\\vo\\v_q112_f_18b5f82e794e1000.wem"
+        }
+      ]
+    },
+    {
+      "voice": "v_male",
+      "language": "en",
+      "seconds": 35.05,
+      "lines": [
+        {
+          "hash": "000243aff6eadec8",
+          "path": "base\\localization\\en-us\\vo\\v_q112_m_17e35953084e1000.wem"
+        },
+        {
+          "hash": "00036d98531f08de",
+          "path": "base\\localization\\en-us\\vo\\v_q103_m_1724647f6829f000.wem"
+        },
+        {
+          "hash": "00127382f893364d",
+          "path": "base\\localization\\en-us\\vo\\v_q116_m_167c035dcb386000.wem"
+        },
+        {
+          "hash": "001a20c410178fbd",
+          "path": "base\\localization\\en-us\\vo\\v_sq027_m_19130479d2351000.wem"
+        },
+        {
+          "hash": "0023c17c280ca8f1",
+          "path": "base\\localization\\en-us\\vo\\v_sq027_m_1a1ed2572e2c5000.wem"
+        },
+        {
+          "hash": "002f6d1eea3f1d50",
+          "path": "base\\localization\\en-us\\vo\\v_q110_m_101fcedfb7401000.wem"
+        },
+        {
+          "hash": "003afc1a1692c000",
+          "path": "ep1\\localization\\en-us\\vo\\v_q302_m_2a088b3ca6686000.wem"
+        },
+        {
+          "hash": "005516094a18cda8",
+          "path": "base\\localization\\en-us\\vo\\v_sq024_m_19c28a8ee9521000.wem"
+        },
+        {
+          "hash": "0055561112a4546c",
+          "path": "base\\localization\\en-us\\vo\\v_q114_m_1a2db1b7da29f000.wem"
+        }
+      ]
+    },
+    {
+      "voice": "civ_high_f_02_enus_30",
+      "language": "en",
       "seconds": 36.27,
       "lines": [
         {
@@ -419,6 +504,259 @@
         {
           "hash": "0f632807a30e1dd2",
           "path": "base\\localization\\en-us\\vo\\civ_mid_f_21_enus_25_q105_f_1758d867682b600c.wem"
+        }
+      ]
+    },
+    {
+      "voice": "civ_mid_m_10_enus_30",
+      "language": "en",
+      "seconds": 32.17,
+      "lines": [
+        {
+          "hash": "2e9df886e188717a",
+          "path": "base\\localization\\en-us\\vo\\civ_mid_m_10_enus_30_big_arroyo_f_1b68a30bf344d000.wem"
+        },
+        {
+          "hash": "3942733a419366c5",
+          "path": "base\\localization\\en-us\\vo\\civ_mid_m_10_enus_30_big_civ_mid_m_10_enus_30_big_f_1b0b4d2d1369e004.wem"
+        },
+        {
+          "hash": "3fca3aa80c7c0d3b",
+          "path": "base\\localization\\en-us\\vo\\civ_mid_m_10_enus_30_big_civ_mid_m_10_enus_30_big_f_1b0b4eef4d69e000.wem"
+        },
+        {
+          "hash": "451f5f5632a197cb",
+          "path": "base\\localization\\en-us\\vo\\civ_mid_m_10_enus_30_big_arroyo_f_1b68ab964044d000.wem"
+        },
+        {
+          "hash": "619570000af2f727",
+          "path": "base\\localization\\en-us\\vo\\civ_mid_m_10_enus_30_big_arroyo_f_1b68b1a08844d000.wem"
+        },
+        {
+          "hash": "6a5a99c1622861a6",
+          "path": "base\\localization\\en-us\\vo\\civ_mid_m_10_enus_30_big_downtown_f_1b77a669b747a000.wem"
+        },
+        {
+          "hash": "76d60110be9c0aae",
+          "path": "base\\localization\\en-us\\vo\\civ_mid_m_10_enus_30_big_arroyo_f_1b68a3d17344d000.wem"
+        }
+      ]
+    },
+    {
+      "voice": "civ_mid_m_04_enus_30",
+      "language": "en",
+      "seconds": 33.08,
+      "lines": [
+        {
+          "hash": "0e1a4b765493d552",
+          "path": "base\\localization\\en-us\\vo\\civ_mid_m_04_enus_30_cct_dtn_chat_001_f_1e3f4ff6c63bc000.wem"
+        },
+        {
+          "hash": "0e7edf3880fe98ee",
+          "path": "base\\localization\\en-us\\vo\\civ_mid_m_04_enus_30_pac_wwd_chat_002_f_1eb48c721642f000.wem"
+        },
+        {
+          "hash": "0edb31f032e138e9",
+          "path": "base\\localization\\en-us\\vo\\civ_mid_m_04_enus_30_little_china_f_1deda069aa647000.wem"
+        },
+        {
+          "hash": "131074665385a49f",
+          "path": "base\\localization\\en-us\\vo\\civ_mid_m_04_enus_30_q105_f_16a9e561512b6000.wem"
+        },
+        {
+          "hash": "13dc86f1b3c0a9a5",
+          "path": "base\\localization\\en-us\\vo\\civ_mid_m_04_enus_30_playing_games_chat_020_f_1e4998841f47e000.wem"
+        },
+        {
+          "hash": "147c7731b76f1821",
+          "path": "base\\localization\\en-us\\vo\\civ_mid_m_04_enus_30_pac_wwd_chat_002_f_1eb487214842f000.wem"
+        },
+        {
+          "hash": "1775e55499867935",
+          "path": "base\\localization\\en-us\\vo\\civ_mid_m_04_enus_30_pac_wwd_chat_002_f_1e3f98fde369e000.wem"
+        }
+      ]
+    },
+    {
+      "voice": "civ_high_m_07_enus_40",
+      "language": "en",
+      "seconds": 31.8,
+      "lines": [
+        {
+          "hash": "0100de39da7b7d31",
+          "path": "ep1\\localization\\en-us\\vo\\civ_high_m_07_enus_40_q306_f_2db11b52d0757000.wem"
+        },
+        {
+          "hash": "04cf624b6a79f855",
+          "path": "ep1\\localization\\en-us\\vo\\civ_high_m_07_enus_40_q305_f_2fbeee5ab6806000.wem"
+        },
+        {
+          "hash": "04dd02ca59f5fa55",
+          "path": "ep1\\localization\\en-us\\vo\\civ_high_m_07_enus_40_q307_f_2d54883a993bc03c.wem"
+        },
+        {
+          "hash": "051d44fa3fd181b4",
+          "path": "base\\localization\\en-us\\vo\\civ_high_m_07_enus_40_q005_f_18028e215d2e3000.wem"
+        },
+        {
+          "hash": "09b33dc968375b21",
+          "path": "ep1\\localization\\en-us\\vo\\civ_high_m_07_enus_40_q301_f_2d601ec049571000.wem"
+        },
+        {
+          "hash": "0b2190b3b7720e00",
+          "path": "base\\localization\\en-us\\vo\\civ_high_m_07_enus_40_q203_f_1be3ce46ce29f000.wem"
+        },
+        {
+          "hash": "0c5b7eaba1992903",
+          "path": "ep1\\localization\\en-us\\vo\\civ_high_m_07_enus_40_q306_f_2ae1f4da5a518000.wem"
+        },
+        {
+          "hash": "0d8544a17789b1e5",
+          "path": "base\\localization\\en-us\\vo\\civ_high_m_07_enus_40_q005_f_1ba15268702d2000.wem"
+        }
+      ]
+    },
+    {
+      "voice": "civ_high_m_02_enus_30",
+      "language": "en",
+      "seconds": 30.32,
+      "lines": [
+        {
+          "hash": "0302a996ea446ad1",
+          "path": "base\\localization\\en-us\\vo\\civ_high_m_02_enus_30_q005_01_additional_news_saburo_death_f_1f0ee0d34545a000.wem"
+        },
+        {
+          "hash": "096cd1ba13697af0",
+          "path": "base\\localization\\en-us\\vo\\civ_high_m_02_enus_30_glen_f_196f42355369e000.wem"
+        },
+        {
+          "hash": "09837b394aac3038",
+          "path": "base\\localization\\en-us\\vo\\civ_high_m_02_enus_30_q005_01_additional_news_saburo_death_f_1f11a9d6c445a000.wem"
+        },
+        {
+          "hash": "0d6d548adfbe10ee",
+          "path": "base\\localization\\en-us\\vo\\civ_high_m_02_enus_30_q113_f_1f540e7de345a008.wem"
+        },
+        {
+          "hash": "0de7f8975910c659",
+          "path": "base\\localization\\en-us\\vo\\civ_high_m_02_enus_30_sq024_f_19d721c90c521000.wem"
+        },
+        {
+          "hash": "1764b6691ef5a513",
+          "path": "base\\localization\\en-us\\vo\\civ_high_m_02_enus_30_mq019_f_1afc2409f74ea000.wem"
+        },
+        {
+          "hash": "1a03d56834fd2c38",
+          "path": "base\\localization\\en-us\\vo\\civ_high_m_02_enus_30_q005_01_additional_news_saburo_death_f_1f0ef9602545a000.wem"
+        }
+      ]
+    },
+    {
+      "voice": "civ_mid_m_05_enus_40",
+      "language": "en",
+      "seconds": 31.17,
+      "lines": [
+        {
+          "hash": "00de0956b2c7da74",
+          "path": "base\\localization\\en-us\\vo\\civ_mid_m_05_enus_40_sq021_f_1ff4a4b71e5f9000.wem"
+        },
+        {
+          "hash": "02350f4e90a9bbc6",
+          "path": "base\\localization\\en-us\\vo\\civ_mid_m_05_enus_40_vs_civ_mid_m_05_enus_40_f_1a76f4100c582004.wem"
+        },
+        {
+          "hash": "047857176d60b649",
+          "path": "base\\localization\\en-us\\vo\\civ_mid_m_05_enus_40_cct_cpz_chat_001_f_1e6d832e81559000.wem"
+        },
+        {
+          "hash": "08a33e465cdb1d7f",
+          "path": "base\\localization\\en-us\\vo\\civ_mid_m_05_enus_40_vs_civ_mid_m_05_enus_40_f_1a76f41031582004.wem"
+        },
+        {
+          "hash": "0de24b879c11f327",
+          "path": "base\\localization\\en-us\\vo\\civ_mid_m_05_enus_40_bls_ina_chat_001_f_1eafe470e842f000.wem"
+        },
+        {
+          "hash": "0e1c411830c63f76",
+          "path": "base\\localization\\en-us\\vo\\civ_mid_m_05_enus_40_little_china_f_1b6301aebe44d000.wem"
+        },
+        {
+          "hash": "13b204571ab90b6b",
+          "path": "base\\localization\\en-us\\vo\\civ_mid_m_05_enus_40_vs_civ_mid_m_05_enus_40_f_1a76f41008582004.wem"
+        }
+      ]
+    },
+    {
+      "voice": "civ_high_f_01_enus_25",
+      "language": "en",
+      "seconds": 30.01,
+      "lines": [
+        {
+          "hash": "009cc1a9dc4d1f6e",
+          "path": "ep1\\localization\\en-us\\vo\\civ_high_f_01_enus_25_q307_f_2df9c92adb3bc000.wem"
+        },
+        {
+          "hash": "09d1fa2cc366e5b5",
+          "path": "base\\localization\\en-us\\vo\\civ_high_f_01_enus_25_glen_f_196f4a2d5569e000.wem"
+        },
+        {
+          "hash": "09df6e7dc7c066bd",
+          "path": "base\\localization\\en-us\\vo\\civ_high_f_01_enus_25_vs_civ_high_f_01_enus_25_f_1a1e207b81582004.wem"
+        },
+        {
+          "hash": "0f03c1f99501d67a",
+          "path": "base\\localization\\en-us\\vo\\civ_high_f_01_enus_25_mq024_f_18da9a0aac627000.wem"
+        },
+        {
+          "hash": "11488882d4156e01",
+          "path": "base\\localization\\en-us\\vo\\civ_high_f_01_enus_25_mq024_f_19700e4e313bc000.wem"
+        },
+        {
+          "hash": "147b7ae3c3d9d043",
+          "path": "ep1\\localization\\en-us\\vo\\civ_high_f_01_enus_25_q305_f_2e98ed3e297e1000.wem"
+        }
+      ]
+    },
+    {
+      "voice": "civ_high_f_04_enus_50",
+      "language": "en",
+      "seconds": 31.16,
+      "lines": [
+        {
+          "hash": "0459f350d19cdfed",
+          "path": "ep1\\localization\\en-us\\vo\\civ_high_f_04_enus_50_q303_f_306e6c11354e6000.wem"
+        },
+        {
+          "hash": "078f9401a73247a2",
+          "path": "ep1\\localization\\en-us\\vo\\civ_high_f_04_enus_50_q303_f_2fb9ca55b2521000.wem"
+        },
+        {
+          "hash": "1216aa6b6e4d4018",
+          "path": "base\\localization\\en-us\\vo\\civ_high_f_04_enus_50_vs_civ_high_f_04_enus_50_f_1a1e3f01d7582004.wem"
+        },
+        {
+          "hash": "1285158bf123a18d",
+          "path": "base\\localization\\en-us\\vo\\civ_high_f_04_enus_50_glen_f_1913b8e4f769e000.wem"
+        },
+        {
+          "hash": "146d214df359b752",
+          "path": "ep1\\localization\\en-us\\vo\\civ_high_f_04_enus_50_ow_chats_f_31cb8c63d4559000.wem"
+        },
+        {
+          "hash": "15de5849ff62d771",
+          "path": "ep1\\localization\\en-us\\vo\\civ_high_f_04_enus_50_q303_f_2fb9cae475521000.wem"
+        },
+        {
+          "hash": "16341e3084395bc1",
+          "path": "ep1\\localization\\en-us\\vo\\civ_high_f_04_enus_50_q303_f_2fb9cb69e0521000.wem"
+        },
+        {
+          "hash": "169d5d0b13a0d606",
+          "path": "base\\localization\\en-us\\vo\\civ_high_f_04_enus_50_vs_civ_high_f_04_enus_50_f_1a1e3f01d5582004.wem"
+        },
+        {
+          "hash": "1729b68cd7806e3e",
+          "path": "ep1\\localization\\en-us\\vo\\civ_high_f_04_enus_50_q303_f_2fb9cb606a521000.wem"
         }
       ]
     },
@@ -1093,9 +1431,90 @@
       ]
     },
     {
-      "voice": "civ_high_f_02_enus_30-x1.08",
+      "voice": "v_female",
       "language": "fr",
-      "shift": 1.08,
+      "seconds": 32.88,
+      "lines": [
+        {
+          "hash": "0005f5a9c77da26f",
+          "path": "ep1\\localization\\fr-fr\\vo\\v_q303_f_3122d30f83521000.wem"
+        },
+        {
+          "hash": "0026b9f82fa5d5c7",
+          "path": "base\\localization\\fr-fr\\vo\\v_q104_f_186ee6e5a329f000.wem"
+        },
+        {
+          "hash": "0039cc40f0f6d30e",
+          "path": "base\\localization\\fr-fr\\vo\\v_mq016_f_18a75bd1984ea000.wem"
+        },
+        {
+          "hash": "003d2331e9b4022a",
+          "path": "ep1\\localization\\fr-fr\\vo\\v_q305_f_2dc047126f42f000.wem"
+        },
+        {
+          "hash": "003e8598e345d207",
+          "path": "base\\localization\\fr-fr\\vo\\v_q115_f_19c6df209b2d2000.wem"
+        },
+        {
+          "hash": "00429dd70a4feab2",
+          "path": "base\\localization\\fr-fr\\vo\\v_sq021_f_15a24f7d5952c000.wem"
+        },
+        {
+          "hash": "0043a71c9463bd72",
+          "path": "base\\localization\\fr-fr\\vo\\v_q105_f_159dd3bc622fc000.wem"
+        },
+        {
+          "hash": "004c3f8c450b93c7",
+          "path": "ep1\\localization\\fr-fr\\vo\\v_q307_f_2e9e8325e43bc000.wem"
+        },
+        {
+          "hash": "005342104f0211ed",
+          "path": "base\\localization\\fr-fr\\vo\\v_mq017_f_1a9588245b4e2000.wem"
+        },
+        {
+          "hash": "006bd28c905ba423",
+          "path": "ep1\\localization\\fr-fr\\vo\\v_q305_f_315f1174ce42f000.wem"
+        }
+      ]
+    },
+    {
+      "voice": "v_male",
+      "language": "fr",
+      "seconds": 34,
+      "lines": [
+        {
+          "hash": "001ab856ce144836",
+          "path": "base\\localization\\fr-fr\\vo\\v_mq024_m_18da99b20c627000.wem"
+        },
+        {
+          "hash": "0027a33596b8a2e8",
+          "path": "base\\localization\\fr-fr\\vo\\v_q105_m_17c3d5d5075b3000.wem"
+        },
+        {
+          "hash": "00289265786d26f7",
+          "path": "ep1\\localization\\fr-fr\\vo\\v_sts_ep1_12_m_2d7409f4c346a004.wem"
+        },
+        {
+          "hash": "00296c0d1d9569cf",
+          "path": "ep1\\localization\\fr-fr\\vo\\v_q305_m_2b4df1c3d7766000.wem"
+        },
+        {
+          "hash": "00300871306a2614",
+          "path": "ep1\\localization\\fr-fr\\vo\\v_q305_m_305f699e0d7df000.wem"
+        },
+        {
+          "hash": "00333345bbd3f564",
+          "path": "base\\localization\\fr-fr\\vo\\v_sts_std_rcr_02_m_1ab9d72c3c44d000.wem"
+        },
+        {
+          "hash": "003f52f9a86ee841",
+          "path": "ep1\\localization\\fr-fr\\vo\\v_q304_m_2e752b9e88405000.wem"
+        }
+      ]
+    },
+    {
+      "voice": "civ_high_f_02_enus_30",
+      "language": "fr",
       "seconds": 35.32,
       "lines": [
         {
@@ -1164,6 +1583,287 @@
         {
           "hash": "0d230461e8ec8d18",
           "path": "base\\localization\\fr-fr\\vo\\civ_mid_f_21_enus_25_q105_f_1758d867a42b6018.wem"
+        }
+      ]
+    },
+    {
+      "voice": "civ_mid_m_10_enus_30",
+      "language": "fr",
+      "seconds": 31.81,
+      "lines": [
+        {
+          "hash": "0786763d00cc787f",
+          "path": "base\\localization\\fr-fr\\vo\\civ_mid_m_10_enus_30_big_civ_mid_m_10_enus_30_big_m_1b0b4d2d1369e004.wem"
+        },
+        {
+          "hash": "0c20d7626fab06c2",
+          "path": "base\\localization\\fr-fr\\vo\\civ_mid_m_10_enus_30_big_arroyo_f_1b68ae713344d000.wem"
+        },
+        {
+          "hash": "10316c33c4645d15",
+          "path": "base\\localization\\fr-fr\\vo\\civ_mid_m_10_enus_30_big_downtown_f_1b77a6b38e47a000.wem"
+        },
+        {
+          "hash": "108acf577620f955",
+          "path": "base\\localization\\fr-fr\\vo\\civ_mid_m_10_enus_30_big_civ_mid_m_10_enus_30_big_f_1b0b4d2d1d69e004.wem"
+        },
+        {
+          "hash": "27deca473f24974b",
+          "path": "base\\localization\\fr-fr\\vo\\civ_mid_m_10_enus_30_big_civ_mid_m_10_enus_30_big_f_1b0b4d2d3469e004.wem"
+        },
+        {
+          "hash": "2a83c07700a009ec",
+          "path": "base\\localization\\fr-fr\\vo\\civ_mid_m_10_enus_30_big_civ_mid_m_10_enus_30_big_f_1b0b4d2d2f69e004.wem"
+        },
+        {
+          "hash": "53c6071d9286465a",
+          "path": "base\\localization\\fr-fr\\vo\\civ_mid_m_10_enus_30_big_arroyo_f_1b68b1a08844d000.wem"
+        },
+        {
+          "hash": "7176ae867f010683",
+          "path": "base\\localization\\fr-fr\\vo\\civ_mid_m_10_enus_30_big_arroyo_f_1b68a3d17344d000.wem"
+        }
+      ]
+    },
+    {
+      "voice": "civ_mid_m_04_enus_30",
+      "language": "fr",
+      "seconds": 31.62,
+      "lines": [
+        {
+          "hash": "04c18b08ae4ef725",
+          "path": "base\\localization\\fr-fr\\vo\\civ_mid_m_04_enus_30_japantown_f_1e44153c1f559000.wem"
+        },
+        {
+          "hash": "0d014b2312501361",
+          "path": "base\\localization\\fr-fr\\vo\\civ_mid_m_04_enus_30_00_afterlife_global_scene_f_1f639275d442c000.wem"
+        },
+        {
+          "hash": "180173bbcb781246",
+          "path": "base\\localization\\fr-fr\\vo\\civ_mid_m_04_enus_30_vs_civ_mid_m_04_enus_30_f_1a76eb26a9582004.wem"
+        },
+        {
+          "hash": "1d20a14137c4b188",
+          "path": "base\\localization\\fr-fr\\vo\\civ_mid_m_04_enus_30_ziggy_f_190939664b3bc000.wem"
+        },
+        {
+          "hash": "2040a05f1a4e0845",
+          "path": "base\\localization\\fr-fr\\vo\\civ_mid_m_04_enus_30_kabuki_f_1eb55b76b845a000.wem"
+        },
+        {
+          "hash": "25c6267cfef31ece",
+          "path": "base\\localization\\fr-fr\\vo\\civ_mid_m_04_enus_30_q104_f_1ef76f7c2f42f000.wem"
+        },
+        {
+          "hash": "272fabd2971e4b53",
+          "path": "base\\localization\\fr-fr\\vo\\civ_mid_m_04_enus_30_ziggy_f_19093b0b1a3bc000.wem"
+        },
+        {
+          "hash": "342404b6d6692c80",
+          "path": "base\\localization\\fr-fr\\vo\\civ_mid_m_04_enus_30_playing_games_chat_020_f_1e4998841f47e000.wem"
+        }
+      ]
+    },
+    {
+      "voice": "civ_high_m_07_enus_40",
+      "language": "fr",
+      "seconds": 35.28,
+      "lines": [
+        {
+          "hash": "0041ab66e177d8a1",
+          "path": "base\\localization\\fr-fr\\vo\\civ_high_m_07_enus_40_q203_f_18886d083a49d000.wem"
+        },
+        {
+          "hash": "00c619bd6eb29f18",
+          "path": "ep1\\localization\\fr-fr\\vo\\civ_high_m_07_enus_40_q306_f_2c8c7b66a146a000.wem"
+        },
+        {
+          "hash": "07f72d7aee1e5fcb",
+          "path": "base\\localization\\fr-fr\\vo\\civ_high_m_07_enus_40_cct_dtn_chat_001_f_1e4437368c3bc000.wem"
+        },
+        {
+          "hash": "0a4cdc93c4d59f2b",
+          "path": "base\\localization\\fr-fr\\vo\\civ_high_m_07_enus_40_q005_f_18d4e554092cd000.wem"
+        },
+        {
+          "hash": "0c5b21a3184c865e",
+          "path": "ep1\\localization\\fr-fr\\vo\\civ_high_m_07_enus_40_q306_f_2c6de441c2518000.wem"
+        },
+        {
+          "hash": "0c8e9b71f08ed730",
+          "path": "ep1\\localization\\fr-fr\\vo\\civ_high_m_07_enus_40_sts_ep1_06_f_2dcd40234e555000.wem"
+        },
+        {
+          "hash": "0ce557ec35069a04",
+          "path": "base\\localization\\fr-fr\\vo\\civ_high_m_07_enus_40_q000_f_171023752b4ea000.wem"
+        },
+        {
+          "hash": "0f57a8ccf5557318",
+          "path": "base\\localization\\fr-fr\\vo\\civ_high_m_07_enus_40_q203_f_1ff8b8736642f000.wem"
+        }
+      ]
+    },
+    {
+      "voice": "civ_high_m_02_enus_30",
+      "language": "fr",
+      "seconds": 35.98,
+      "lines": [
+        {
+          "hash": "01fb5c6b4bc7b804",
+          "path": "base\\localization\\fr-fr\\vo\\civ_high_m_02_enus_30_sq024_f_19d721c90c521000.wem"
+        },
+        {
+          "hash": "0604f172b816626d",
+          "path": "base\\localization\\fr-fr\\vo\\civ_high_m_02_enus_30_cct_dtn_chat_001_f_1e5eb7cbe4559000.wem"
+        },
+        {
+          "hash": "075d240c4637204e",
+          "path": "base\\localization\\fr-fr\\vo\\civ_high_m_02_enus_30_cct_cpz_chat_005_f_1b493d25603bc000.wem"
+        },
+        {
+          "hash": "077368dcc5b9dd54",
+          "path": "base\\localization\\fr-fr\\vo\\civ_high_m_02_enus_30_mq005_f_19dca5db3844d000.wem"
+        },
+        {
+          "hash": "080837387b7a1034",
+          "path": "base\\localization\\fr-fr\\vo\\civ_high_m_02_enus_30_sq024_f_19d5aae469521000.wem"
+        },
+        {
+          "hash": "0820567412435cff",
+          "path": "base\\localization\\fr-fr\\vo\\civ_high_m_02_enus_30_sq024_f_19d71d4e94521000.wem"
+        },
+        {
+          "hash": "086fb962bb549b7f",
+          "path": "base\\localization\\fr-fr\\vo\\civ_high_m_02_enus_30_mq019_f_1afc2890944ea00c.wem"
+        },
+        {
+          "hash": "09c9bc57dc507b7a",
+          "path": "base\\localization\\fr-fr\\vo\\civ_high_m_02_enus_30_vs_civ_high_m_02_enus_30_f_1a10107036582004.wem"
+        }
+      ]
+    },
+    {
+      "voice": "civ_mid_m_05_enus_40",
+      "language": "fr",
+      "seconds": 31.97,
+      "lines": [
+        {
+          "hash": "01a7b842c60cbff6",
+          "path": "base\\localization\\fr-fr\\vo\\civ_mid_m_05_enus_40_riots_chat_041_f_1e49d15f8647e000.wem"
+        },
+        {
+          "hash": "035e1fc2c0b4ba01",
+          "path": "base\\localization\\fr-fr\\vo\\civ_mid_m_05_enus_40_std_arr_chat_001_f_1e15fd6a6276d000.wem"
+        },
+        {
+          "hash": "055cfdc109e15db4",
+          "path": "base\\localization\\fr-fr\\vo\\civ_mid_m_05_enus_40_q105_f_172fbd01fd2fc000.wem"
+        },
+        {
+          "hash": "0bbf37f10625897a",
+          "path": "base\\localization\\fr-fr\\vo\\civ_mid_m_05_enus_40_std_arr_chat_001_f_1e1672587676d000.wem"
+        },
+        {
+          "hash": "0dcb94e65e5abbfa",
+          "path": "base\\localization\\fr-fr\\vo\\civ_mid_m_05_enus_40_q108_f_17cfc53c734ea000.wem"
+        },
+        {
+          "hash": "0e24ea96576389e9",
+          "path": "base\\localization\\fr-fr\\vo\\civ_mid_m_05_enus_40_std_arr_chat_001_f_1ed5475660559000.wem"
+        },
+        {
+          "hash": "13761231f3aef663",
+          "path": "base\\localization\\fr-fr\\vo\\civ_mid_m_05_enus_40_wbr_nok_chat_001_f_1e86d8652042f000.wem"
+        },
+        {
+          "hash": "1cfe3fd904b84d87",
+          "path": "base\\localization\\fr-fr\\vo\\civ_mid_m_05_enus_40_sq021_f_1ff4a623225f9000.wem"
+        }
+      ]
+    },
+    {
+      "voice": "civ_high_f_01_enus_25",
+      "language": "fr",
+      "seconds": 31.11,
+      "lines": [
+        {
+          "hash": "00e5e499bb20a33b",
+          "path": "base\\localization\\fr-fr\\vo\\civ_high_f_01_enus_25_mq024_f_19701640ff3bc000.wem"
+        },
+        {
+          "hash": "01698aeaa1bd6e64",
+          "path": "ep1\\localization\\fr-fr\\vo\\civ_high_f_01_enus_25_q305_f_2a959112b07e1000.wem"
+        },
+        {
+          "hash": "0258e08c376b77ef",
+          "path": "base\\localization\\fr-fr\\vo\\civ_high_f_01_enus_25_mq024_f_196b9bcfa93bc000.wem"
+        },
+        {
+          "hash": "02f84d467bdeccc8",
+          "path": "base\\localization\\fr-fr\\vo\\civ_high_f_01_enus_25_mq024_f_19706640043bc000.wem"
+        },
+        {
+          "hash": "0648db1c66eef15a",
+          "path": "base\\localization\\fr-fr\\vo\\civ_high_f_01_enus_25_mq024_f_1908506aff627000.wem"
+        },
+        {
+          "hash": "06f145263f843558",
+          "path": "ep1\\localization\\fr-fr\\vo\\civ_high_f_01_enus_25_q305_f_2a9594c7977e1000.wem"
+        },
+        {
+          "hash": "0fb8bef6351bc95e",
+          "path": "ep1\\localization\\fr-fr\\vo\\civ_high_f_01_enus_25_q305_f_2a958412607e1000.wem"
+        },
+        {
+          "hash": "104739fb34a46b3d",
+          "path": "base\\localization\\fr-fr\\vo\\civ_high_f_01_enus_25_mq024_f_197066e58e3bc000.wem"
+        }
+      ]
+    },
+    {
+      "voice": "civ_high_f_04_enus_50",
+      "language": "fr",
+      "seconds": 32.47,
+      "lines": [
+        {
+          "hash": "013589e3df9ff0af",
+          "path": "base\\localization\\fr-fr\\vo\\civ_high_f_04_enus_50_vs_civ_high_f_04_enus_50_f_1a1e3f01d7582004.wem"
+        },
+        {
+          "hash": "056d94d8d20457a6",
+          "path": "ep1\\localization\\fr-fr\\vo\\civ_high_f_04_enus_50_q303_f_306e6c11354e6000.wem"
+        },
+        {
+          "hash": "079943051fbb655a",
+          "path": "ep1\\localization\\fr-fr\\vo\\civ_high_f_04_enus_50_q303_f_2fb9caf4d1521000.wem"
+        },
+        {
+          "hash": "08aded7e7f126625",
+          "path": "ep1\\localization\\fr-fr\\vo\\civ_high_f_04_enus_50_q303_f_2fb9cb14f4521000.wem"
+        },
+        {
+          "hash": "137b0a78cc5f0fec",
+          "path": "ep1\\localization\\fr-fr\\vo\\civ_high_f_04_enus_50_q303_f_2fb9cb319a521000.wem"
+        },
+        {
+          "hash": "19a1890b31c5c70e",
+          "path": "ep1\\localization\\fr-fr\\vo\\civ_high_f_04_enus_50_q303_f_2fb9cb1a0f521000.wem"
+        },
+        {
+          "hash": "205803349d3b0d7b",
+          "path": "ep1\\localization\\fr-fr\\vo\\civ_high_f_04_enus_50_q303_f_306e778c514e6010.wem"
+        },
+        {
+          "hash": "21311cc049217b68",
+          "path": "ep1\\localization\\fr-fr\\vo\\civ_high_f_04_enus_50_q303_f_2fb9cb79e5521000.wem"
+        },
+        {
+          "hash": "22034532de1c3e88",
+          "path": "ep1\\localization\\fr-fr\\vo\\civ_high_f_04_enus_50_q303_f_2d79426aa6521000.wem"
+        },
+        {
+          "hash": "238bc29300f6da52",
+          "path": "ep1\\localization\\fr-fr\\vo\\civ_high_f_04_enus_50_q303_f_2fb9cb3ac9521000.wem"
         }
       ]
     },

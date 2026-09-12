@@ -12,12 +12,8 @@
 
 module AiNpc
 
-func AiNpcMessageNew(text: String, fromPlayer: Bool) -> ref<AiNpcMessage> {
-    return AiNpcMessageNewAt(text, fromPlayer, AiNpcTimeUnknown());
-}
-
 func AiNpcMessageNewAt(text: String, fromPlayer: Bool, gameTimeSeconds: Int32,
-                       opt channel: AiNpcChannelId) -> ref<AiNpcMessage> {
+                       channel: AiNpcChannelId) -> ref<AiNpcMessage> {
     let message = new AiNpcMessage();
     message.text = text;
     message.fromPlayer = fromPlayer;
@@ -86,12 +82,8 @@ public func AiNpcClipText(text: String, maxLength: Int32) -> String {
     return StrLeft(flat, maxLength) + "...";
 }
 
-func AiNpcHistoryAppend(messages: array<ref<AiNpcMessage>>, text: String, fromPlayer: Bool) -> array<ref<AiNpcMessage>> {
-    return AiNpcHistoryAppendAt(messages, text, fromPlayer, AiNpcTimeUnknown());
-}
-
 func AiNpcHistoryAppendAt(messages: array<ref<AiNpcMessage>>, text: String, fromPlayer: Bool,
-                          gameTimeSeconds: Int32, opt channel: AiNpcChannelId) -> array<ref<AiNpcMessage>> {
+                          gameTimeSeconds: Int32, channel: AiNpcChannelId) -> array<ref<AiNpcMessage>> {
     let result = AiNpcHistoryCopy(messages);
     ArrayPush(result, AiNpcMessageNewAt(AiNpcTrimLeadingBlanks(text), fromPlayer, gameTimeSeconds,
         channel));
@@ -298,16 +290,12 @@ func AiNpcHistoryGapMarker(fromSeconds: Int32, nowSeconds: Int32) -> String {
 }
 
 // Authorship comes from each message, so a pending exchange ends after V's line instead of
-// shifting the pairing. Untimed: every gap marker is suppressed, so a history written before
-// timestamps renders byte for byte as it always did.
-func AiNpcHistoryTranscript(messages: array<ref<AiNpcMessage>>, npcName: String) -> String {
-    return AiNpcHistoryTranscriptAt(messages, npcName, AiNpcTimeUnknown());
-}
-
-// Same, with the breaks in time made visible. `nowSeconds` is the clock at the moment the
-// prompt is built, and it earns the last marker: the silence between the final stored message
-// and the line V is about to send, which is the one the character most needs. Pass
-// AiNpcTimeUnknown() to render no trailing marker.
+// shifting the pairing.
+//
+// `nowSeconds` is the clock at the moment the prompt is built, and it earns the last marker:
+// the silence between the final stored message and the line V is about to send, which is the
+// one the character most needs. AiNpcTimeUnknown() renders no trailing marker, and a history
+// written before timestamps renders byte for byte as it always did.
 //
 // Markers sit on their own line, in parentheses, and never touch the "V: " / "<name>: " grammar
 // the stop sequences rely on. Neither can a message: AiNpcTranscriptLine flattens its
@@ -316,10 +304,7 @@ func AiNpcHistoryTranscript(messages: array<ref<AiNpcMessage>>, npcName: String)
 // `previous` advances only across messages that carry a time, so an untimed one in the middle
 // does not break the chain and the next timed message still measures from the last real
 // timestamp.
-func AiNpcHistoryTranscriptAt(messages: array<ref<AiNpcMessage>>, npcName: String, nowSeconds: Int32) -> String {
-    return AiNpcHistoryTranscriptOn(messages, npcName, nowSeconds, AiNpcChannelId.Text);
-}
-
+//
 // La transcription d'un canal, les autres reduits a leur trace.
 //
 // Elle recoit l'historique entier plutot qu'un tableau deja filtre, parce qu'une trace se
@@ -575,10 +560,10 @@ func AiNpcHistoryFromLegacy(vMessagesRaw: String, npcResponsesRaw: String) -> ar
     let i = 0;
     while i < count {
         if i < ArraySize(playerParts) && NotEquals(playerParts[i], AiNpcSystemEventMarker()) && NotEquals(StrLen(playerParts[i]), 0) {
-            ArrayPush(result, AiNpcMessageNew(AiNpcTrimLeadingBlanks(playerParts[i]), true));
+            ArrayPush(result, AiNpcMessageNewAt(AiNpcTrimLeadingBlanks(playerParts[i]), true, AiNpcTimeUnknown(), AiNpcChannelId.Text));
         }
         if i < ArraySize(npcParts) && NotEquals(StrLen(npcParts[i]), 0) {
-            ArrayPush(result, AiNpcMessageNew(AiNpcTrimLeadingBlanks(npcParts[i]), false));
+            ArrayPush(result, AiNpcMessageNewAt(AiNpcTrimLeadingBlanks(npcParts[i]), false, AiNpcTimeUnknown(), AiNpcChannelId.Text));
         }
         i += 1;
     }

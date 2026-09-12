@@ -19,6 +19,7 @@
 #pragma once
 
 #include "Audio.hpp"
+#include "RadioFilter.hpp"
 
 #include <chrono>
 #include <cstdint>
@@ -75,8 +76,9 @@ bool HasCatalogueVoice(const std::wstring& aPluginDirectory, const std::string& 
 // latence de sortie, quelques dizaines de millisecondes, n'y est pas.
 // `aRate` ouvre la sortie a `kSampleRate * aRate` : les memes echantillons, lus plus vite ou
 // plus lentement, donc hauteur et debit ensemble et aucun traitement.
+// `aRadio` est le filtre que chaque morceau traverse avant la sortie.
 bool Render(const std::wstring& aPluginDirectory, const std::string& aVoiceFile,
-            const std::string& aUtf8Text, bool aSilent, float aRate,
+            const std::string& aUtf8Text, bool aSilent, float aRate, radio::Level aRadio,
             std::chrono::steady_clock::time_point& aFirstSound, std::string& aWhy);
 
 // Le format auquel Render() ouvre la sortie pour cette vitesse de lecture.

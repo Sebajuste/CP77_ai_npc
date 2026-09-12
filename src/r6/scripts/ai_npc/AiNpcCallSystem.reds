@@ -65,6 +65,15 @@ func AiNpcLiveCallSince(contactId: String) -> Int32 {
     return call.ConnectedAt();
 }
 
+// Le canal sur lequel ce contact est en ce moment : l'appel s'il est en ligne avec lui, le fil
+// écrit sinon.
+func AiNpcLiveChannelOf(contactId: String) -> AiNpcChannelId {
+    if AiNpcLiveCallSince(contactId) > 0 {
+        return AiNpcChannelId.Call;
+    }
+    return AiNpcChannelId.Text;
+}
+
 // Les deux invites d'un appel du mod. Les mots appartiennent à cette voie, le hub est un
 // mécanisme.
 func AiNpcCallShowOurChoices() -> Void {
@@ -202,8 +211,7 @@ public class AiNpcCallSystem extends ScriptableSystem {
             // reference dans les archives du joueur, la cloner -- et rien de cela ne depend de
             // ce qui sera dit. Faire sonner pendant est la seule facon de ne pas faire attendre
             // apres : le joueur entend un telephone, pas une barre de progression.
-            AiNpcAudio.Warm(contactId, AiNpcVoiceFileFor(contactId),
-                AiNpcVoiceFallbackFor(contactId), AiNpcVoiceOverLocale());
+            this.WarmVoices(contactId);
             AiNpcVanillaCallStart(contactId);
             AiNpcArmTimeout(AiNpcCallRingCallback.Create(this.m_serial), AiNpcVanillaRingDelay());
             AiNpcArmTimeout(AiNpcCallPickUpCallback.Create(this.m_serial),
@@ -328,13 +336,24 @@ public class AiNpcCallSystem extends ScriptableSystem {
         }
     }
 
-    // Hold T, offered by the phone controller's action hook. Only on a call the mod placed: a
-    // call of the game's is hung up by its scene.
+    // Le maintien de T, offert par les gestionnaires d'action du telephone. Un seul geste, deux
+    // actions liees a la meme touche : il raccroche (PhoneReject) ET sort le telephone
+    // (PhoneInteract). Pendant un appel du mod le geste appartient a l'appel, donc l'appel
+    // repond des deux et le jeu n'en voit aucune. Seulement sur un appel place par le mod : un
+    // appel du jeu est raccroche par sa scene.
+    //
+    // Seul le maintien est pris sur PhoneInteract : une pression breve decroche un appel
+    // entrant du jeu, qui reste au joueur.
     public func ReportPhoneAction(name: CName, kind: gameinputActionType) -> Bool {
-        if !Equals(name, AiNpcCallHangUpAction())
-                || NotEquals(kind, gameinputActionType.BUTTON_HOLD_COMPLETE)
+        if NotEquals(kind, gameinputActionType.BUTTON_HOLD_COMPLETE)
                 || !AiNpcCallIsLive(this.m_state)
                 || NotEquals(this.m_origin, AiNpcCallOrigin.Ours) {
+            return false;
+        }
+        if Equals(name, AiNpcPhoneOpenAction()) {
+            return true;
+        }
+        if !Equals(name, AiNpcCallHangUpAction()) {
             return false;
         }
         this.HangUp();
@@ -390,9 +409,20 @@ public class AiNpcCallSystem extends ScriptableSystem {
         this.m_contactId = contactId;
         this.m_origin = AiNpcCallOrigin.Game;
         this.m_turn = AiNpcHoloTurn.Scene;
-        AiNpcAudio.Warm(contactId, AiNpcVoiceFileFor(contactId),
-            AiNpcVoiceFallbackFor(contactId), AiNpcVoiceOverLocale());
+        this.WarmVoices(contactId);
         this.Enter(AiNpcCallState.Connected);
+    }
+
+    // Les deux voix de l'appel. Celle de V d'abord : chaque preparation passe devant la file,
+    // donc celle du personnage, demandee en dernier, est prete la premiere -- et c'est elle que
+    // le decrochage attend.
+    private func WarmVoices(contactId: String) -> Void {
+        if AiNpcHoloPlayerVoiceEnabled() {
+            AiNpcAudio.Warm(AiNpcPlayerVoiceKey(), AiNpcPlayerVoiceFile(),
+                AiNpcPlayerVoiceFallback(), AiNpcVoiceOverLocale());
+        }
+        let voice = AiNpcVoiceChoiceFor(contactId);
+        AiNpcAudio.Warm(contactId, voice.file, voice.fallback, AiNpcVoiceOverLocale());
     }
 
     // The scene hung up: the call is over, with no handover.
@@ -530,20 +560,10 @@ public class AiNpcCallSystem extends ScriptableSystem {
 
     // Ce que V a dit, depuis la ligne.
     //
-    // ELLE PART AU MODELE, et c'est ce qui manquait : jusqu'ici cette fonction ne faisait que
-    // synthetiser la ligne de V et la jouer -- ce qui eprouvait la voie parlee et n'ouvrait
-    // aucune conversation. Un joueur voyait donc son propre texte relu, sans reponse et sans
-    // rien de classe.
+    // Un appel n'a pas de session de chat -- elle porte le contact affiche et l'echo dans la
+    // bulle -- donc il passe par SendFrom, la sequence du canal sans la moitie qui peint.
     //
-    // La sequence appartient au canal, qui l'ecrit une fois pour toutes les surfaces : appeler
-    // la voie, classer la ligne. Un appel n'a pas de session de chat -- elle porte le contact
-    // affiche et l'echo dans la bulle, dont un appel n'a ni l'un ni l'autre -- donc il passe par
-    // SendFrom, qui est la meme sequence sans la moitie qui peint.
-    //
-    // LA LIGNE DE V N'EST PLUS DITE. Elle l'etait pour eprouver le moteur avant qu'un modele
-    // reponde, avec la voix de son interlocuteur faute de v.wav. Maintenant qu'une reponse
-    // arrive, la dire serait nuisible et pas seulement etrange : la voie audio ne tient qu'une
-    // voix a la fois, donc la premiere phrase de la reponse couperait la ligne de V au milieu.
+    // La requete part tout de suite, pendant que V parle : la reponse s'ecrit sous sa replique.
     public func ReportSpoken(text: String) -> Void {
         if Equals(StrLen(text), 0) {
             return;
@@ -559,19 +579,36 @@ public class AiNpcCallSystem extends ScriptableSystem {
             this.ApplyTurn(AiNpcHoloTurnEvent.PlayerSpoke);
         }
         AiNpcLog(s"Call: V said '\(text)' to '\(this.m_contactId)'.");
-        AiNpcAudio.Prime(AiNpcVoiceFileFor(this.m_contactId), AiNpcVoiceFallbackFor(this.m_contactId),
-            AiNpcVoiceRateFor(this.m_contactId));
+        this.SayPlayerLine(text);
         AiNpcChannelOf(AiNpcChannelId.Call).SendFrom(this.m_contactId, text);
+    }
+
+    // La sortie s'ouvre au format de qui parlera le premier : V quand sa voix dit la ligne, le
+    // personnage sinon.
+    private func SayPlayerLine(text: String) -> Void {
+        let spoken = AiNpcHoloPlayerVoiceEnabled()
+            ? AiNpcChannelOf(AiNpcChannelId.Call).Clean(text, AiNpcResolveLanguage())
+            : "";
+        if Equals(StrLen(spoken), 0) {
+            let voice = AiNpcVoiceChoiceFor(this.m_contactId);
+            AiNpcAudio.Prime(voice.file, voice.fallback, voice.rate);
+            return;
+        }
+        AiNpcAudio.Prime(AiNpcPlayerVoiceFile(), AiNpcPlayerVoiceFallback(), 1.0);
+        AiNpcLog(s"Call: V says '\(spoken)'. \(AiNpcAudio.SpeakAsPlayer(spoken, AiNpcPlayerVoiceFile(),
+                 AiNpcPlayerVoiceFallback(), AiNpcVoiceOverLocale()))");
     }
 
     // One sentence of a reply, from AiNpcStreamDeliver -- the voice's only source, whatever lane
     // produced the reply.
     //
-    // Spoken only on a connected call, and that is the whole of the policy: the written surfaces
-    // are read, not heard, and a phone that started talking out loud while the player was texting
-    // would be a bug with no way to turn it off.
-    public func SpeakStreamed(text: String) -> Void {
-        if NotEquals(this.m_state, AiNpcCallState.Connected) {
+    // Spoken only when it is this call's own reply: the written surfaces are read, not heard, and
+    // the lane that wrote it serves every contact and both channels.
+    public func SpeakStreamed(contactId: String, channel: AiNpcChannelId, text: String) -> Void {
+        if !AiNpcCallHears(this.m_state, this.m_contactId, contactId, channel) {
+            if Equals(this.m_state, AiNpcCallState.Connected) {
+                AiNpcLog(s"Call: a sentence for '\(contactId)' on \(channel) is not this call's ('\(this.m_contactId)'); not spoken.");
+            }
             return;
         }
         // Nettoyee par le canal avant d'etre dite, comme la replique complete l'est avant d'etre
@@ -581,8 +618,9 @@ public class AiNpcCallSystem extends ScriptableSystem {
         if Equals(StrLen(spoken), 0) {
             return;
         }
-        AiNpcLog(s"Call: '\(this.m_contactId)' says '\(spoken)'. \(AiNpcAudio.Speak(spoken, this.m_contactId, AiNpcVoiceFileFor(this.m_contactId),
-                 AiNpcVoiceFallbackFor(this.m_contactId), AiNpcVoiceOverLocale(), AiNpcVoiceRateFor(this.m_contactId)))");
+        let voice = AiNpcVoiceChoiceFor(this.m_contactId);
+        AiNpcLog(s"Call: '\(this.m_contactId)' says '\(spoken)'. \(AiNpcAudio.Speak(spoken, this.m_contactId, voice.file,
+                 voice.fallback, AiNpcVoiceOverLocale(), voice.rate))");
     }
 
     // Le personnage decroche quand sa voix est prete, et pas avant.

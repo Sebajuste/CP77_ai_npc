@@ -115,6 +115,20 @@ protected cb func OnAction(action: ListenerAction, consumer: ListenerActionConsu
     return wrappedMethod(action, consumer);
 }
 
+// Le second ecouteur de PhoneInteract et PhoneReject : les deux controleurs recoivent le meme
+// maintien de T, chacun avec son propre consommateur, et rien ne fixe leur ordre. Intercepter
+// dans les deux est ce qui rend la reponse independante de cet ordre.
+@wrapMethod(HudPhoneGameController)
+protected cb func OnAction(action: ListenerAction, consumer: ListenerActionConsumer) -> Bool {
+    let call = AiNpcCallSystem.Get();
+    if IsDefined(call)
+        && call.ReportPhoneAction(ListenerAction.GetName(action), ListenerAction.GetType(action)) {
+        return true;
+    }
+
+    return wrappedMethod(action, consumer);
+}
+
 // A second net rather than the fix: the log proves the C press does not come through here, but
 // a close that does reach it while the chat is up is one the mod would rather answer.
 @wrapMethod(PhoneSystem)
@@ -198,15 +212,37 @@ public final func CallContact() -> Void {
     wrappedMethod();
 }
 
-// The messages key on a row: the mod's conversation, or one of its characters with none of the
-// game's, opens the mod's chat.
+// The messages key on a row. The mod draws only for a contact another mod supplies: the game
+// builds no conversation list for one of those, and the mod that does answers for its own
+// without passing the call on, so there is no list to graft ours into.
 @wrapMethod(NewHudPhoneGameController)
 public final func ExecuteAction() -> Void {
-    if IsDefined(this.m_contactListLogicController) && IsDefined(GetAiNpcSystem())
-        && GetAiNpcSystem().ReportMessagesAction(this.m_contactListLogicController.GetSelectedContactData()) {
-        return;
+    if IsDefined(this.m_contactListLogicController) && IsDefined(GetAiNpcSystem()) {
+        let row = this.m_contactListLogicController.GetSelectedContactData();
+        let inbox = GetAiNpcSystem().ReportMessagesAction(row, this.m_threadsVisible);
+        if Equals(inbox, AiNpcInbox.Chat) {
+            return;
+        }
+        if Equals(inbox, AiNpcInbox.Shared) {
+            this.AiNpcShowConversations(row);
+            return;
+        }
     }
     wrappedMethod();
+}
+
+// The game's own gesture on a list the game would not have built: the same list controller, sort,
+// title and sound as ShowSelectedContactMessages, and the same two fields -- which is what makes
+// C pop the list (Back) and a tab switch drop it (SelectOtherTab).
+@addMethod(NewHudPhoneGameController)
+public final func AiNpcShowConversations(row: wref<ContactData>) -> Void {
+    let rows = AiNpcSharedConversations(row);
+    this.m_threadsVisible = true;
+    this.m_contactListLogicController.PushList(rows, ContactsSortMethod.ByTime);
+    this.m_audioSystem.Play(n"ui_menu_map_pin_created");
+    this.m_contactListLogicController.SetTitle(row.localizedName);
+    this.m_contactListLogicController.ShowTitle(true);
+    this.m_isSingleThread = ArraySize(rows) == 1;
 }
 
 // The mod's conversation has no preview in the game's messenger, which would show the
@@ -217,13 +253,6 @@ protected cb func OnContactSelectionChanged(evt: ref<ContactSelectionChangedEven
         return true;
     }
     return wrappedMethod(evt);
-}
-
-@wrapMethod(JournalManager)
-public final func GetContactDataArray(includeUnknown: Bool, includeNonCallable: Bool) -> array<ref<IScriptable>> {
-    let rows = wrappedMethod(includeUnknown, includeNonCallable);
-    AiNpcGraftContactRows(rows);
-    return rows;
 }
 
 // Called by the phone's messages screen alone (ShowSelectedContactMessages).

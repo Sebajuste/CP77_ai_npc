@@ -199,7 +199,11 @@ func AiNpcHasLeftNightCity(contactId: String) -> Bool {
 // top-level phases pulled out of ep1_2_gamedata by hash, read with wkdump qgraph. Every name
 // below comes from a questFactsDBManagerNodeDefinition that sets it.
 func AiNpcContactIsInPlay(contactId: String) -> Bool {
-    let quests = GameInstance.GetQuestsSystem(GetGameInstance());
+    return AiNpcContactIsInPlayWith(contactId, GameInstance.GetQuestsSystem(GetGameInstance()));
+}
+
+// A quests system exists from the main menu on, with every fact at zero.
+func AiNpcContactIsInPlayWith(contactId: String, quests: ref<QuestsSystem>) -> Bool {
     if !IsDefined(quests) {
         return true;
     }

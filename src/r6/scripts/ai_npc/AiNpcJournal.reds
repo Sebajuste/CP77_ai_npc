@@ -80,12 +80,8 @@ public class AiNpcJournalOp {
     public let memory: ref<AiNpcMemory>;
 }
 
-func AiNpcJournalOpAppend(seq: Int32, contactId: String, text: String, fromPlayer: Bool) -> ref<AiNpcJournalOp> {
-    return AiNpcJournalOpAppendAt(seq, contactId, text, fromPlayer, AiNpcTimeUnknown());
-}
-
 func AiNpcJournalOpAppendAt(seq: Int32, contactId: String, text: String, fromPlayer: Bool,
-                            gameTimeSeconds: Int32, opt channel: AiNpcChannelId) -> ref<AiNpcJournalOp> {
+                            gameTimeSeconds: Int32, channel: AiNpcChannelId) -> ref<AiNpcJournalOp> {
     let op = new AiNpcJournalOp();
     op.seq = seq;
     op.contactId = contactId;
@@ -165,6 +161,15 @@ func AiNpcJournalOpToJson(op: ref<AiNpcJournalOp>) -> ref<JsonObject> {
     return entry;
 }
 
+// La regle du format : une ligne ecrite n'a pas de "ch", et c'est ce qu'etait toute ligne avant
+// ce champ. Une ligne qui en porte un est lue par AiNpcChannelFromInt.
+func AiNpcJournalChannel(entry: ref<JsonObject>) -> AiNpcChannelId {
+    if !entry.HasKey("ch") {
+        return AiNpcChannelId.Text;
+    }
+    return AiNpcChannelFromInt(Cast<Int32>(entry.GetKeyInt64("ch")));
+}
+
 // Null for anything that is not an operation: the header line, a blank line, or one truncated
 // by a crash mid-write. A journal is append-only, so damage is confined to the tail.
 func AiNpcJournalOpFromJson(json: ref<JsonObject>) -> ref<AiNpcJournalOp> {
@@ -182,8 +187,7 @@ func AiNpcJournalOpFromJson(json: ref<JsonObject>) -> ref<AiNpcJournalOp> {
     if json.HasKey("g") {
         op.gameTimeSeconds = Cast<Int32>(json.GetKeyInt64("g"));
     }
-    // Absente = Text, ce qui est le cas de toute ligne ecrite avant ce champ.
-    op.channel = AiNpcChannelFromInt(Cast<Int32>(json.GetKeyInt64("ch")));
+    op.channel = AiNpcJournalChannel(json);
 
     if Equals(op.kind, AiNpcJournalKindSnapshot()) {
         op.snapshot = AiNpcMessagesFromJson(json.GetKey("m") as JsonArray);
@@ -449,7 +453,7 @@ func AiNpcMessagesFromJson(json: ref<JsonArray>) -> array<ref<AiNpcMessage>> {
                 stamp = Cast<Int32>(entry.GetKeyInt64("g"));
             }
             ArrayPush(result, AiNpcMessageNewAt(entry.GetKeyString("t"), entry.GetKeyBool("p"), stamp,
-                AiNpcChannelFromInt(Cast<Int32>(entry.GetKeyInt64("ch")))));
+                AiNpcJournalChannel(entry)));
         }
         i += 1u;
     }

@@ -35,6 +35,15 @@ uint64_t HashOfDepotPath(const std::string& aDepotPath);
 // francais sur un doublage anglais existe, et c'est l'anglais qu'il faut cloner.
 std::string ArchiveCodeForLocale(const std::string& aLocale);
 
+// Le dossier depot ou vit le doublage d'une locale : `fr-fr`, `en-us`... Ce n'est pas le code
+// d'archive -- le doublage mexicain est celui d'Espagne, et le francais s'ecrit `fr-fr` la ou
+// son archive s'ecrit `fr`. Vide quand cette locale n'a pas de doublage.
+//
+// Sert a designer une replique que personne n'a extraite d'avance : un mod qui declare ses
+// repliques par leur NOM de fichier, identique d'une langue a l'autre, laisse ce dossier faire
+// le reste.
+std::string VoFolderForLocale(const std::string& aLocale);
+
 // Les archives de doublage d'une langue -- le jeu de base et Phantom Liberty -- vues comme un
 // seul corpus. Ouvertes une fois, gardees ouvertes : leurs index pesent 10 Mo dans 6,7 Go et
 // les relire par personnage couterait 200 ms a chaque fois.
@@ -52,6 +61,10 @@ public:
     // pas dans cette installation -- ce qui arrive apres un correctif qui reencode le doublage,
     // et c'est la limite connue d'une recette.
     bool Read(uint64_t aHash, std::vector<uint8_t>& aOut) const;
+
+    // Ce hachage est-il dans cette installation, sans en lire les octets. Repond a la question
+    // qu'un nom de fichier laisse ouverte : jeu de base ou Phantom Liberty.
+    bool Has(uint64_t aHash) const;
 
     void Close();
 

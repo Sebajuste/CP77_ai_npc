@@ -38,7 +38,7 @@ func AiNpcModelPresets() -> array<ref<AiNpcModelPreset>> {
         "free. One model for every pass, on purpose: the free tier is a shared pool, and spreading the work over several free models multiplies the walls rather than the throughput. Measured 0 mechanical defects over 34 replies and the action command 3/3 on the fixture -- and 46 requests out of 54 answered HTTP 429 on the evening it was measured. A way to try the mod, not a way to play an evening."));
 
     ArrayPush(presets, AiNpcModelPresetOf("normal", "qwen/qwen3-235b-a22b-2507",
-        "about 0.55 $/month at two hours a day, and the cheapest that does the job: the appointment commands 18 times out of 20 on real recorded conversations, no mechanical defect over 54 replies, 2.7 s. What it does not do is hold the Normal explicitness tier -- 23 explicit replies out of 24 -- which is a prompt problem before it is a model one, and no preset fixes it."));
+        "about 1 $/month at two hours a day, and the cheapest that does the job: the appointment commands 18 times out of 20 on real recorded conversations, no mechanical defect over 54 replies, 2.7 s. What it does not do is hold the Normal explicitness tier -- 23 explicit replies out of 24 -- which is a prompt problem before it is a model one, and no preset fixes it."));
 
     ArrayPush(presets, AiNpcModelPresetOf("premium", "meta-llama/llama-4-maverick",
         "about 2.57 $/month, the best measured whatever it costs: 20 out of 20 on the same conversations, one control-token leak in 54 replies, 2.0 s, and the strictest tier adherence of anything measured. If a provider outage makes it unavailable, deepseek/deepseek-chat-v3-0324 matches it for 25 % more."));

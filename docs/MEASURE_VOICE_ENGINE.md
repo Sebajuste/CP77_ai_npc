@@ -850,7 +850,7 @@ s'entendre.
 
 ### Ce qui est vivant, et ce qui ne l'est pas encore
 
-`clone` est lu et utilise : `AiNpcVoiceFileFor` repond, `Speak` et `Warm` le portent, et
+`clone` est lu et utilise : `AiNpcVoiceChoiceFor` repond, `Speak` et `Warm` le portent, et
 `VoiceMake` ecrit le fichier que la fiche nomme au lieu d'en deduire un.
 
 **`fallback` est ecrit et n'est lu par personne.** Il attend le chargement d'un etat de

@@ -238,7 +238,7 @@ func AiNpcTestMemoryRender(t: ref<AiNpcTestRunner>) -> Void {
 func AiNpcTestMemoryRequest(t: ref<AiNpcTestRunner>) -> Void {
     let messages = AiNpcTestHistory(["V:t'es un mec ?", "N:ouais, un mec"]);
     let body = AiNpcMemoryRequestBody(AiNpcMemoryNew(), "Rita", AiNpcGenderFactFor(AiNpcGender.Female),
-        AiNpcHistoryTranscript(messages, "Rita"), false);
+        AiNpcHistoryTranscriptOn(messages, "Rita", AiNpcTimeUnknown(), AiNpcChannelId.Text), false);
 
     t.Check("memory/the request states who V is", StrContains(body, "V is a woman."));
     t.Check("memory/the request names the player label", StrContains(body, "V is the player"));
@@ -249,7 +249,7 @@ func AiNpcTestMemoryRequest(t: ref<AiNpcTestRunner>) -> Void {
     // model chose to write in two bubbles. Before this, "et toi ?" reached the summariser
     // bare, attributable to anyone.
     let split = AiNpcTestHistory(["V:salut", "N:ouais, un mec\net toi ?"]);
-    let rendered = AiNpcHistoryTranscript(split, "Rita");
+    let rendered = AiNpcHistoryTranscriptOn(split, "Rita", AiNpcTimeUnknown(), AiNpcChannelId.Text);
     t.EqString("memory/a multi-line message stays one labelled line", rendered,
         "V: salut\nRita: ouais, un mec et toi ?\n");
     t.Check("memory/no bare continuation line", !StrContains(rendered, "\net toi"));
@@ -746,7 +746,7 @@ func AiNpcTestMemoryWindow(t: ref<AiNpcTestRunner>) -> Void {
     let long: array<ref<AiNpcMessage>>;
     let i = 0;
     while i < AiNpcMemoryMaxTurns() * 2 + 1 {
-        long = AiNpcHistoryAppend(long, s"m\(i)", (i % 2) == 0);
+        long = AiNpcHistoryAppendAt(long, s"m\(i)", (i % 2) == 0, AiNpcTimeUnknown(), AiNpcChannelId.Text);
         i += 1;
     }
     t.EqBool("memory/a full conversation is compacted", AiNpcMemoryShouldCompact(long), true);
@@ -766,8 +766,8 @@ func AiNpcTestMemoryWindow(t: ref<AiNpcTestRunner>) -> Void {
     t.EqInt("memory/an unstamped batch does not move coverage", AiNpcMemoryCoverage(999, evicted), 999);
 
     let stamped: array<ref<AiNpcMessage>>;
-    ArrayPush(stamped, AiNpcMessageNewAt("early", true, 100));
-    ArrayPush(stamped, AiNpcMessageNewAt("late", false, 500));
+    ArrayPush(stamped, AiNpcMessageNewAt("early", true, 100, AiNpcChannelId.Text));
+    ArrayPush(stamped, AiNpcMessageNewAt("late", false, 500, AiNpcChannelId.Text));
     t.EqInt("memory/coverage is the last stamp of the batch", AiNpcMemoryCoverage(0, stamped), 500);
 }
 
@@ -779,7 +779,7 @@ func AiNpcTestMemoryIdleWindow(t: ref<AiNpcTestRunner>) -> Void {
     let quiet: array<ref<AiNpcMessage>>;
     let i = 0;
     while i < AiNpcMemoryWindowTurns() * 2 + AiNpcMemoryIdleMinBatch() {
-        ArrayPush(quiet, AiNpcMessageNewAt(s"m\(i)", (i % 2) == 0, 1000));
+        ArrayPush(quiet, AiNpcMessageNewAt(s"m\(i)", (i % 2) == 0, 1000, AiNpcChannelId.Text));
         i += 1;
     }
     t.EqBool("memory/idle: the batch is below the ordinary threshold",
@@ -799,7 +799,7 @@ func AiNpcTestMemoryIdleWindow(t: ref<AiNpcTestRunner>) -> Void {
     let thin: array<ref<AiNpcMessage>>;
     i = 0;
     while i < AiNpcMemoryWindowTurns() * 2 + AiNpcMemoryIdleMinBatch() - 1 {
-        ArrayPush(thin, AiNpcMessageNewAt(s"m\(i)", (i % 2) == 0, 1000));
+        ArrayPush(thin, AiNpcMessageNewAt(s"m\(i)", (i % 2) == 0, 1000, AiNpcChannelId.Text));
         i += 1;
     }
     let thinEvicted = AiNpcMemoryEvicted(thin);
@@ -816,10 +816,10 @@ func AiNpcTestMemoryIdleWindow(t: ref<AiNpcTestRunner>) -> Void {
     let legacy: array<ref<AiNpcMessage>>;
     i = 0;
     while i < AiNpcMemoryWindowTurns() * 2 + AiNpcMemoryIdleMinBatch() {
-        ArrayPush(legacy, AiNpcMessageNewAt(s"m\(i)", (i % 2) == 0, 1000));
+        ArrayPush(legacy, AiNpcMessageNewAt(s"m\(i)", (i % 2) == 0, 1000, AiNpcChannelId.Text));
         i += 1;
     }
-    ArrayPush(legacy, AiNpcMessageNew("said just now, untimed", true));
+    ArrayPush(legacy, AiNpcMessageNewAt("said just now, untimed", true, AiNpcTimeUnknown(), AiNpcChannelId.Text));
     t.EqBool("memory/idle: an unstamped last message declines",
         AiNpcMemoryShouldCompactIdle(legacy, 1000 + gap * 4), false);
 

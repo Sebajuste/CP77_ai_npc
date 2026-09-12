@@ -29,10 +29,10 @@ public native class AiNpcAudio {
     // Says a line out loud, and plays it on the same path as everything else this class makes:
     // memory to speakers, no file.
     //
-    // `voiceFile` is the reference the character's sheet names -- AiNpcVoiceFileFor() answers
+    // `voiceFile` is the reference the character's sheet names -- AiNpcVoiceChoiceFor() answers
     // it, and `judy.wav` is what it answers when the sheet says nothing.
     //
-    // `catalogueVoice` is what speaks when no clone is possible -- AiNpcVoiceFallbackFor()
+    // `catalogueVoice` is what speaks when no clone is possible -- AiNpcVoiceChoiceFor()
     // answers it. It is the only tier the free model pack can offer, and the difference between
     // eleven distinct characters and eleven identical Windows voices.
     //
@@ -51,7 +51,7 @@ public native class AiNpcAudio {
     // `voiceOverLocale` is what the game answers for its SPOKEN language, not its written one --
     // the two are installed separately, and it is the spoken archives a reference is cut from.
     // Pass AiNpcVoiceOverLocale(); an empty string means the fallback voice, which is honest.
-    // `rate` is the playback speed AiNpcVoiceRateFor() answers; 1.0 plays the voice as rendered.
+    // `rate` is the playback speed AiNpcVoiceChoiceFor() answers; 1.0 plays the voice as rendered.
     public static native func Speak(text: String, contactId: String, voiceFile: String,
                                    catalogueVoice: String, voiceOverLocale: String, rate: Float) -> String;
 
@@ -63,6 +63,14 @@ public native class AiNpcAudio {
     // rattrape pas -- elle derive a chaque phrase. Demander a la file est le seul moyen d'etre
     // en phase avec elle.
     public static native func Speaking() -> String;
+
+    // La replique de V, dite de sa voix. Meme file que celles du personnage, donc dite avant la
+    // reponse qu'elle precede ; jamais passee au filtre radio, parce que V n'est pas au bout du fil.
+    public static native func SpeakAsPlayer(text: String, voiceFile: String, catalogueVoice: String,
+                                            voiceOverLocale: String) -> String;
+
+    // La replique entendue est-elle celle de V. Faux quand rien ne joue.
+    public static native func SpeakingPlayer() -> Bool;
 
     // Coupe le son tout de suite : ce qui joue s'arrete, ce qui attendait est jete, et la
     // replique en cours de synthese est abandonnee.
@@ -92,6 +100,17 @@ public native class AiNpcAudio {
     // Harmless when everything is already warm, and does nothing at all without the model pack.
     public static native func Warm(contactId: String, voiceFile: String, catalogueVoice: String,
                                   voiceOverLocale: String) -> String;
+
+    // Hands the DLL the voice-over lines a character's reference is to be cut from, under the
+    // name that reference carries. Says nothing and prepares nothing: it only answers, in
+    // advance, a question the recipe cannot answer for a character ai_npc never shipped.
+    //
+    // Declared rather than searched because the archives hold no path at all -- only the hash
+    // of one -- so nothing in the DLL can look for a character's lines by tag.
+    //
+    // `lines` are file names without a folder, identical in every language. Declaring twice
+    // replaces: the last mod to speak is the one that knows.
+    public static native func DeclareVoice(voiceName: String, lines: array<String>) -> Void;
 
     // Where that preparation has got to, in one word: "ready", "pending", "unavailable", or
     // "unknown" for a voice nobody asked for.

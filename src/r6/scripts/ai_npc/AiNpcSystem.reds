@@ -237,6 +237,11 @@ public class AiNpcSystem extends ScriptableService {
             this.UndoMessage();
             return;
         }
+        let choice = AiNpcThreadChoiceKeyIndex(key);
+        if choice >= 0 {
+            this.ChooseInThread(choice);
+            return;
+        }
         if Equals(key, "IK_LeftMouse") {
             // The one refusal that is not about the screen: a reply is in flight. A fact about
             // the request lane, not about where the player is.
@@ -246,6 +251,20 @@ public class AiNpcSystem extends ScriptableService {
             this.PhoneState().OnTypingChanged(true);
             this.m_phoneView.BeginInput();
         }
+    }
+
+    // Its owner acts on it. A contact the choice made unreachable leaves the screen.
+    private func ChooseInThread(index: Int32) -> Void {
+        let contactId = this.GetContactId();
+        if !AiNpcThreadChoose(contactId, index) {
+            return;
+        }
+        if !AiNpcIsContactSupported(contactId) {
+            this.CloseChat();
+            return;
+        }
+        this.m_phoneView.RefreshConversation();
+        this.m_phoneView.ShowThreadChoices();
     }
 
     // Handle scrolling messages
@@ -376,14 +395,19 @@ public class AiNpcSystem extends ScriptableService {
         }
     }
 
-    // The phone's messages key on a row. True when the mod's chat opens instead of the game's
-    // messenger: the mod's own conversation, or a character with none of the game's.
-    public func ReportMessagesAction(row: wref<ContactData>) -> Bool {
-        if !AiNpcOpensModChat(row) {
-            return false;
+    // The phone's messages key on a row. Answers what the mod does with it -- nothing, its own
+    // conversation, or the two a contact shares with the mod that supplies its row -- and opens
+    // the chat itself in the one case where nothing has to be drawn.
+    public func ReportMessagesAction(row: wref<ContactData>, threadsVisible: Bool) -> AiNpcInbox {
+        if !IsDefined(row) {
+            return AiNpcInbox.Game;
         }
-        this.OpenChat(row.contactId, "the phone's messages");
-        return true;
+
+        let inbox = AiNpcInboxOf(row, AiNpcGameKnowsContact(row.hash), threadsVisible);
+        if Equals(inbox, AiNpcInbox.Chat) {
+            this.OpenChat(row.contactId, "the phone's messages");
+        }
+        return inbox;
     }
 
     // The phone HUD was rebuilt underneath us, so every widget handle the mod holds is stale.
@@ -692,7 +716,7 @@ public class AiNpcSystem extends ScriptableService {
         }
         this.m_phoneView = new AiNpcPhoneChatRenderer();
         this.m_phoneView.BindSession(this.m_phoneSession);
-        this.m_phoneSession.Attach(this.m_phoneView);
+        this.m_phoneSession.Attach(this.m_phoneView, AiNpcChannelId.Text);
         this.m_phoneView.Resolve(this.player);
         if IsDefined(this.defaultPhoneController) {
             this.m_phoneView.SetPhoneController(this.defaultPhoneController);

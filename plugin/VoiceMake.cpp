@@ -6,8 +6,10 @@
 #include "Json.hpp"
 #include "PocketVoice.hpp"
 #include "VoiceArchive.hpp"
+#include "VoiceLines.hpp"
 
 #include <algorithm>
+#include <charconv>
 #include <cmath>
 #include <cstdio>
 #include <fstream>
@@ -389,6 +391,58 @@ const json::Value* VoiceFor(const json::Value& aRecipe, const std::string& aName
     return fallback;
 }
 
+// Les repliques que la recette retient pour une voix, par leur hachage. Vide quand la recette
+// ignore ce nom -- c'est le cas d'une voix qu'un autre mod declare.
+std::vector<uint64_t> RecipeLines(const json::Value& aRecipe, const std::string& aName,
+                                  const std::string& aWanted, std::string& aLanguage)
+{
+    std::vector<uint64_t> hashes;
+    const json::Value* voice = VoiceFor(aRecipe, aName, aWanted, aLanguage);
+    if (voice == nullptr)
+    {
+        return hashes;
+    }
+    const json::Value* lines = voice->Find("lines");
+    if (lines == nullptr || !lines->IsArray())
+    {
+        return hashes;
+    }
+    for (const json::Value& line : lines->items)
+    {
+        hashes.push_back(HashFromHex(line.StringAt("hash")));
+    }
+    return hashes;
+}
+
+// Un nom de fichier declare par un mod vers le hachage du fichier reel. Le jeu de base d'abord,
+// puis Phantom Liberty : le nom seul ne dit pas d'ou il vient, et l'index le sait.
+std::vector<uint64_t> DeclaredHashes(const archive::VoiceArchives& aArchives,
+                                     const std::vector<std::string>& aNames,
+                                     const std::string& aLocale)
+{
+    std::vector<uint64_t> hashes;
+    const std::string folder = archive::VoFolderForLocale(aLocale);
+    if (folder.empty())
+    {
+        return hashes;
+    }
+    for (const std::string& name : aNames)
+    {
+        const std::string tail = "\\localization\\" + folder + "\\vo\\" + name;
+        const uint64_t base = archive::HashOfDepotPath("base" + tail);
+        const uint64_t ep1 = archive::HashOfDepotPath("ep1" + tail);
+        if (aArchives.Has(base))
+        {
+            hashes.push_back(base);
+        }
+        else if (aArchives.Has(ep1))
+        {
+            hashes.push_back(ep1);
+        }
+    }
+    return hashes;
+}
+
 // Le nom de la voix est celui du fichier de reference sans son extension : `judy.wav` pour le
 // casting, `civ_mid_f_21_enus_25.wav` pour une voix que n'importe quelle fiche peut nommer.
 std::string VoiceNameOf(const std::string& aVoiceFile)
@@ -396,19 +450,32 @@ std::string VoiceNameOf(const std::string& aVoiceFile)
     const size_t dot = aVoiceFile.find_last_of('.');
     return dot == std::string::npos ? aVoiceFile : aVoiceFile.substr(0, dot);
 }
-
-// Le facteur de relecture d'une voix derivee ; 1 quand la recette n'en dit rien.
-double ShiftOf(const json::Value& aVoice)
-{
-    const json::Value* shift = aVoice.Find("shift");
-    return shift != nullptr && shift->kind == json::Kind::Number && shift->number > 0.0 ? shift->number : 1.0;
-}
 } // namespace
 
 bool Possible(const std::wstring& aPluginDirectory)
 {
     return !aPluginDirectory.empty() && voice::CanClone(aPluginDirectory) &&
            FileExists(RecipePath(aPluginDirectory)) && FileExists(CodebooksPath(aPluginDirectory));
+}
+
+// from_chars et pas strtod : strtod lit la virgule decimale de la locale du processus, qui est
+// celle du jeu.
+Derivation Derive(const std::string& aVoiceName)
+{
+    const size_t mark = aVoiceName.rfind("-x");
+    if (mark == std::string::npos)
+    {
+        return {aVoiceName, 1.0};
+    }
+    const char* first = aVoiceName.data() + mark + 2;
+    const char* last = aVoiceName.data() + aVoiceName.size();
+    double shift = 0.0;
+    const auto [end, error] = std::from_chars(first, last, shift);
+    if (error != std::errc() || end != last || first == last || !(shift > 0.0))
+    {
+        return {aVoiceName, 1.0};
+    }
+    return {aVoiceName.substr(0, mark), shift};
 }
 
 bool Make(const std::wstring& aPluginDirectory, const std::string& aVoiceFile, const std::string& aLanguage,
@@ -452,18 +519,23 @@ bool Make(const std::wstring& aPluginDirectory, const std::string& aVoiceFile, c
         return false;
     }
 
-    const std::string name = VoiceNameOf(aVoiceFile);
+    const Derivation derived = Derive(VoiceNameOf(aVoiceFile));
+
+    // Deux provenances pour les memes octets : la recette livree, qui designe ses repliques par
+    // leur hachage et peut se rabattre sur l'anglais ; et ce qu'un autre mod a declare pour un
+    // personnage qu'ai_npc ne connait pas, qui les designe par leur nom et n'existe donc que
+    // dans la langue du joueur.
     std::string language;
-    const json::Value* voice = VoiceFor(recipe, name, wanted, language);
-    if (voice == nullptr)
+    std::vector<uint64_t> hashes = RecipeLines(recipe, derived.voice, wanted, language);
+    std::vector<std::string> declared;
+    if (hashes.empty())
     {
-        aWhy = "the recipe has no voice named " + name;
-        return false;
+        declared = voicelines::For(derived.voice);
+        language = wanted;
     }
-    const json::Value* lines = voice->Find("lines");
-    if (lines == nullptr || !lines->IsArray() || lines->items.empty())
+    if (hashes.empty() && declared.empty())
     {
-        aWhy = "the recipe lists no lines for " + name;
+        aWhy = "no voice named " + derived.voice + " in the recipe, and no mod declared one";
         return false;
     }
 
@@ -472,6 +544,16 @@ bool Make(const std::wstring& aPluginDirectory, const std::string& aVoiceFile, c
     {
         aWhy = "no " + language + " voice-over archive in this installation";
         return false;
+    }
+    if (!declared.empty())
+    {
+        hashes = DeclaredHashes(archives, declared, aLanguage);
+        if (hashes.empty())
+        {
+            aWhy = "none of the " + std::to_string(declared.size()) +
+                   " declared lines is in the " + language + " voice-over";
+            return false;
+        }
     }
 
     const Settings settings = SettingsFrom(recipe);
@@ -483,7 +565,7 @@ bool Make(const std::wstring& aPluginDirectory, const std::string& aVoiceFile, c
     int kept = 0;
     int missing = 0;
 
-    for (const json::Value& line : lines->items)
+    for (uint64_t hash : hashes)
     {
         if (assembled.size() >= ceiling)
         {
@@ -491,8 +573,7 @@ bool Make(const std::wstring& aPluginDirectory, const std::string& aVoiceFile, c
         }
         std::vector<uint8_t> wem;
         Clip clip;
-        if (!archives.Read(HashFromHex(line.StringAt("hash")), wem) ||
-            !DecodeWem(wem, codebooks, clip))
+        if (!archives.Read(hash, wem) || !DecodeWem(wem, codebooks, clip))
         {
             ++missing;
             continue;
@@ -514,7 +595,7 @@ bool Make(const std::wstring& aPluginDirectory, const std::string& aVoiceFile, c
 
     if (kept == 0)
     {
-        aWhy = "none of the " + std::to_string(lines->items.size()) + " lines could be read";
+        aWhy = "none of the " + std::to_string(hashes.size()) + " lines could be read";
         return false;
     }
     if (assembled.size() > ceiling)
@@ -526,7 +607,7 @@ bool Make(const std::wstring& aPluginDirectory, const std::string& aVoiceFile, c
     // Une voix derivee annonce une autre frequence que celle de ses echantillons : relue plus vite,
     // hauteur et formants montent ensemble. Rien d'autre ne change, et c'est ce que le banc a
     // fait entendre.
-    const int announced = static_cast<int>(std::lround(settings.sampleRate * ShiftOf(*voice)));
+    const int announced = static_cast<int>(std::lround(settings.sampleRate * derived.shift));
     CreateDirectoryW(Parent(target).c_str(), nullptr);
     if (!WriteWav(target, assembled, announced))
     {

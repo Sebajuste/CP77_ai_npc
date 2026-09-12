@@ -226,7 +226,7 @@ func AiNpcOfferFloor(contactId: String) -> Void {
         return;
     }
 
-    let ctx = AiNpcBuildContactContext(contactId);
+    let ctx = AiNpcBuildContactContext(contactId, "", AiNpcLiveChannelOf(contactId));
     let entries = registry.Extensions();
     let i = 0;
     let count = ArraySize(entries);
@@ -255,7 +255,7 @@ func AiNpcOfferFloor(contactId: String) -> Void {
 // A holder answering "" falls through to the provider rather than short-circuiting: "" means
 // "I have nothing to say to this", and a scripted contact underneath is still scripted.
 func AiNpcResolveScriptedReply(contactId: String, playerText: String,
-                               opt channel: AiNpcChannelId) -> String {
+                               channel: AiNpcChannelId) -> String {
     let holder = AiNpcFloorHolder(contactId);
     if NotEquals(StrLen(holder), 0) {
         let registry = AiNpcGetExtensionRegistry();

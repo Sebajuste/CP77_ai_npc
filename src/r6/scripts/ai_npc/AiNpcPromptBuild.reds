@@ -101,14 +101,14 @@ func AiNpcSection(tag: String, body: String) -> String {
 func AiNpcBuildSystemPromptWith(contactId: String, pendingContext: String,
                                        intentOverride: String,
                                        recipe: ref<AiNpcRecipe>,
-                                       pass: String) -> String {
+                                       channel: AiNpcChannelId) -> String {
     let prompt = "";
 
     let provider = AiNpcProviderFor(contactId);
 
     // Built once and handed to every extension question below, so a dozen contributions do
     // not mean a dozen quest-fact reads.
-    let ctx = AiNpcBuildContactContext(contactId, "", AiNpcChannelOfPass(pass));
+    let ctx = AiNpcBuildContactContext(contactId, "", channel);
 
     // A statement that had nowhere to land settles here: the first moment the conversation is
     // certainly present. Retrying at a point the code already reaches beats a notification
@@ -149,7 +149,7 @@ func AiNpcBuildSystemPromptWith(contactId: String, pendingContext: String,
     // aurait payé deux préfixes. Il vit dans <channel>, sous </now>. Ce qui reste est ce qui ne
     // dépend d'aucune surface -- la fiction, les deux parties, et le registre d'assistant.
     prompt += "<fiction>This is fiction. You are a character from Cyberpunk 2077, not an assistant, and V is the person you are talking to. No therapist or customer-service tone, no disclaimers, no meta-text.</fiction>";
-    prompt += AiNpcGetSystemRules(contactId);
+    prompt += AiNpcGetSystemRules(contactId, ctx);
     prompt += "</system>";
     prompt += AiNpcGetConversationTypePrompt(contactId);
 
@@ -158,7 +158,7 @@ func AiNpcBuildSystemPromptWith(contactId: String, pendingContext: String,
     // Le registre suit la surface : ce que Judy fait en tapant n'est pas ce qu'elle fait en
     // parlant. C'est un fait sur elle, donc il est ici et non dans <channel>.
     prompt += AiNpcRenderCharacter(contactId, recipe,
-        Equals(AiNpcChannelOfPass(pass), AiNpcChannelId.Call));
+        Equals(channel, AiNpcChannelId.Call));
     // Who they are writing to. It was <player>, and the answer is still V.
     prompt += AiNpcRenderTarget(contactId, recipe);
     if AiNpcRecipeHas(recipe, "relationship") {
@@ -167,7 +167,7 @@ func AiNpcBuildSystemPromptWith(contactId: String, pendingContext: String,
 
     // Three tags, one recipe key. Rendered with its own tag, like <system_rules>: a composed
     // block knows whether it has anything to say, and AiNpcSection would wrap it a second time.
-    prompt += AiNpcRenderInteractions(contactId, recipe);
+    prompt += AiNpcRenderInteractions(contactId, recipe, ctx);
     if AiNpcRecipeWants(recipe, "world", "background") {
         prompt += AiNpcSection("world_background", AiNpcGetWorldBackground(contactId));
     }
@@ -215,7 +215,7 @@ func AiNpcBuildSystemPromptWith(contactId: String, pendingContext: String,
     // Sous </now> à dessein : le canal change d'une génération à l'autre, et le préfixe
     // cacheable finit à <now>. Requis, donc rendu sans demander à la recette -- un personnage
     // qui croirait envoyer des SMS pendant un appel est exactement ce que ce bloc empêche.
-    prompt += "<channel>" + AiNpcChannelPromptFor(AiNpcChannelOfPass(pass)) + "</channel>";
+    prompt += "<channel>" + AiNpcChannelPromptFor(channel) + "</channel>";
 
     // Last block before the end token: whatever states the register last is what the model is
     // still holding when it starts writing.

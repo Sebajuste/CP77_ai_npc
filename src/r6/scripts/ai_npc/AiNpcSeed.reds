@@ -34,7 +34,7 @@ module AiNpc
 // and there is no such operation, because what was said stays: a mod being uninstalled does
 // not un-happen the conversation the player had. An author naming a mod no longer installed
 // invites code that branches on whether it still is.
-func AiNpcSeedMessage(contactId: String, text: String, fromPlayer: Bool, opt sourceId: String) -> Bool {
+func AiNpcSeedMessage(contactId: String, text: String, fromPlayer: Bool, sourceId: String) -> Bool {
     if Equals(StrLen(contactId), 0) || Equals(StrLen(text), 0) {
         return false;
     }
@@ -42,7 +42,7 @@ func AiNpcSeedMessage(contactId: String, text: String, fromPlayer: Bool, opt sou
     // Through AiNpcAppendMessage rather than the store, because that is where a message
     // entering a thread is announced: reaching past it would make a seeded line the one kind
     // no listener hears about.
-    if !AiNpcAppendMessage(contactId, text, fromPlayer, sourceId) {
+    if !AiNpcAppendMessage(contactId, text, fromPlayer, sourceId, false, AiNpcChannelId.Text) {
         return false;
     }
     AiNpcLog(s"Seeded a message into '\(contactId)' (fromPlayer=\(fromPlayer)).");

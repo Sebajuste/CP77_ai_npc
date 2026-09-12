@@ -15,6 +15,19 @@ class AiNpcChannelText extends AiNpcChannel {
         return AiNpcTextChannel();
     }
 
+    public func IsSpoken() -> Bool {
+        return false;
+    }
+
+    public func ShowsInThread() -> Bool {
+        return true;
+    }
+
+    // Un fil écrit affiche ce que le modèle a écrit.
+    public func Clean(text: String, language: AiNpcLanguage) -> String {
+        return text;
+    }
+
     // Une seule décision, et c'est une question : quelqu'un a-t-il peint ceci ? Chaque surface
     // capable de rendre se la voit offrir, la plus récemment ouverte d'abord, et décide pour
     // elle-même. Que personne ne rende n'est pas une erreur -- c'est à ça que sert la
