@@ -9,8 +9,9 @@
 // not. That case reproduces only at the right quarter second, so it is designed for rather
 // than tested for.
 //
-// Three outcomes for a bracket, and the third is the one that looks wrong until you know why:
+// Four outcomes for a bracket, and the last is the one that looks wrong until you know why:
 //
+//   NONE                not a command at all -- the model saying it wrote none, so stripped
 //   owned, complete     handed to the handler, and stripped whatever the handler answers
 //   owned, wrong arity  a real command fumbled -- offered to the repair pass, then stripped
 //   owned by nobody     LEFT IN THE TEXT
@@ -50,7 +51,7 @@ public class AiNpcActionOutcome {
 // contactId is the one captured at send time, never the selection now: this runs after a round
 // trip, and the player may have opened somebody else.
 func AiNpcApplyActions(contactId: String, text: String,
-                       opt channel: AiNpcChannelId) -> ref<AiNpcActionOutcome> {
+                       channel: AiNpcChannelId) -> ref<AiNpcActionOutcome> {
     let outcome = new AiNpcActionOutcome();
     outcome.text = text;
 
@@ -69,15 +70,23 @@ func AiNpcApplyActions(contactId: String, text: String,
         let tag = tags[i];
         let lookup = table.Lookup(tag);
 
-        if !lookup.Owned() {
-            ArrayPush(outcome.unknown, tag);
+        // NONE IS NOT A COMMAND, and it is asked before ownership rather than after. <actions>
+        // lists it as the answer for a turn that reached nothing, so a model that takes that
+        // answer must not have it read as a verb nobody implements: an unowned tag goes to the
+        // repair pass, which would ask it to turn "I wrote no command" into a command.
+        if AiNpcActionIsNone(tag) {
+            outcome.text = AiNpcReplaceAll(outcome.text, tag, "");
         } else {
-            if lookup.Complete() {
-                AiNpcRunActionClaim(ctx, lookup.claim, tag, lookup.match.params);
-                outcome.text = AiNpcReplaceAll(outcome.text, tag, "");
+            if !lookup.Owned() {
+                ArrayPush(outcome.unknown, tag);
             } else {
-                AiNpcLog(s"Command \(tag) is \(lookup.claim.pattern.raw) with the wrong number of fields; offering it for repair.");
-                ArrayPush(outcome.fumbled, tag);
+                if lookup.Complete() {
+                    AiNpcRunActionClaim(ctx, lookup.claim, tag, lookup.match.params);
+                    outcome.text = AiNpcReplaceAll(outcome.text, tag, "");
+                } else {
+                    AiNpcLog(s"Command \(tag) is \(lookup.claim.pattern.raw) with the wrong number of fields; offering it for repair.");
+                    ArrayPush(outcome.fumbled, tag);
+                }
             }
         }
         i += 1;

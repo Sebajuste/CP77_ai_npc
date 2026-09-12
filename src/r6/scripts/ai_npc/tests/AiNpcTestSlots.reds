@@ -199,7 +199,7 @@ func AiNpcTestPassTable(t: ref<AiNpcTestRunner>) -> Void {
     let empty = AiNpcPassTableFromJson(null, "test", slots, book, absent);
     t.EqInt("pass/no table binds nothing", ArraySize(empty), 0);
     t.EqString("pass/an unbound pass is on the dialogue slot",
-        AiNpcPassBindingNamed(empty, AiNpcLaneThinking()).slotName, AiNpcSlotDefaultName());
+        AiNpcPassSlotNameIn(empty, AiNpcLaneThinking()), AiNpcSlotDefaultName());
     t.EqString("pass/an unbound pass names no recipe",
         AiNpcPassBindingNamed(empty, AiNpcLaneThinking()).recipeName, "");
 
@@ -222,7 +222,7 @@ func AiNpcTestPassTable(t: ref<AiNpcTestRunner>) -> Void {
     t.EqInt("pass/both dangling names are reported", ArraySize(strays), 2);
     t.EqString("pass/a dangling slot is an error", strays[0].severity, "error");
     t.EqString("pass/a dangling slot falls back to dialogue",
-        AiNpcPassBindingNamed(stray, AiNpcLaneSpeaking()).slotName, AiNpcSlotDefaultName());
+        AiNpcPassSlotNameIn(stray, AiNpcLaneSpeaking()), AiNpcSlotDefaultName());
     t.EqString("pass/a dangling recipe falls back to the active one",
         AiNpcPassBindingNamed(stray, AiNpcLaneSpeaking()).recipeName, "");
 
@@ -272,12 +272,12 @@ func AiNpcTestPassTable(t: ref<AiNpcTestRunner>) -> Void {
 // against this builder's own vocabulary -- so Ready() is the whole of what keeps the two halves
 // together. Without it an untagged repair asks a model to correct a blank line.
 func AiNpcTestPassBuilders(t: ref<AiNpcTestRunner>) -> Void {
-    let untagged = AiNpcPassRepair.Of("panam");
+    let untagged = AiNpcPassRepair.Of("panam", AiNpcChannelId.Text);
     t.Check("pass/an untagged repair is never ready", !untagged.Ready());
 
     // Ready exactly when it has both halves. Stated as an equality rather than as a true, so
     // the assertion holds on a contact whose command table happens to be empty.
-    let aimed = AiNpcPassRepair.Of("panam");
+    let aimed = AiNpcPassRepair.Of("panam", AiNpcChannelId.Text);
     aimed.tag = "[ACTION:NOT_A_COMMAND]";
     t.Check("pass/a tagged repair is ready exactly when it has a vocabulary",
         Equals(aimed.Ready(), NotEquals(StrLen(aimed.Instruction()), 0)));
@@ -372,10 +372,11 @@ func AiNpcTestModelPresets(t: ref<AiNpcTestRunner>) -> Void {
     // named a recipe they do not have would write a binding pointing at nothing.
     let theirs: array<ref<AiNpcConfigIssue>>;
     let small = AiNpcRecipeBookFromJson(
-        ParseJson("{\"recipes\": {\"default\": {}}}") as JsonObject, "theirs", theirs);
+        ParseJson("{\"recipes\": {\"default\": {}, \"compaction\": {}}}") as JsonObject, "theirs", theirs);
     let modest = AiNpcJsonObjectAt(AiNpcModelPresetPatch(AiNpcModelPresetNamed("light"), small), "passes");
+    // The thinking pass, because the speaking pass's recipe name follows Command Handling.
     t.EqString("preset/a recipe the book declares is written",
-        AiNpcJsonString(AiNpcJsonObjectAt(modest, AiNpcLaneSpeaking()), "recipe"), "default");
+        AiNpcJsonString(AiNpcJsonObjectAt(modest, AiNpcLaneThinking()), "recipe"), "compaction");
     t.Check("preset/a recipe the book does not declare is left out",
         !AiNpcJsonObjectAt(modest, AiNpcLaneRepair()).HasKey("recipe"));
 }
@@ -431,7 +432,28 @@ func AiNpcTestActionSelector(t: ref<AiNpcTestRunner>) -> Void {
     let ask = AiNpcActionSelectorAsk("V: You still owe me.\n", "Judy Alvarez", "Sending it now.");
     t.Check("selector/the ask quotes the reply", StrContains(ask, "Judy Alvarez: Sending it now."));
     t.Check("selector/the ask keeps the thread", StrContains(ask, "V: You still owe me."));
-    t.Check("selector/the ask offers the empty answer", StrContains(ask, AiNpcActionSelectorNone()));
+    // The empty answer is offered by the command call's REACH rubric, the one rubric that asks
+    // for an output, and it has to be the word the reader refuses.
+    t.Check("selector/the command call offers the empty answer",
+        StrContains(AiNpcReachCommands(), AiNpcActionSelectorNone()));
+
+    // AND IT IS LISTED IN THE VOCABULARY, on every lane, because a model looks there for what
+    // it may answer and a choice stated only in a rubric competes with a list it will lose to.
+    let block = AiNpcActionBlockAround("[ACTION:GIVE_EDDIES:{amount}]: Send eddies.\n");
+    t.Check("actions/nothing is one of the listed answers",
+        StrContains(block, "[ACTION:" + AiNpcActionSelectorNone() + "]"));
+
+    // AND THE FRAME DOES NOT ORDER ONE. "Write a command" was an imperative with no condition,
+    // read last before the vocabulary, and it beat every rubric that asked for a decision.
+    t.Check("actions/the frame states where a command goes, it does not demand one",
+        !StrContains(block, "Write a command"));
+
+    // A tag nobody claims is left in the text for the repair pass -- but NONE is not a command
+    // nobody claims, it is the model saying it wrote none. Read as unknown, the repair pass
+    // would be asked to turn it into a command.
+    t.Check("actions/NONE is never a command to look up", AiNpcActionIsNone("[ACTION:NONE]"));
+    t.Check("actions/and a real command still is",
+        !AiNpcActionIsNone("[ACTION:GIVE_EDDIES:500]"));
     t.Check("selector/the ask never hands the turn over",
         !StrContains(ask, "start_header_id"));
 

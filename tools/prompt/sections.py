@@ -558,6 +558,7 @@ class Sections(object):
         return resolve(self.texts["actionBlock"],
                        self.env(values={"lines": lines, "definitions": definitions}, calls={
                            "AiNpcActionBlockOpen": lambda: self.texts["actionBlockOpen"],
+                           "AiNpcActionSelectorNone": lambda: self.texts["selectorNone"],
                        }))
 
     def romance_line(self):

@@ -99,6 +99,19 @@ func AiNpcCollectActionParams(claim: ref<AiNpcActionClaim>,
 // One placement rule for every command, stated once. Two of them -- one here and one in a
 // neighbouring block -- taught the model there were two conventions to arbitrate between,
 // which is how a bracket ends up half-written.
+//
+// IT DESCRIBES, IT DOES NOT ORDER. "Write a command" was an imperative carrying no condition,
+// and it was the last thing read before the vocabulary -- so it won against every rubric above
+// it that asked for a decision first, including one that said ONLY if strictly necessary and
+// named NONE. Measured on the action pass: a stranger who had named a price and nothing else
+// got a meeting booked at a venue and an hour the conversation had never mentioned. A sentence
+// that states where a command goes cannot be obeyed by writing one.
+//
+// AND NOTHING IS A LISTED CHOICE, not a word in a rubric. The vocabulary is where a model looks
+// for what it may answer, so "do nothing" stated anywhere else is an instruction competing with
+// a list, and the list wins. It is not a claim and never becomes one: nobody implements it,
+// AiNpcActionIsNone reads it back on both lanes, and a tag meaning "I wrote no command" has
+// nothing to dispatch to.
 func AiNpcActionBlockAround(lines: String, opt definitions: String) -> String {
     if Equals(StrLen(lines), 0) {
         return "";
@@ -108,9 +121,11 @@ func AiNpcActionBlockAround(lines: String, opt definitions: String) -> String {
     // reference it cannot resolve, and the offline block silently lost its header. `definitions`
     // is "" when no command declared a parameter, so it concatenates either way.
     return AiNpcActionBlockOpen()
-        + "Write a command exactly as written, on the last line of your message; fill its "
-        + "slots from the parameters below.\n"
+        + "A command is written on the last line of your message, exactly as shown, with its "
+        + "slots filled from the parameters below.\n"
         + lines
+        + "[ACTION:" + AiNpcActionSelectorNone() + "]: DOING NOTHING, and the right answer "
+        + "whenever the conversation has not reached what a command above describes.\n"
         + definitions
         + "</actions>";
 }
@@ -122,10 +137,10 @@ func AiNpcActionBlockAround(lines: String, opt definitions: String) -> String {
 //
 // The recipe is handed in rather than read: this is the same block <actions> renders in the
 // prompt, so it has to be the same recipe. Reading one here made the two answers divergeable.
-func AiNpcActionVocabularyFor(contactId: String, recipe: ref<AiNpcRecipe>) -> String {
+func AiNpcActionVocabularyFor(contactId: String, recipe: ref<AiNpcRecipe>,
+                              ctx: ref<AiNpcContactContext>) -> String {
     if !AiNpcRecipeHas(recipe, "actions") {
         return "";
     }
-    let ctx = AiNpcBuildContactContext(contactId);
     return AiNpcRenderActionBlock(ctx, AiNpcBuildActionTable(contactId));
 }

@@ -48,10 +48,25 @@ func AiNpcReachDedicated() -> String {
 }
 
 // The command call: the vocabulary and nothing else, answered in one line. NONE is named
-// because AiNpcActionSelectorRefusal reads it back, and an empty answer is indistinguishable
+// because AiNpcActionIsNone reads it back, and an empty answer is indistinguishable
 // from a request that failed.
+//
+// IT NAMES WHAT TO READ AND WHAT TO AVOID, because this request has no other job. The other
+// wording is a conduct rubric inside a conversation -- the model is writing a reply and a
+// command is at most part of it -- while here the answer IS the decision, and a decision put
+// as a condition to satisfy is read as satisfied by a model that was just handed a vocabulary
+// to use. Measured on two bookings in one evening, both through this lane: a stranger's tag
+// was emitted on his own offer before V had answered it, and another on a message whose prose
+// was still asking a question.
+//
+// THE IMPERATIVE VERBS ARE THE INSTRUCTION, not a way of phrasing it. "Analyse" and "Think"
+// are asked for as words: an order to deliberate is what recruits the reasoning the decision
+// needs, and a paraphrase that states the same requirement without the verb drops exactly
+// that. Both failure modes are named for the same reason, in the vocabulary
+// docs/PLAN_ACTION_SELECTOR.md measures this lane with: a rubric aimed at one of them alone
+// slides into the other.
 func AiNpcReachCommands() -> String {
-    return "Determine if an action is required; use commands in <actions> if you decide it is necessary. Otherwise answer NONE.";
+    return "Analyse the conversation to decide whether an action must be taken or not. Think about avoiding false positives and false negatives. Use the commands in <actions> ONLY if you decide one is strictly necessary. Otherwise answer NONE.";
 }
 
 func AiNpcReachRule(source: String) -> String {
@@ -62,6 +77,12 @@ func AiNpcReachRule(source: String) -> String {
         return AiNpcReachCommands();
     }
     return AiNpcReachConversation();
+}
+
+// What a contact, the config or an extension adds to <interactions> is conduct for talking to
+// V. The command call does not talk, so it renders the core wording alone.
+func AiNpcInteractionSourceTakesContributions(source: String) -> Bool {
+    return !Equals(source, "commands");
 }
 
 /// The block ///
@@ -88,7 +109,8 @@ func AiNpcCoreInteractionRules(source: String, recipe: ref<AiNpcRecipe>) -> arra
     return rules;
 }
 
-func AiNpcRenderInteractions(contactId: String, recipe: ref<AiNpcRecipe>) -> String {
+func AiNpcRenderInteractions(contactId: String, recipe: ref<AiNpcRecipe>,
+                             ctx: ref<AiNpcContactContext>) -> String {
     if !AiNpcRecipeHas(recipe, "interactions") {
         return "";
     }
@@ -98,10 +120,15 @@ func AiNpcRenderInteractions(contactId: String, recipe: ref<AiNpcRecipe>) -> Str
         source = AiNpcInteractionDefaultSource();
     }
 
+    let core = AiNpcCoreInteractionRules(source, recipe);
+    if !AiNpcInteractionSourceTakesContributions(source) {
+        return AiNpcRenderRules("interactions", core);
+    }
+
     return AiNpcRenderRules("interactions",
         AiNpcComposedRules("interactions", contactId,
-            AiNpcCoreInteractionRules(source, recipe),
+            core,
             AiNpcPromptOverridesFor(contactId).interactions,
             AiNpcGetPromptConfig().interactions,
-            AiNpcExtensionInteractionRules(AiNpcBuildContactContext(contactId))));
+            AiNpcExtensionInteractionRules(ctx)));
 }

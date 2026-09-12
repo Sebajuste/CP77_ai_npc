@@ -31,8 +31,7 @@ func AiNpcActionSelectorNone() -> String {
 
 func AiNpcActionSelectorAsk(transcript: String, npcName: String, reply: String) -> String {
     return transcript + npcName + ": " + AiNpcTranscriptLine(reply) + "\n\n"
-        + "Read the last message only, and answer for it alone, on one line, with no other "
-        + "text.";
+        + "Answer on one line, with no other text.";
 }
 
 /// Reading the answer ///
@@ -53,7 +52,7 @@ func AiNpcActionSelectorTag(answer: String) -> String {
 
     let bracketed = AiNpcFirstActionTag(text);
     if NotEquals(StrLen(bracketed), 0) {
-        return AiNpcActionSelectorRefusal(bracketed) ? "" : bracketed;
+        return AiNpcActionIsNone(bracketed) ? "" : bracketed;
     }
 
     // No brackets: take the run of characters that starts at the verb marker and ends at the
@@ -73,14 +72,19 @@ func AiNpcActionSelectorTag(answer: String) -> String {
     if !AiNpcActionTagIsWellFormed(tag) {
         return "";
     }
-    return AiNpcActionSelectorRefusal(tag) ? "" : tag;
+    return AiNpcActionIsNone(tag) ? "" : tag;
 }
 
 // "Nothing happened" is an answer, and the prompt asks for it by name -- so NONE arrives in
 // every dress the commands do: bare, as ACTION:NONE, bracketed. All of them mean the same thing
 // as an empty answer, and none of them is a command that failed: dispatching one would log a
 // verb naming nothing while the model did exactly as it was told.
-func AiNpcActionSelectorRefusal(tag: String) -> Bool {
+//
+// NOT THE SELECTOR'S OWN QUESTION ANY MORE, which is why the name no longer says so. <actions>
+// lists NONE as a choice on every lane, so a chat reply can carry it too -- and there it is the
+// one bracket that must NOT be treated as unknown, since the repair pass would take the model's
+// "I wrote no command" and try to make a command out of it. AiNpcApplyActions asks this.
+func AiNpcActionIsNone(tag: String) -> Bool {
     let segments = AiNpcActionTagSegments(tag);
     if Equals(ArraySize(segments), 0) {
         return true;

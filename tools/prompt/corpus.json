@@ -1026,10 +1026,16 @@
           "args": [],
           "call": "AiNpcActionBlockOpen"
         },
-        "Write a command exactly as written, on the last line of your message; fill its slots from the parameters below.\n",
+        "A command is written on the last line of your message, exactly as shown, with its slots filled from the parameters below.\n",
         {
           "ref": "lines"
         },
+        "[ACTION:",
+        {
+          "args": [],
+          "call": "AiNpcActionSelectorNone"
+        },
+        "]: DOING NOTHING, and the right answer whenever the conversation has not reached what a command above describes.\n",
         {
           "ref": "definitions"
         },
@@ -1207,6 +1213,9 @@
         "args": [
           {
             "ref": "contactId"
+          },
+          {
+            "ref": "ctx"
           }
         ],
         "call": "AiNpcGetSystemRules"
@@ -1231,12 +1240,7 @@
           {
             "args": [
               {
-                "args": [
-                  {
-                    "ref": "pass"
-                  }
-                ],
-                "call": "AiNpcChannelOfPass"
+                "ref": "channel"
               },
               {
                 "member": [
@@ -1292,6 +1296,9 @@
           },
           {
             "ref": "recipe"
+          },
+          {
+            "ref": "ctx"
           }
         ],
         "call": "AiNpcRenderInteractions"
@@ -1436,12 +1443,7 @@
           {
             "args": [
               {
-                "args": [
-                  {
-                    "ref": "pass"
-                  }
-                ],
-                "call": "AiNpcChannelOfPass"
+                "ref": "channel"
               }
             ],
             "call": "AiNpcChannelPromptFor"
@@ -2124,7 +2126,7 @@
         ". "
       ]
     },
-    "reachCommands": "Determine if an action is required; use commands in <actions> if you decide it is necessary. Otherwise answer NONE.",
+    "reachCommands": "Analyse the conversation to decide whether an action must be taken or not. Think about avoiding false positives and false negatives. Use the commands in <actions> ONLY if you decide one is strictly necessary. Otherwise answer NONE.",
     "reachConversation": "The commands in <actions> are the only way you can act on the world. Use them when the context calls for it, exactly as written, only when it is necessary; skip actions otherwise.",
     "reachDedicated": "",
     "reasonLine": {
@@ -2327,7 +2329,7 @@
           ],
           "call": "AiNpcTranscriptLine"
         },
-        "\n\nRead the last message only, and answer for it alone, on one line, with no other text."
+        "\n\nAnswer on one line, with no other text."
       ]
     },
     "selectorNone": "NONE",
@@ -2419,19 +2421,19 @@
     }
   },
   "sources": {
-    "AiNpcActionPrompt.reds": "0234a54baa3e",
-    "AiNpcActionSelector.reds": "dd46a05c476b",
-    "AiNpcChannelPrompt.reds": "80a094342194",
+    "AiNpcActionPrompt.reds": "6f2ae5a8d3b2",
+    "AiNpcActionSelector.reds": "2aa9e6034050",
+    "AiNpcChannelPrompt.reds": "17d04b4d6b12",
     "AiNpcCharacterRender.reds": "d88a8644537e",
     "AiNpcContacts.reds": "e095b72d08b2",
     "AiNpcContextData.reds": "d2db449caad9",
-    "AiNpcInteractionRender.reds": "3f527d978ff9",
-    "AiNpcLanguage.reds": "93fcdec1760b",
+    "AiNpcInteractionRender.reds": "1883bf961413",
+    "AiNpcLanguage.reds": "8ce48717e61a",
     "AiNpcMemory.reds": "6f02c6db9afe",
     "AiNpcPass.reds": "6b884540bc4e",
-    "AiNpcPlayer.reds": "2787176d81a4",
-    "AiNpcPromptBuild.reds": "04ee46b42fc4",
-    "AiNpcPromptSections.reds": "bd0ea47f2597",
+    "AiNpcPlayer.reds": "bfd3a58a09e7",
+    "AiNpcPromptBuild.reds": "d6851b5badef",
+    "AiNpcPromptSections.reds": "40b738b2ebc3",
     "AiNpcRecipeSchema.reds": "ffb2f150ab4b",
     "AiNpcRecipeTemplate.reds": "3136554459a8",
     "AiNpcRepair.reds": "ecdddbac679f",
